@@ -13743,6 +13743,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
 
             if (proxyMenuSubItem != null) {
+                proxyMenuSubItem.subtextView.setTextColor(getThemedColor(Theme.key_groupcreate_sectionText));
                 proxyMenuSubItem.setOnClickListener(v -> {
                     io.dismiss();
                     presentFragment(new ProxyListActivity());
