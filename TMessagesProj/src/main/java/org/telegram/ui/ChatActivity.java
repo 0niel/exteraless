@@ -138,6 +138,7 @@ import com.google.zxing.common.detector.MathUtils;
 
 import com.radolyn.ayugram.AyuConstants;
 import com.radolyn.ayugram.AyuUtils;
+import com.radolyn.ayugram.database.AyuData;
 import com.radolyn.ayugram.messages.AyuMessagesController;
 import com.radolyn.ayugram.messages.AyuSavePreferences;
 import com.radolyn.ayugram.proprietary.AyuHistoryHook;
@@ -43299,7 +43300,14 @@ public class ChatActivity extends BaseFragment implements
                     AlertUtil.showToast("FILE_NOT_FOUND");
                     return;
                 }
-                if (message.getDocumentName().toLowerCase().endsWith("attheme")) {
+                if (AyuConstants.AYU_DATABASE_EXPORT.equals(message.getDocumentName())) {
+                    File finalLocFile = locFile;
+                    AlertUtil.showConfirm(getParentActivity(),
+                            getString(R.string.ImportAyuDB),
+                            getString(R.string.ImportAyuDBAlert),
+                            R.drawable.msg_photo_settings_solar, getString(R.string.Import), true,
+                            () -> AyuData.importAyuDatabase(ChatActivity.this, finalLocFile));
+                } else if (message.getDocumentName().toLowerCase().endsWith("attheme")) {
                     Theme.ThemeInfo themeInfo = Theme.applyThemeFile(locFile, message.getDocumentName(), null, true);
                     if (themeInfo != null) {
                         presentFragment(new ThemePreviewActivity(themeInfo));
