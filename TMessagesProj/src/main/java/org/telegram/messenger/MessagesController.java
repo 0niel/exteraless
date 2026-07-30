@@ -7684,7 +7684,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
             }
         }
-        final TLRPC.ChannelParticipant participant = array.get(uid);
+        final TLRPC.ChannelParticipant participant = array != null ? array.get(uid) : null;
         return participant instanceof TLRPC.TL_channelParticipantCreator;
     }
 
