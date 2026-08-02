@@ -550,7 +550,9 @@ public class NotificationsController extends BaseController implements Notificat
                             smartNotificationsDialogs.remove(dialogId);
                         }
                         if (!newCount.equals(currentCount)) {
-                            if (getMessagesController().isForum(dialogId)) {
+                            if (getMessagesController().isCommunity(dialogId)) {
+
+                            } else if (getMessagesController().isForum(dialogId)) {
                                 total_unread_count -= currentCount > 0 ? 1 : 0;
                                 total_unread_count += newCount > 0 ? 1 : 0;
                             } else {
@@ -647,7 +649,9 @@ public class NotificationsController extends BaseController implements Notificat
                     smartNotificationsDialogs.remove(dialogId);
                 }
                 if (!newCount.equals(currentCount)) {
-                    if (getMessagesController().isForum(dialogId)) {
+                    if (getMessagesController().isCommunity(dialogId)) {
+
+                    } else if (getMessagesController().isForum(dialogId)) {
                         total_unread_count -= currentCount > 0 ? 1 : 0;
                         total_unread_count += newCount > 0 ? 1 : 0;
                     } else {
@@ -1332,7 +1336,9 @@ public class NotificationsController extends BaseController implements Notificat
                     canAddValue = canAddValue && !messageObject.isStoryPush;
 
                     if (canAddValue) {
-                        if (getMessagesController().isForum(dialog_id)) {
+                        if (getMessagesController().isCommunity(dialog_id)) {
+
+                        } else if (getMessagesController().isForum(dialog_id)) {
                             total_unread_count -= currentCount != null && currentCount > 0 ? 1 : 0;
                             total_unread_count += newCount > 0 ? 1 : 0;
                         } else {
@@ -1476,7 +1482,9 @@ public class NotificationsController extends BaseController implements Notificat
                         }
                     }
                 } else if (canAddValue) {
-                    if (getMessagesController().isForum(dialogId)) {
+                    if (getMessagesController().isCommunity(dialogId)) {
+
+                    } else if (getMessagesController().isForum(dialogId)) {
                         total_unread_count += newCount > 0 ? 1 : 0;
                     } else {
                         total_unread_count += newCount;
@@ -1608,7 +1616,9 @@ public class NotificationsController extends BaseController implements Notificat
                 }
                 int count = dialogs.valueAt(a);
                 pushDialogs.put(dialog_id, count);
-                if (getMessagesController().isForum(dialog_id)) {
+                if (getMessagesController().isCommunity(dialog_id)) {
+
+                } else if (getMessagesController().isForum(dialog_id)) {
                     total_unread_count += count > 0 ? 1 : 0;
                 } else {
                     total_unread_count += count;
@@ -1675,7 +1685,9 @@ public class NotificationsController extends BaseController implements Notificat
                     Integer currentCount = pushDialogs.get(dialogId);
                     int newCount = currentCount != null ? currentCount + 1 : 1;
 
-                    if (getMessagesController().isForum(dialogId)) {
+                    if (getMessagesController().isCommunity(dialogId)) {
+
+                    } else if (getMessagesController().isForum(dialogId)) {
                         if (currentCount != null) {
                             total_unread_count -= currentCount > 0 ? 1 : 0;
                         }
