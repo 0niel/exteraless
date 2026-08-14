@@ -17,6 +17,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Cells.TextDetailSettingsCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.BulletinFactory;
@@ -26,6 +27,7 @@ import app.exteraless.appearance.AppearanceConfig;
 import app.exteraless.appearance.AvatarCornersPreviewCell;
 import app.exteraless.appearance.AvatarCornersSeekBar;
 import app.exteraless.appearance.ChatListPreviewCell;
+import app.exteraless.appearance.FabShapeCell;
 import app.exteraless.appearance.FoldersPreviewCell;
 import app.exteraless.icons.IconPacksActivity;
 import app.exteraless.pillstack.PillStackSettingsActivity;
@@ -50,13 +52,18 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private static final int TYPE_CHAT_LIST = 101;
     private static final int TYPE_FOLDERS = 102;
     private static final int TYPE_SECTION_SLIDER = 103;
+    /** Сворачиваемая группа со счётчиком и шевроном. */
+    private static final int TYPE_EXPANDABLE_SWITCH = 104;
+    /** Круглая галочка внутри группы. */
+    private static final int TYPE_ROUND_CHECK = 105;
+    /** Две карточки-превью формы плавающей кнопки (exteraGram: UItem.asCustom(FAB_SHAPE,...) :461). */
+    private static final int TYPE_FAB_SHAPE = 106;
 
     // Appearance
     private int appearanceHeaderRow;
+    private int fabShapeRow;
     private int useSystemFontsRow;
     private int useSystemEmojiRow;
-    private int switchStyleRow;
-    private int sliderStyleRow;
     private int gooeyAvatarRow;
     private int customThemesRow;
     private int appearanceDividerRow;
@@ -86,6 +93,14 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int chatListPreviewRow;
     private int forceSnowRow;
     private int centerTitleRow;
+    // Material Design 3: сворачиваемая группа и пять вложенных стилей.
+    private int md3GroupRow;
+    private int md3LoadingRow;
+    private int md3SliderRow;
+    private int md3SwitchRow;
+    private int md3ChatHeaderRow;
+    private int md3NavBarRow;
+    private boolean md3Expanded;
     private int hideStoriesRow;
     private int hideFloatingButtonRow;
     private int hideSearchBarRow;
@@ -110,6 +125,15 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private AvatarCornersPreviewCell avatarCornersPreviewCell;
     private ChatListPreviewCell chatListPreviewCell;
     private FoldersPreviewCell foldersPreviewCell;
+    private FabShapeCell fabShapeCell;
+
+    /**
+     * Отложенный rebuild после слайдера радиуса секций. exteraGram
+     * (handleSectionRadiusChange :335-343) зовёт rebuildFragments на каждое изменение,
+     * но у него слайдер — Material-виджет с редкими колбэками; наш SeekBarView отдаёт
+     * значение на каждый dp, и пересборка всех фрагментов на каждом шаге даёт рывки.
+     */
+    private final Runnable sectionRadiusRebuild = this::rebuildAll;
 
     public OpenExteraAppearanceActivity() {
         super();
@@ -150,10 +174,23 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         linksDividerRow = addRow();
 
         appearanceHeaderRow = addRow("appearanceHeader");
+        fabShapeRow = addRow("fabShape");
         useSystemFontsRow = addRow("useSystemFonts");
         useSystemEmojiRow = addRow("useSystemEmoji");
-        switchStyleRow = addRow("switchStyle");
-        sliderStyleRow = addRow("sliderStyle");
+        // Material Design 3 — сворачиваемая группа, как у exteraGram
+        // (AppearancePreferencesActivity: asExteraExpandableSwitch + пять asRoundCheckbox).
+        // Прежние отдельные селекторы «стиль переключателей» и «стиль слайдеров»
+        // стали двумя галочками внутри неё.
+        md3GroupRow = addRow("md3Styles");
+        if (md3Expanded) {
+            md3LoadingRow = addRow("md3Loading");
+            md3SliderRow = addRow("md3Slider");
+            md3SwitchRow = addRow("md3Switch");
+            md3ChatHeaderRow = addRow("md3ChatHeader");
+            md3NavBarRow = addRow("md3NavBar");
+        } else {
+            md3LoadingRow = md3SliderRow = md3SwitchRow = md3ChatHeaderRow = md3NavBarRow = -1;
+        }
         gooeyAvatarRow = addRow("gooeyAvatar");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
@@ -186,6 +223,18 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     @Override
     protected BaseListAdapter createAdapter(Context context) {
         return new ListAdapter(context);
+    }
+
+    /**
+     * Пересобрать список строк. Нужен там, где меняется их состав: базовый класс
+     * зовёт updateRows() только в onFragmentCreate, поэтому одного
+     * notifyDataSetChanged недостаточно.
+     */
+    private void rebuildRowsAndNotify() {
+        updateRows();
+        if (listAdapter != null) {
+            listAdapter.notifyDataSetChanged();
+        }
     }
 
     private void rebuildAll() {
@@ -230,12 +279,29 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         };
     }
 
-    private CharSequence[] styleOptions() {
+    /**
+     * Порядок пунктов «Folder Title» у exteraGram (:500) — «Names with Icons», «Names only»,
+     * «Icons only»; у NekoConfig.tabsTitleType значения 0 TEXT, 1 ICON, 2 MIX.
+     * Массив переводит индекс диалога в значение конфига.
+     */
+    private static final int[] TAB_TITLE_ORDER = {2, 0, 1};
+
+    private CharSequence[] tabTitleOptions() {
         return new CharSequence[]{
-                getString(R.string.Default),
-                getString(R.string.StyleModern),
-                getString(R.string.StyleMaterialDesign3)
+                getString(R.string.OEAppearanceTabTitleStyleTextWithIcons),
+                getString(R.string.OEAppearanceTabTitleStyleTextOnly),
+                getString(R.string.OEAppearanceTabTitleStyleIconsOnly)
         };
+    }
+
+    /** Значение конфига -> индекс в {@link #tabTitleOptions()}. */
+    private static int tabTitleIndex(int configValue) {
+        for (int i = 0; i < TAB_TITLE_ORDER.length; i++) {
+            if (TAB_TITLE_ORDER[i] == configValue) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     private void onDividerStyleChanged() {
@@ -244,7 +310,47 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         NaConfig.INSTANCE.getHideDividers().setConfigBool(AppearanceConfig.dividerStyle.Int() == 0);
         // Theme.getColor читает закешированное значение — сбросить кэш обязательно.
         AppearanceConfig.invalidateDividerStyle();
+        // «Сегменты» рисуются раздельными карточками, и заголовок обязан быть своей карточкой,
+        // иначе секция склеивается: exteraGram дожимает настройку принудительно (lambda$onClick$2 :384-391).
+        if (AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS
+                && !AppearanceConfig.separateHeaders.Bool()) {
+            AppearanceConfig.separateHeaders.setConfigBool(true);
+        }
+        if (listAdapter != null) {
+            listAdapter.notifyItemChanged(separateHeadersRow);
+        }
+        // цвет разделителя лежит в общей теме,
+        // без applyCommonTheme новые значения не подхватят уже созданные ячейки.
+        Theme.applyCommonTheme();
+        if (listView != null) {
+            listView.invalidate();
+            listView.invalidateItemDecorations();
+        }
+        invalidatePreviews();
         rebuildAll();
+    }
+
+    /**
+     * новый радиус надо занести в декоратор
+     * списка и перерисовать его, иначе на текущем экране ничего не меняется.
+     */
+    private void onSectionRadiusChanged(int value) {
+        AppearanceConfig.sectionRadius.setConfigInt(value);
+        if (listView != null) {
+            listView.setSections(AndroidUtilities.dp(12), AndroidUtilities.dp(value), true);
+            listView.invalidate();
+            listView.invalidateItemDecorations();
+        }
+        AndroidUtilities.cancelRunOnUIThread(sectionRadiusRebuild);
+        AndroidUtilities.runOnUIThread(sectionRadiusRebuild, 350);
+    }
+
+    /** Все живые превью экрана — их надо дёргать на смене темы и стиля разделителя. */
+    private void invalidatePreviews() {
+        if (avatarCornersPreviewCell != null) avatarCornersPreviewCell.invalidate();
+        if (chatListPreviewCell != null) chatListPreviewCell.invalidate();
+        if (foldersPreviewCell != null) foldersPreviewCell.invalidate();
+        if (fabShapeCell != null) fabShapeCell.invalidate();
     }
 
     @Override
@@ -258,13 +364,37 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         } else if (position == appNavigationRow) {
             presentFragment(new OpenExteraAppNavigationActivity());
             return;
-        } else if (position == switchStyleRow) {
-            showSelector(position, getString(R.string.OEAppearanceSwitchStyle), styleOptions(),
-                    NaConfig.INSTANCE.getSwitchStyle(), this::rebuildAll);
+        } else if (position == md3GroupRow) {
+            md3Expanded = !md3Expanded;
+            rebuildRowsAndNotify();
             return;
-        } else if (position == sliderStyleRow) {
-            showSelector(position, getString(R.string.OEAppearanceSliderStyle), styleOptions(),
-                    NaConfig.INSTANCE.getSliderStyle(), this::rebuildAll);
+        } else if (position == md3LoadingRow) {
+            AppearanceConfig.newLoadingStyle.setConfigBool(!AppearanceConfig.newLoadingStyle.Bool());
+            rebuildAll();
+            return;
+        } else if (position == md3SliderRow) {
+            // Стиль слайдера читается в SeekBarView.getEffectiveSliderStyle() на каждой отрисовке,
+            // стиль переключателя — в Switch на каждой; перезапуск не нужен, хватает пересборки
+            // вьюх (так же делает NekoGeneralSettingsActivity:306-311 и exteraGram, case 23 :695-702).
+            NaConfig.INSTANCE.getSliderStyle().setConfigInt(
+                    isMd3(NaConfig.INSTANCE.getSliderStyle().Int()) ? 0 : STYLE_MD3);
+            if (avatarCornersPreviewCell != null) {
+                avatarCornersPreviewCell.invalidate();
+            }
+            rebuildAll();
+            return;
+        } else if (position == md3SwitchRow) {
+            NaConfig.INSTANCE.getSwitchStyle().setConfigInt(
+                    isMd3(NaConfig.INSTANCE.getSwitchStyle().Int()) ? 0 : STYLE_MD3);
+            rebuildAll();
+            return;
+        } else if (position == md3ChatHeaderRow) {
+            AppearanceConfig.newChatHeaderStyle.setConfigBool(!AppearanceConfig.newChatHeaderStyle.Bool());
+            rebuildAll();
+            return;
+        } else if (position == md3NavBarRow) {
+            AppearanceConfig.newNavigationBarStyle.setConfigBool(!AppearanceConfig.newNavigationBarStyle.Bool());
+            rebuildAll();
             return;
         } else if (position == dividerStyleRow) {
             showSelector(position, getString(R.string.OEAppearanceDividerStyle), new CharSequence[]{
@@ -281,17 +411,27 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }, AppearanceConfig.glassOutlineStyle, null);
             return;
         } else if (position == tabTitleStyleRow) {
-            showSelector(position, getString(R.string.OEAppearanceTabTitleStyle), new CharSequence[]{
-                    getString(R.string.OEAppearanceTabTitleStyleTextOnly),
-                    getString(R.string.OEAppearanceTabTitleStyleIconsOnly),
-                    getString(R.string.OEAppearanceTabTitleStyleTextWithIcons)
-            }, NekoConfig.tabsTitleType, () -> {
+            if (getParentActivity() == null) {
+                return;
+            }
+            // Порядок пунктов диалога — исходный (initializeOptionStrings :500),
+            // а значения NekoConfig.tabsTitleType свои (0 TEXT, 1 ICON, 2 MIX),
+            // поэтому индекс диалога отображается через TAB_TITLE_ORDER.
+            AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+            builder.setTitle(getString(R.string.OEAppearanceTabTitleStyle));
+            builder.setItems(tabTitleOptions(), (dialog, which) -> {
+                NekoConfig.tabsTitleType.setConfigInt(TAB_TITLE_ORDER[clamp(which, TAB_TITLE_ORDER.length)]);
+                if (listAdapter != null) {
+                    listAdapter.notifyItemChanged(position);
+                }
                 if (foldersPreviewCell != null) {
                     foldersPreviewCell.updateTabTitle(true);
                     foldersPreviewCell.updateTabIcons(true);
                 }
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
             });
+            builder.setNegativeButton(getString(R.string.Cancel), null);
+            showDialog(builder.create());
             return;
         } else if (position == tabCounterRow) {
             showSelector(position, getString(R.string.OEAppearanceTabCounter), new CharSequence[]{
@@ -306,24 +446,32 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             });
             return;
         } else if (position == centerTitleRow) {
-            showSelector(position, getString(R.string.OEAppearanceCenterTitle), new CharSequence[]{
-                    getString(R.string.CenterActionBarTitleOff),
-                    getString(R.string.CenterActionBarTitleOn),
-                    getString(R.string.SettingsOnly),
-                    getString(R.string.ChatsOnly)
-            }, NaConfig.INSTANCE.getCenterActionBarTitleType(), () -> {
-                if (chatListPreviewCell != null) {
-                    chatListPreviewCell.updateCentered(true);
-                }
-                rebuildAll();
-            });
+            // У exteraGram это обычный переключатель (AppearancePreferencesActivity:443),
+            // а не селектор из четырёх пунктов: центровка либо есть, либо нет.
+            AppearanceConfig.centerTitle.setConfigBool(!AppearanceConfig.INSTANCE.centerTitle());
+            if (view instanceof org.telegram.ui.Cells.TextCheckCell) {
+                ((org.telegram.ui.Cells.TextCheckCell) view)
+                        .setChecked(AppearanceConfig.INSTANCE.centerTitle());
+            }
+            if (chatListPreviewCell != null) {
+                chatListPreviewCell.updateCentered(true);
+            }
+            rebuildAll();
             return;
         } else if (position == titleTextRow) {
             showSelector(position, getString(R.string.OEAppearanceTitleText), titleTextOptions(),
                     AppearanceConfig.titleText, () -> {
                 if (chatListPreviewCell != null) {
                     chatListPreviewCell.updateTitle(true);
+                    // Эмодзи-статус стоит вплотную к заголовку, и его позиция зависит от длины
+                    // текста.
+                    chatListPreviewCell.updateStatus(true);
                 }
+                getNotificationCenter().postNotificationName(
+                        NotificationCenter.currentUserPremiumStatusChanged);
+                // Сам заголовок списка чатов ставится один раз в DialogsActivity.createView
+                // (:3645), по уведомлению он не переустанавливается — нужна пересборка вьюх.
+                rebuildAll();
             });
             return;
         } else if (position == forceSnowRow) {
@@ -341,6 +489,27 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(SharedConfig.chatBlurEnabled());
             }
             rebuildAll();
+            return;
+        } else if (position == glassMessageMenuRow) {
+            boolean enabled = AppearanceConfig.glassMessageMenu.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(enabled);
+            }
+            // стеклянное меню рисуется поверх
+            // блюра, и без него настройка не даёт ничего видимого, поэтому предлагаем включить.
+            if (enabled && !SharedConfig.chatBlurEnabled() && getParentActivity() != null) {
+                BulletinFactory.of(this)
+                        .createSimpleBulletin(R.raw.info,
+                                getString(R.string.OEAppearanceGlassMessageMenuBlurOff),
+                                getString(R.string.Enable),
+                                SharedConfig::toggleChatBlur)
+                        .show();
+            }
+            return;
+        } else if (position == separateHeadersRow
+                && AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS) {
+            // При «Сегментах» строка нарисована выключенной (exteraGram :482 setEnabled(...)),
+            // клик по ней ничего не меняет.
             return;
         }
 
@@ -360,8 +529,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.customThemes;
         } else if (position == separateHeadersRow) {
             item = AppearanceConfig.separateHeaders;
-        } else if (position == glassMessageMenuRow) {
-            item = AppearanceConfig.glassMessageMenu;
         } else if (position == disableAvatarBlurRow) {
             item = NaConfig.INSTANCE.getDisableAvatarBlur();
             rebuild = true;
@@ -381,7 +548,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             item = AppearanceConfig.senderMiniAvatars;
         } else if (position == hideAllChatsRow) {
             item = NekoConfig.hideAllTab;
-            restart = true;
+            rebuild = true;
         }
 
         if (item == null) {
@@ -392,8 +559,14 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
         }
-        if (position == hideAllChatsRow && foldersPreviewCell != null) {
-            foldersPreviewCell.updateAllChatsTabName(true);
+        if (position == hideAllChatsRow) {
+            if (foldersPreviewCell != null) {
+                foldersPreviewCell.updateAllChatsTabName(true);
+            }
+            // вкладки пересобираются по уведомлению,
+            // перезапуск не нужен (плюс rebuild ниже пересоздаёт сам список чатов).
+            getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
+            getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
         }
         if (rebuild) {
             rebuildAll();
@@ -414,6 +587,21 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view;
             switch (viewType) {
+                case TYPE_EXPANDABLE_SWITCH:
+                    view = new org.telegram.ui.Cells.TextCheckCell2(mContext);
+                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    break;
+                case TYPE_ROUND_CHECK: {
+                    // Тип 4 — круглая галочка с отступом под вложенный пункт,
+                    // ровно как у exteraGram в UniversalAdapter (view type 35).
+                    org.telegram.ui.Cells.CheckBoxCell checkBoxCell =
+                            new org.telegram.ui.Cells.CheckBoxCell(mContext, 4, 21, resourcesProvider);
+                    checkBoxCell.getCheckBoxRound().setColor(Theme.key_switch2TrackChecked,
+                            Theme.key_radioBackground, Theme.key_checkboxCheck);
+                    checkBoxCell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    view = checkBoxCell;
+                    break;
+                }
                 case TYPE_AVATAR_CORNERS:
                     avatarCornersPreviewCell = new AvatarCornersPreviewCell(mContext,
                             OpenExteraAppearanceActivity.this::rebuildAll);
@@ -428,9 +616,24 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     foldersPreviewCell = new FoldersPreviewCell(mContext);
                     view = foldersPreviewCell;
                     break;
+                case TYPE_FAB_SHAPE:
+                    fabShapeCell = new FabShapeCell(mContext,
+                            OpenExteraAppearanceActivity.this::rebuildAll);
+                    fabShapeCell.setNeedDivider(true);
+                    view = fabShapeCell;
+                    break;
+                case TYPE_DETAIL_SETTINGS: {
+                    // Базовый класс делает такую же ячейку, но многострочной; exteraGram
+                    // (asButtonWithSubtext(..., 64, 60) :456-458) держит ровно 64 dp.
+                    TextDetailSettingsCell detailCell = new TextDetailSettingsCell(mContext);
+                    detailCell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    detailCell.setMultilineDetail(false);
+                    view = detailCell;
+                    break;
+                }
                 case TYPE_SECTION_SLIDER:
                     AvatarCornersSeekBar slider = new AvatarCornersSeekBar(mContext,
-                            value -> AppearanceConfig.sectionRadius.setConfigInt(value),
+                            OpenExteraAppearanceActivity.this::onSectionRadiusChanged,
                             0, AppearanceConfig.AVATAR_CORNERS_MAX,
                             getString(R.string.OEAppearanceSectionRadius),
                             getString(R.string.OEAppearanceSectionRadiusOff),
@@ -468,7 +671,14 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_CHECK: {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
-                    if (position == useSystemFontsRow) {
+                    // Ячейки переиспользуются, поэтому «включённость» надо возвращать явно:
+                    // иначе строка, побывавшая заблокированной, останется полупрозрачной.
+                    cell.setEnabled(position != separateHeadersRow
+                            || AppearanceConfig.dividerStyle.Int() != AppearanceConfig.DIVIDER_SEGMENTS, null);
+                    if (position == centerTitleRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceCenterTitle),
+                                AppearanceConfig.INSTANCE.centerTitle(), true);
+                    } else if (position == useSystemFontsRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceUseSystemFonts), NekoConfig.typeface.Bool(), true);
                     } else if (position == useSystemEmojiRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceUseSystemEmoji), NekoConfig.useSystemEmoji.Bool(), true);
@@ -479,7 +689,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == separateHeadersRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSeparateHeaders), AppearanceConfig.separateHeaders.Bool(), true);
                     } else if (position == glassMessageMenuRow) {
-                        cell.setTextAndCheck(getString(R.string.OEAppearanceGlassMessageMenu), AppearanceConfig.glassMessageMenu.Bool(), true);
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassMessageMenu), getString(R.string.OEAppearanceGlassMessageMenuInfo), AppearanceConfig.glassMessageMenu.Bool(), true, true);
                     } else if (position == forceBlurRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceForceBlur), SharedConfig.chatBlurEnabled(), true);
                     } else if (position == disableAvatarBlurRow) {
@@ -501,42 +711,79 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     }
                     break;
                 }
+                case TYPE_EXPANDABLE_SWITCH: {
+                    org.telegram.ui.Cells.TextCheckCell2 cell =
+                            (org.telegram.ui.Cells.TextCheckCell2) holder.itemView;
+                    cell.setTextAndCheck(getString(R.string.OEAppearanceMaterialDesign3),
+                            md3SelectedCount() > 0, true);
+                    // Правая зона (76 dp за разделителем) — сам переключатель, как у exteraGram:
+                    // туда уходит клик по мастер-тумблеру. Тело строки сворачивает группу.
+                    cell.setCollapseArrow(md3SelectedCount() + "/" + MD3_STYLE_COUNT, !md3Expanded,
+                            OpenExteraAppearanceActivity.this::toggleAllMd3StylesFromCell);
+                    break;
+                }
+                case TYPE_ROUND_CHECK: {
+                    org.telegram.ui.Cells.CheckBoxCell cell =
+                            (org.telegram.ui.Cells.CheckBoxCell) holder.itemView;
+                    if (position == md3LoadingRow) {
+                        cell.setText(getString(R.string.OEAppearanceNewLoadingStyle), "",
+                                AppearanceConfig.newLoadingStyle.Bool(), true, true);
+                    } else if (position == md3SliderRow) {
+                        cell.setText(getString(R.string.OEAppearanceSliderStyle), "",
+                                isMd3(NaConfig.INSTANCE.getSliderStyle().Int()), true, true);
+                    } else if (position == md3SwitchRow) {
+                        cell.setText(getString(R.string.OEAppearanceSwitchStyle), "",
+                                isMd3(NaConfig.INSTANCE.getSwitchStyle().Int()), true, true);
+                    } else if (position == md3ChatHeaderRow) {
+                        cell.setText(getString(R.string.OEAppearanceNewChatHeaderStyle), "",
+                                AppearanceConfig.newChatHeaderStyle.Bool(), true, true);
+                    } else if (position == md3NavBarRow) {
+                        cell.setText(getString(R.string.OEAppearanceNewNavigationBarStyle), "",
+                                AppearanceConfig.newNavigationBarStyle.Bool(), false, true);
+                    }
+                    cell.setPad(1);
+                    // По умолчанию ячейка этого типа красит текст серым; у exteraGram
+                    // вложенные пункты того же цвета, что и обычные строки.
+                    cell.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+                    break;
+                }
                 case TYPE_SETTINGS: {
                     TextSettingsCell cell = (TextSettingsCell) holder.itemView;
-                    if (position == switchStyleRow) {
-                        cell.setTextAndValue(getString(R.string.OEAppearanceSwitchStyle), styleName(NaConfig.INSTANCE.getSwitchStyle().Int()), true);
-                    } else if (position == sliderStyleRow) {
-                        cell.setTextAndValue(getString(R.string.OEAppearanceSliderStyle), styleName(NaConfig.INSTANCE.getSliderStyle().Int()), true);
-                    } else if (position == dividerStyleRow) {
+                    if (position == dividerStyleRow) {
                         String[] v = {getString(R.string.OEAppearanceDividerHidden), getString(R.string.OEAppearanceDividerLine), getString(R.string.OEAppearanceDividerSegments)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceDividerStyle), v[clamp(AppearanceConfig.dividerStyle.Int(), v.length)], false);
                     } else if (position == glassOutlineRow) {
                         String[] v = {getString(R.string.OEAppearanceGlassOutlineGlare), getString(R.string.OEAppearanceGlassOutlineSolid), getString(R.string.OEAppearanceGlassOutlineHidden)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceGlassOutline), v[clamp(AppearanceConfig.glassOutlineStyle.Int(), v.length)], true);
-                    } else if (position == centerTitleRow) {
-                        String[] v = {getString(R.string.CenterActionBarTitleOff), getString(R.string.CenterActionBarTitleOn), getString(R.string.SettingsOnly), getString(R.string.ChatsOnly)};
-                        cell.setTextAndValue(getString(R.string.OEAppearanceCenterTitle), v[clamp(NaConfig.INSTANCE.getCenterActionBarTitleType().Int(), v.length)], true);
                     } else if (position == tabTitleStyleRow) {
-                        String[] v = {getString(R.string.OEAppearanceTabTitleStyleTextOnly), getString(R.string.OEAppearanceTabTitleStyleIconsOnly), getString(R.string.OEAppearanceTabTitleStyleTextWithIcons)};
-                        cell.setTextAndValue(getString(R.string.OEAppearanceTabTitleStyle), v[clamp(NekoConfig.tabsTitleType.Int(), v.length)], true);
+                        CharSequence[] v = tabTitleOptions();
+                        cell.setTextAndValue(getString(R.string.OEAppearanceTabTitleStyle), v[tabTitleIndex(NekoConfig.tabsTitleType.Int())], true);
                     } else if (position == tabCounterRow) {
                         String[] v = {getString(R.string.Disable), getString(R.string.FilterMuted), getString(R.string.FilterAllChatsShort)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceTabCounter), v[clamp(NaConfig.INSTANCE.getIgnoreUnreadCount().Int(), v.length)], true);
                     } else if (position == titleTextRow) {
                         String[] v = {getString(R.string.OEAppearanceTitleTextApp), getString(R.string.OEAppearanceTitleTextUsername), getString(R.string.OEAppearanceTitleTextName)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceTitleText), v[clamp(AppearanceConfig.titleText.Int(), v.length)], false);
-                    } else if (position == appNavigationRow) {
-                        cell.setTextAndValue(getString(R.string.OEAppearanceNavigation), getString(R.string.OEAppearanceNavigationSub), true);
+                    }
+                    break;
+                }
+                case TYPE_DETAIL_SETTINGS: {
+                    // иконка слева, подпись под заголовком.
+                    TextDetailSettingsCell cell = (TextDetailSettingsCell) holder.itemView;
+                    if (position == appNavigationRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OEAppearanceNavigation), getString(R.string.OEAppearanceNavigationSub), R.drawable.msg_newphone, true);
                     } else if (position == iconPacksRow) {
-                        cell.setTextAndValue(getString(R.string.OEAppearanceIconPacks), getString(R.string.OEAppearanceIconPacksInfo), true);
+                        cell.setTextAndValueAndIcon(getString(R.string.OEAppearanceIconPacks), getString(R.string.OEAppearanceIconPacksInfo), R.drawable.msg_sticker, true);
                     } else if (position == pillStackRow) {
-                        cell.setTextAndValue(getString(R.string.OEAppearancePillStack), getString(R.string.OEAppearancePillStackInfo), false);
+                        cell.setTextAndValueAndIcon(getString(R.string.OEAppearancePillStack), getString(R.string.OEAppearancePillStackInfo), R.drawable.outline_header_search, false);
                     }
                     break;
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    boolean bottom = position == linksDividerRow;
+                    // Скруглённый «хвост» списка положен последней тени, а она у нас после блока
+                    // Blur, а не после строк-переходов.
+                    boolean bottom = position == blurDividerRow;
                     if (position == appearanceDividerRow) {
                         cell.setText(getString(R.string.OEAppearanceCustomThemesInfo));
                     } else if (position == blurDividerRow) {
@@ -577,16 +824,65 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     || position == chatListDividerRow || position == foldersDividerRow
                     || position == linksDividerRow) {
                 return TYPE_INFO_PRIVACY;
-            } else if (position == switchStyleRow || position == sliderStyleRow
-                    || position == dividerStyleRow || position == glassOutlineRow
-                    || position == centerTitleRow || position == tabTitleStyleRow
-                    || position == tabCounterRow || position == titleTextRow
-                    || position == appNavigationRow
-                    || position == iconPacksRow || position == pillStackRow) {
+            } else if (position == fabShapeRow) {
+                return TYPE_FAB_SHAPE;
+            } else if (position == appNavigationRow || position == iconPacksRow
+                    || position == pillStackRow) {
+                return TYPE_DETAIL_SETTINGS;
+            } else if (position == md3GroupRow) {
+                return TYPE_EXPANDABLE_SWITCH;
+            } else if (position == md3LoadingRow || position == md3SliderRow
+                    || position == md3SwitchRow || position == md3ChatHeaderRow
+                    || position == md3NavBarRow) {
+                return TYPE_ROUND_CHECK;
+            } else if (position == dividerStyleRow || position == glassOutlineRow
+                    || position == tabTitleStyleRow
+                    || position == tabCounterRow || position == titleTextRow) {
                 return TYPE_SETTINGS;
             }
             return TYPE_CHECK;
         }
+    }
+
+    /** Сколько стилей MD3 включено. Счётчик «N/5» рядом с шевроном. */
+    private static final int MD3_STYLE_COUNT = 5;
+    /** Значение селектора NagramX, соответствующее Material Design 3. */
+    private static final int STYLE_MD3 = 2;
+
+    private static boolean isMd3(int styleValue) {
+        return styleValue == STYLE_MD3;
+    }
+
+    private int md3SelectedCount() {
+        int n = 0;
+        if (AppearanceConfig.newLoadingStyle.Bool()) n++;
+        if (isMd3(NaConfig.INSTANCE.getSliderStyle().Int())) n++;
+        if (isMd3(NaConfig.INSTANCE.getSwitchStyle().Int())) n++;
+        if (AppearanceConfig.newChatHeaderStyle.Bool()) n++;
+        if (AppearanceConfig.newNavigationBarStyle.Bool()) n++;
+        return n;
+    }
+
+    /**
+     * Клик по мастер-переключателю группы: если включено хоть что-то — гасим всё,
+     * иначе включаем всё. Так же ведёт себя handleMD3StylesSwitchClick exteraGram.
+     */
+    private void toggleAllMd3StylesFromCell() {
+        toggleAllMd3Styles();
+    }
+
+    private void toggleAllMd3Styles() {
+        boolean enable = md3SelectedCount() == 0;
+        AppearanceConfig.newLoadingStyle.setConfigBool(enable);
+        AppearanceConfig.newChatHeaderStyle.setConfigBool(enable);
+        AppearanceConfig.newNavigationBarStyle.setConfigBool(enable);
+        NaConfig.INSTANCE.getSliderStyle().setConfigInt(enable ? STYLE_MD3 : 0);
+        NaConfig.INSTANCE.getSwitchStyle().setConfigInt(enable ? STYLE_MD3 : 0);
+        if (avatarCornersPreviewCell != null) {
+            avatarCornersPreviewCell.invalidate();
+        }
+        // Перезапуск не нужен: все пять стилей читаются при отрисовке или при создании вьюх,
+        rebuildAll();
     }
 
     private static int clamp(int value, int size) {
@@ -595,24 +891,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         return value;
     }
 
-    private static String styleName(int value) {
-        switch (value) {
-            case 1:
-                return getString(R.string.StyleModern);
-            case 2:
-                return getString(R.string.StyleMaterialDesign3);
-            default:
-                return getString(R.string.Default);
-        }
-    }
-
     @Override
     public void onResume() {
         super.onResume();
-        AndroidUtilities.runOnUIThread(() -> {
-            if (avatarCornersPreviewCell != null) avatarCornersPreviewCell.invalidate();
-            if (chatListPreviewCell != null) chatListPreviewCell.invalidate();
-            if (foldersPreviewCell != null) foldersPreviewCell.invalidate();
-        });
+        AndroidUtilities.runOnUIThread(this::invalidatePreviews);
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        // Отложенная пересборка после слайдера радиуса переживёт закрытие экрана, если её не снять.
+        AndroidUtilities.cancelRunOnUIThread(sectionRadiusRebuild);
+        super.onFragmentDestroy();
     }
 }

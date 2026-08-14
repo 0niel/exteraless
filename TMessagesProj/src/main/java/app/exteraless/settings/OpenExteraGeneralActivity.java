@@ -1,35 +1,43 @@
 package app.exteraless.settings;
 
+import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
+import org.telegram.ui.Components.EditTextBoldCursor;
+import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.SlideChooseView;
 import org.telegram.ui.RestrictedLanguagesSelectActivity;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import app.exteraless.OpenExteraConfig;
 import app.exteraless.general.GeneralConfig;
-import app.exteraless.general.GeneralHelper;
 import kotlin.Unit;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.NekoXConfig;
 import tw.nekomimi.nekogram.config.ConfigItem;
+import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.translate.TranslatorKt;
@@ -45,8 +53,17 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
     private static final int TYPE_SLIDE = 100;
 
-    private static final String PREF_TRANSLATE_BUTTON = "translate_button";
-    private static final String PREF_TRANSLATE_CHAT_BUTTON = "translate_chat_button";
+    /** Регулярка exteraGram (GeneralPreferencesActivity.java:41): имя папки, а не путь. */
+    private static final Pattern SAVE_PATH_PATTERN = Pattern.compile("^(?!\\.{1,2}$)[A-Za-z0-9._ -]{1,255}$");
+
+    /**
+     * «Зальго»-образец для подписи под переключателем фильтра. У нашего фильтра порог срабатывания —
+     * четыре подряд идущих комбинирующих знака (MessageHelper.ZALGO_PATTERN, :887), поэтому у образца
+     * их по четыре на букву, иначе строка выглядела бы одинаково при включённом и выключенном фильтре.
+     */
+    private static final String ZALGO_SAMPLE =
+            "Z\u0334\u034d\u030c\u0301a\u0308\u0325\u0347\u0303l\u0302\u031e\u0356\u0300"
+                    + "g\u0300\u035d\u0345\u0330o\u0304\u0353\u0359\u0306";
 
     private int translateHeaderRow;
     private int translateButtonRow;
@@ -85,6 +102,9 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int disableUnarchiveSwipeRow;
     private int archiveDividerRow;
 
+    /** Момент «пять минут назад» для живого примера в строке Relative Last Seen. */
+    private int fiveMinutesAgo;
+
     public OpenExteraGeneralActivity() {
         super();
     }
@@ -92,6 +112,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     @Override
     public boolean onFragmentCreate() {
         GeneralConfig.init();
+        fiveMinutesAgo = getConnectionsManager().getCurrentTime() - 300;
         return super.onFragmentCreate();
     }
 
@@ -132,7 +153,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         archiveHeaderRow = addRow("archiveHeader");
         hideArchiveRow = addRow("hideArchive");
-        archiveOnPullRow = addRow("archiveOnPull");
+        // «открывать архив потягиванием» нечего, если папки архива нет в списке.
+        archiveOnPullRow = NaConfig.INSTANCE.getHideArchive().Bool() ? -1 : addRow("archiveOnPull");
         disableUnarchiveSwipeRow = addRow("disableUnarchiveSwipe");
         archiveDividerRow = addRow();
     }
@@ -152,34 +174,31 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         return new ListAdapter(context);
     }
 
-    private boolean getTranslatePref(String key) {
-        return getMessagesController().getMainSettings().getBoolean(key, true);
+    /**
+     * Пересобрать список строк. Нужен там, где меняется их состав: базовый класс зовёт
+     * updateRows() только в onFragmentCreate, поэтому одного notifyDataSetChanged мало.
+     */
+    private void rebuildRowsAndNotify() {
+        updateRows();
+        if (listAdapter != null) {
+            listAdapter.notifyDataSetChanged();
+        }
     }
 
-    private void setTranslatePref(String key, boolean value) {
-        if (PREF_TRANSLATE_BUTTON.equals(key)) {
-            getMessagesController().getTranslateController().setContextTranslateEnabled(value);
-        } else {
-            getMessagesController().getTranslateController().setChatTranslateEnabled(value);
+    /** Аналог parentLayout.rebuildFragments(0) exteraGram: перерисовать экраны под нами. */
+    private void rebuildAll() {
+        if (getParentLayout() != null) {
+            getParentLayout().rebuildAllFragmentViews(false, false);
         }
     }
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
-        if (position == translateButtonRow || position == translateChatButtonRow) {
-            String key = position == translateButtonRow ? PREF_TRANSLATE_BUTTON : PREF_TRANSLATE_CHAT_BUTTON;
-            boolean value = !getTranslatePref(key);
-            setTranslatePref(key, value);
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(value);
-            }
-            return;
-        }
-
         if (position == translationProviderRow) {
             Translator.showProviderSelect(view, provider -> {
                 NekoConfig.translationProvider.setConfigInt(provider);
                 listAdapter.notifyItemChanged(translationProviderRow);
+                listAdapter.notifyItemChanged(translateToLangRow);
                 return Unit.INSTANCE;
             });
             return;
@@ -200,21 +219,23 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         }
 
         if (position == savePathRow) {
-            GeneralHelper.showTextInputDialog(this,
-                    getString(R.string.OEGeneralSavePath),
-                    getString(R.string.OEGeneralSavePathHint),
-                    NekoConfig.customSavePath.String(),
-                    value -> {
-                        NekoConfig.customSavePath.setConfigString(GeneralHelper.sanitizeSavePath(value));
-                        listAdapter.notifyItemChanged(savePathRow);
-                    });
+            showCustomSavePathDialog();
+            return;
+        }
+
+        if (position == showIdAndDcRow) {
+            showIdAndDcSelector();
             return;
         }
 
         ConfigItem item = null;
         boolean inverted = false;
 
-        if (position == disableNumberRoundingRow) {
+        if (position == translateButtonRow) {
+            item = NekoConfig.showTranslate;
+        } else if (position == translateChatButtonRow) {
+            item = NaConfig.INSTANCE.getTelegramUIAutoTranslate();
+        } else if (position == disableNumberRoundingRow) {
             item = NekoConfig.disableNumberRounding;
         } else if (position == formatTimeWithSecondsRow) {
             item = NekoConfig.showSeconds;
@@ -232,8 +253,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             item = NekoConfig.uploadBoost;
         } else if (position == hidePhoneRow) {
             item = NekoConfig.hidePhone;
-        } else if (position == showIdAndDcRow) {
-            item = NekoConfig.showIdAndDc;
         } else if (position == hideArchiveRow) {
             item = NaConfig.INSTANCE.getHideArchive();
         } else if (position == archiveOnPullRow) {
@@ -252,15 +271,118 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             ((TextCheckCell) view).setChecked(shown);
         }
 
+        if (position == translateButtonRow || position == translateChatButtonRow) {
+            // и пересобирает экраны — пункт «Translate» появляется/исчезает в меню сообщения.
+            getNotificationCenter().postNotificationName(NotificationCenter.updateSearchSettings);
+            rebuildAll();
+        }
         if (position == formatTimeWithSecondsRow) {
             LocaleController.getInstance().recreateFormatters();
+            rebuildAll();
         }
-        if (position == hidePhoneRow || position == showIdAndDcRow) {
+        if (position == filterZalgoRow) {
+            // Подпись секции показывает результат работы фильтра, значит меняется вместе с ним.
+            listAdapter.notifyItemChanged(generalDividerRow);
+            rebuildAll();
+        }
+        if (position == hidePhoneRow) {
             getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+            rebuildAll();
         }
         if (position == hideArchiveRow) {
+            getMessagesController().checkArchiveFolder();
             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload, true);
+            // Состав строк зависит от этой настройки — пересобираем список.
+            rebuildRowsAndNotify();
         }
+    }
+
+    private CharSequence[] idOptions() {
+        return new CharSequence[]{getString(R.string.Hide), "Telegram API", "Bot API"};
+    }
+
+    private void showIdAndDcSelector() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(getString(R.string.OEGeneralShowIdAndDc));
+        builder.setItems(idOptions(), (dialog, which) -> {
+            NaConfig.INSTANCE.getIdDcType().setConfigInt(which);
+            if (listAdapter != null) {
+                listAdapter.notifyItemChanged(showIdAndDcRow);
+            }
+            getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+            rebuildAll();
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        showDialog(builder.create());
+    }
+
+    /**
+     * Диалог имени папки сохранения, 1:1 с exteraGram (GeneralPreferencesActivity.java:272–327):
+     * неподходящее имя не «чинится» молча, а отбивается тряской поля, диалог остаётся открытым.
+     */
+    private void showCustomSavePathDialog() {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.lineYFix = true;
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        editText.setText(NekoConfig.customSavePath.String());
+        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        editText.setHintColor(getThemedColor(Theme.key_groupcreate_hintText));
+        editText.setHintText(getString(R.string.OEGeneralSavePathHint));
+        editText.setFocusable(true);
+        editText.setSingleLine(true);
+        editText.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        editText.setBackground(null);
+        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField),
+                getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated),
+                getThemedColor(Theme.key_text_RedRegular));
+        editText.setCursorColor(getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated));
+        editText.setPadding(0, dp(6), 0, dp(6));
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT, 24f, 0f, 24f, 10f));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle(getString(R.string.OEGeneralSavePath));
+        builder.makeCustomMaxHeight();
+        builder.setView(container);
+        builder.setWidth(dp(292));
+        builder.setPositiveButton(getString(R.string.Done), (dialog, which) -> {
+            String value = editText.getText() == null ? "" : editText.getText().toString().trim();
+            if (!TextUtils.isEmpty(value) && !SAVE_PATH_PATTERN.matcher(value).matches()) {
+                AndroidUtilities.shakeView(editText);
+                return;
+            }
+            NekoConfig.customSavePath.setConfigString(value);
+            if (listAdapter != null) {
+                listAdapter.notifyItemChanged(savePathRow);
+                // Подпись секции зависит от значения — обновляем вместе со строкой.
+                listAdapter.notifyItemChanged(storageDividerRow);
+            }
+            dialog.dismiss();
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(d -> {
+            editText.requestFocus();
+            editText.setSelection(editText.length());
+            AndroidUtilities.showKeyboard(editText);
+        });
+        // Без этого диалог закрылся бы раньше проверки и «тряска» была бы не видна.
+        dialog.setDismissDialogByButtons(false);
+        // Слушателя закрытия ставим через showDialog: BaseFragment.showDialog (:834)
+        // затирает тот, что назначен диалогу напрямую.
+        showDialog(dialog, d -> AndroidUtilities.hideKeyboard(editText));
     }
 
     private String getProviderName(int providerConstant) {
@@ -299,6 +421,13 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             names.add(NekoXConfig.formatLang(lang));
         }
         return TextUtils.join(", ", names);
+    }
+
+    private String getSavePathInfo() {
+        String path = NekoConfig.customSavePath.String();
+        return TextUtils.isEmpty(path)
+                ? getString(R.string.OEGeneralSavePathInfo)
+                : LocaleController.formatString(R.string.OEGeneralSavePathInfoFolder, path);
     }
 
     private class ListAdapter extends BaseListAdapter {
@@ -352,10 +481,10 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
                     if (position == translateButtonRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralTranslateButton),
-                                getTranslatePref(PREF_TRANSLATE_BUTTON), true);
+                                NekoConfig.showTranslate.Bool(), true);
                     } else if (position == translateChatButtonRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralTranslateWholeChat),
-                                getTranslatePref(PREF_TRANSLATE_CHAT_BUTTON), true);
+                                NaConfig.INSTANCE.getTelegramUIAutoTranslate().Bool(), true);
                     } else if (position == disableNumberRoundingRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEGeneralDisableNumberRounding),
                                 getString(R.string.OEGeneralDisableNumberRoundingValue),
@@ -378,14 +507,13 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEGeneralUploadBoost),
                                 NekoConfig.uploadBoost.Bool(), false);
                     } else if (position == relativeLastSeenRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGeneralRelativeLastSeen),
-                                OpenExteraConfig.relativeLastSeen.Bool(), true);
+                        // Значение строки — живой пример «был(а) 5 минут назад».
+                        cell.setTextAndValueAndCheck(getString(R.string.OEGeneralRelativeLastSeen),
+                                LocaleController.formatDateOnline(fiveMinutesAgo, new boolean[1]),
+                                OpenExteraConfig.relativeLastSeen.Bool(), false, true);
                     } else if (position == hidePhoneRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralHidePhone),
                                 NekoConfig.hidePhone.Bool(), true);
-                    } else if (position == showIdAndDcRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGeneralShowIdAndDc),
-                                NekoConfig.showIdAndDc.Bool(), false);
                     } else if (position == hideArchiveRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralHideArchive),
                                 NaConfig.INSTANCE.getHideArchive().Bool(), true);
@@ -419,6 +547,12 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                                         ? getString(R.string.OEGeneralSavePathDefault)
                                         : path,
                                 false);
+                    } else if (position == showIdAndDcRow) {
+                        // Bot API отличается от Telegram API префиксом -100 у чатов и каналов.
+                        int type = NaConfig.INSTANCE.getIdDcType().Int();
+                        CharSequence[] options = idOptions();
+                        cell.setTextAndValue(getString(R.string.OEGeneralShowIdAndDc),
+                                options[type < 0 || type >= options.length ? 0 : type], false);
                     }
                     break;
                 }
@@ -428,11 +562,12 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                     if (position == translateDividerRow) {
                         cell.setText(getString(R.string.OEGeneralTranslateInfo));
                     } else if (position == generalDividerRow) {
-                        cell.setText(getString(R.string.OEGeneralFilterZalgoInfo));
+                        cell.setText(LocaleController.formatString(R.string.OEGeneralFilterZalgoInfo,
+                                MessageHelper.zalgoFilter(ZALGO_SAMPLE)));
                     } else if (position == speedDividerRow) {
                         cell.setText(getString(R.string.OEGeneralSpeedBoostInfo));
                     } else if (position == storageDividerRow) {
-                        cell.setText(getString(R.string.OEGeneralSavePathInfo));
+                        cell.setText(getSavePathInfo());
                     } else if (position == profileDividerRow) {
                         cell.setText(getString(R.string.OEGeneralShowIdAndDcInfo));
                     } else if (position == archiveDividerRow) {
@@ -461,7 +596,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             } else if (position == downloadSpeedRow) {
                 return TYPE_SLIDE;
             } else if (position == translationProviderRow || position == translateToLangRow
-                    || position == doNotTranslateRow || position == savePathRow) {
+                    || position == doNotTranslateRow || position == savePathRow
+                    || position == showIdAndDcRow) {
                 return TYPE_SETTINGS;
             }
             return TYPE_CHECK;

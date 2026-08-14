@@ -27,7 +27,7 @@
     <string name="OEAppearanceChatListInfo">When \"Icons only\" is enabled for folders, the main title will display the folder name.</string>
 
     <!-- Folders (Tabs) -->
-    <string name="OEAppearanceFolders">Chat Folders</string>
+    <string name="OEAppearanceFolders">Folders</string>
     <string name="OEAppearanceTabTitleStyle">Folder Title</string>
     <string name="OEAppearanceTabTitleStyleTextOnly">Names only</string>
     <string name="OEAppearanceTabTitleStyleIconsOnly">Icons only</string>
@@ -45,7 +45,7 @@
     <string name="OEAppearanceNavigationInfo">Applies to the bottom navigation bar and the side menu.</string>
 
     <!-- General Appearance -->
-    <string name="OEAppearanceGeneral">General Appearance</string>
+    <string name="OEAppearanceGeneral">Appearance</string>
     <string name="OEAppearanceUseSystemFonts">Use System Fonts</string>
     <string name="OEAppearanceUseSystemEmoji">Use System Emoji</string>
     <string name="OEAppearanceSwitchStyle">Switch Style</string>
@@ -85,10 +85,12 @@
     <string name="OEAppearanceGlassOutlineSolid">Solid</string>
     <string name="OEAppearanceGlassOutlineHidden">Hidden</string>
     <string name="OEAppearanceGlassMessageMenu">Glass Message Menu</string>
+    <string name="OEAppearanceGlassMessageMenuInfo">The message menu and the reactions bar become frosted glass.</string>
+    <string name="OEAppearanceGlassMessageMenuBlurOff">Glass menus need blur, which is currently off.</string>
     <string name="OEAppearanceIconPacks">Icon Packs</string>
-    <string name="OEAppearanceIconPacksInfo">Replace the app icons with a custom set.</string>
+    <string name="OEAppearanceIconPacksInfo">Customize icons across the app</string>
     <string name="OEAppearancePillStack">Pill Stack</string>
-    <string name="OEAppearancePillStackInfo">Configure the info pills shown in the chat list.</string>
+    <string name="OEAppearancePillStackInfo">Display interactive pills in the search field</string>
     <string name="OEAppearanceNavigationSub">Top-right menu and drawer settings</string>
     <string name="OEAppearanceComingSoon">This screen is not available yet in exteraless.</string>
     <string name="OEAppNavigation">App Navigation</string>
@@ -97,10 +99,14 @@
     <string name="OETabletModeAuto">Auto</string>
     <string name="OETabletModeOn">On</string>
     <string name="OETabletModeOff">Off</string>
+    <string name="OEBottomNavigationBarMode">Bottom Navigation Bar</string>
+    <string name="OEBottomNavigationModeShow">Show</string>
+    <string name="OEBottomNavigationModeHide">Hide</string>
     <string name="OEBackAnimation">Back Animation</string>
     <string name="OEBackAnimationClassic">Classic</string>
     <string name="OEBackAnimationSpring">Spring</string>
     <string name="OEBackAnimationPredictive">Predictive Back</string>
+    <string name="OEBackAnimationInfo">Enables smoother animations when switching screens and opening the side menu.</string>
     <string name="OEPredictiveBackIntensity">Gesture Intensity</string>
     <string name="OEPredictiveBackOff">Off</string>
     <string name="OEPredictiveBackMax">Max</string>
@@ -114,4 +120,7 @@
     <string name="OEMainMenuAddDivider">Add Divider</string>
     <string name="OEMainMenuDivider">Divider</string>
     <string name="OEMainMenuRemoveSettingsInfo">Settings cannot be hidden while the bottom navigation bar is disabled.</string>
+    <string name="OEAppearanceNewLoadingStyle">Loading Style</string>
+    <string name="OEAppearanceNewChatHeaderStyle">Chat Header</string>
+    <string name="OEAppearanceNewNavigationBarStyle">Bottom Navigation Bar</string>
 </resources>

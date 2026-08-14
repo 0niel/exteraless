@@ -3,15 +3,10 @@ package app.exteraless.appearance;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 import android.graphics.Region;
 import android.view.Gravity;
 import android.widget.FrameLayout;
-
-import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -32,9 +27,6 @@ public class AvatarCornersPreviewCell extends FrameLayout {
 
     private final FrameLayout preview;
     private final AvatarCornersSeekBar seekBar;
-
-    private final RectF rect = new RectF();
-    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private boolean needDivider;
 
@@ -57,34 +49,18 @@ public class AvatarCornersPreviewCell extends FrameLayout {
         seekBar.setValue(AppearanceConfig.avatarCorners());
         addView(seekBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        outlinePaint.setStyle(Paint.Style.STROKE);
-        outlinePaint.setColor(ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_switchTrack), 0x3F));
-        outlinePaint.setStrokeWidth(Math.max(2, AndroidUtilities.dp(1f)));
-
         preview = new FrameLayout(context) {
             private final Path onlinePath = new Path();
 
             @Override
             protected void onDraw(Canvas canvas) {
-                int color = Theme.getColor(Theme.key_switchTrack);
-                int r = Color.red(color);
-                int g = Color.green(color);
-                int b = Color.blue(color);
                 float w = getMeasuredWidth();
                 float h = getMeasuredHeight();
-
-                rect.set(0, 0, w, h);
-                Theme.dialogs_onlineCirclePaint.setColor(Color.argb(20, r, g, b));
-                canvas.drawRoundRect(rect, AndroidUtilities.dp(8), AndroidUtilities.dp(8), Theme.dialogs_onlineCirclePaint);
-
-                float stroke = outlinePaint.getStrokeWidth() / 2;
-                rect.set(stroke, stroke, w - stroke, h - stroke);
-                canvas.drawRoundRect(rect, AndroidUtilities.dp(8), AndroidUtilities.dp(8), outlinePaint);
 
                 Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_chats_onlineCircle));
                 canvas.drawCircle(AndroidUtilities.dp(68), h / 2.0f + AndroidUtilities.dpf2(20.5f), AndroidUtilities.dp(7), Theme.dialogs_onlineCirclePaint);
 
-                Theme.dialogs_onlineCirclePaint.setColor(Color.argb(204, r, g, b));
+                Theme.dialogs_onlineCirclePaint.setColor(PreviewColors.getMockColor(true));
                 canvas.drawRoundRect(AndroidUtilities.dp(92), h / 2.0f - AndroidUtilities.dpf2(15.5f),
                         w - AndroidUtilities.dp(90), h / 2.0f - AndroidUtilities.dpf2(7.5f),
                         w / 2.0f, w / 2.0f, Theme.dialogs_onlineCirclePaint);
@@ -94,11 +70,14 @@ public class AvatarCornersPreviewCell extends FrameLayout {
                 canvas.save();
                 canvas.clipPath(onlinePath, Region.Op.DIFFERENCE);
 
-                Theme.dialogs_onlineCirclePaint.setColor(Color.argb(90, r, g, b));
+                Theme.dialogs_onlineCirclePaint.setColor(PreviewColors.getMockColor(false));
                 canvas.drawRoundRect(AndroidUtilities.dp(92), h / 2.0f + AndroidUtilities.dpf2(7.5f),
                         w - AndroidUtilities.dp(50), h / 2.0f + AndroidUtilities.dp(15.5f),
                         w / 2.0f, w / 2.0f, Theme.dialogs_onlineCirclePaint);
 
+                // Аватарка у exteraGram рисуется ярким мок-цветом, а не тем же, что вторая строка
+                // (AvatarCornersPreviewCell.java:188 — brightMockPaint).
+                Theme.dialogs_onlineCirclePaint.setColor(PreviewColors.getMockColor(true));
                 float corners = AppearanceConfig.getAvatarCorners(AndroidUtilities.dp(56));
                 canvas.drawRoundRect(AndroidUtilities.dp(20), h / 2.0f - AndroidUtilities.dp(28),
                         AndroidUtilities.dp(76), h / 2.0f + AndroidUtilities.dp(28),
@@ -107,6 +86,8 @@ public class AvatarCornersPreviewCell extends FrameLayout {
             }
         };
         preview.setWillNotDraw(false);
+        // Подложка превью общая для всех экранов настроек.
+        preview.setBackground(new PreviewBackgroundDrawable());
         addView(preview, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.CENTER, 21, 112, 21, 21));
     }
 

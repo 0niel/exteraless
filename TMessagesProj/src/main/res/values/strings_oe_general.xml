@@ -22,7 +22,7 @@
     <string name="OEGeneralRelativeLastSeen">Relative Last Seen</string>
     <string name="OEGeneralInAppVibration">In-App Vibration</string>
     <string name="OEGeneralFilterZalgo">Filter \"Zalgo\"</string>
-    <string name="OEGeneralFilterZalgoInfo">Removes combining marks that break text layout, e.g. Z̷͍͌ā̸̜l̸̞̂g̷͍̝o̶̩̓ becomes Zalgo.</string>
+    <string name="OEGeneralFilterZalgoInfo">Removes stacked combining marks that break text layout. Example: %1$s</string>
 
 
     <!-- Download Speed Boost -->
@@ -39,6 +39,7 @@
     <string name="OEGeneralSavePathDefault">Default</string>
     <string name="OEGeneralSavePathHint">Folder name</string>
     <string name="OEGeneralSavePathInfo">Name of the folder inside Downloads where saved files are placed. Letters, digits, spaces, dot, dash and underscore only.</string>
+    <string name="OEGeneralSavePathInfoFolder">Saved files are placed in Downloads/%1$s. Letters, digits, spaces, dot, dash and underscore only.</string>
 
     <!-- Profile -->
     <string name="OEGeneralProfileHeader">Profile</string>

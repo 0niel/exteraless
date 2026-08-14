@@ -38,6 +38,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int categoriesDividerRow;
 
     private int linksHeaderRow;
+    private int channelRow;
+    private int crowdinRow;
     private int sourceRow;
     private int linksDividerRow;
 
@@ -56,6 +58,10 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         categoriesDividerRow = addRow();
 
         linksHeaderRow = addRow("linksHeader");
+        // Порядок exteraGram (MainPreferencesActivity.java:131–134): канал, переводы, сайт.
+        // Форума у форка нет, вместо сайта — репозиторий, поэтому строк три, а не четыре.
+        channelRow = addRow("channel");
+        crowdinRow = addRow("crowdin");
         sourceRow = addRow("source");
         linksDividerRow = addRow();
     }
@@ -142,6 +148,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new app.exteraless.plugins.ui.PluginsActivity());
         } else if (position == otherRow) {
             presentFragment(new OpenExteraOtherActivity());
+        } else if (position == channelRow) {
+            getMessagesController().openByUserName("NagramX", this, 1);
+        } else if (position == crowdinRow) {
+            org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
+                    "https://crowdin.com/project/NagramX");
         } else if (position == sourceRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
                     "https://github.com/exteraless/exteraless");
@@ -188,9 +199,15 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (position == chatsRow) {
                         cell.setTextAndIcon(getString(R.string.OpenExteraChats), R.drawable.msg_discussion, true);
                     } else if (position == pluginsRow) {
-                        cell.setTextAndIcon(getString(R.string.OpenExteraPlugins), R.drawable.plugins_filled_solar, true);
+                        cell.setTextAndIcon(getString(R.string.OpenExteraPlugins), R.drawable.msg_plugins, true);
                     } else if (position == otherRow) {
                         cell.setTextAndIcon(getString(R.string.OpenExteraOther), R.drawable.msg_fave, false);
+                    } else if (position == channelRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
+                                "@NagramX", R.drawable.msg_channel, true);
+                    } else if (position == crowdinRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OpenExteraCrowdin),
+                                "Crowdin", R.drawable.msg_translate, true);
                     } else if (position == sourceRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraSource),
                                 "GitHub", R.drawable.msg_language, false);

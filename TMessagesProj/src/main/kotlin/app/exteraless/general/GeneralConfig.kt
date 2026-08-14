@@ -37,11 +37,16 @@ object GeneralConfig {
     fun analyticsCollection(): Boolean = analyticsCollection.Bool()
 
     /**
-     * «Download Speed Boost» — трёхпозиционный выбор (0: Off, 1: Fast, 2: Ultra).
-     * В exteraGram 12.9.0 у него тоже нет бэкенда — значение только хранится.
+     * «Download Speed Boost» — трёхпозиционный выбор (0: обычный, 1: быстрый,
+     * 2: максимальный). Применяется в FileLoadOperation.updateParams: уровень 2
+     * берёт куски по мегабайту и двенадцать параллельных запросов, уровень 1
+     * совпадает со штатным enhancedFileLoader. Перенос exteraGram, FileLoadOperation:1758.
      */
     @JvmField
     val downloadSpeedBoost = addConfig("OEGeneralDownloadSpeedBoost", ConfigItem.configTypeInt, 0)
+
+    @JvmStatic
+    fun downloadSpeedBoost(): Int = downloadSpeedBoost.Int()
 
     private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
         val item = ConfigItem(key, type, defaultValue)

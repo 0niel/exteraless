@@ -24,5 +24,6 @@
     <string name="OpenExteraOtherInfo">Analytics, backup, reset</string>
 
     <string name="OpenExteraLinks">Links</string>
+    <string name="OpenExteraCrowdin">Translations</string>
     <string name="OpenExteraSource">Source Code</string>
 </resources>

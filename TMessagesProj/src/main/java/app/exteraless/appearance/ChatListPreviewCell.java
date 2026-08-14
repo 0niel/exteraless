@@ -1,202 +1,259 @@
 package app.exteraless.appearance;
 
-import android.animation.ValueAnimator;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
-import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.text.TextPaint;
-import android.text.TextUtils;
+import android.util.Property;
 import android.view.Gravity;
+import android.view.View;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
-import androidx.core.content.ContextCompat;
-import androidx.core.graphics.ColorUtils;
+import androidx.annotation.NonNull;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Components.Easings;
+import org.telegram.ui.Components.AnimatedEmojiDrawable;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 
-import xyz.nextalone.nagram.NaConfig;
+import java.util.ArrayList;
+
+import tw.nekomimi.nekogram.helpers.TypefaceHelper;
 
 /**
- * Превью шапки списка чатов. Порт ChatListPreviewCell из exteraGram 10.10.1.
- * Привязки: центрирование заголовка -> NaConfig.centerActionBarTitleType,
- * статус (эмодзи-плашка) -> наличие премиума. Заголовок -> имя приложения.
+ * Превью шапки списка чатов. Порт
+ * {@code com.exteragram.messenger.preferences.appearance.components.ChatListPreviewCell} (12.9.0).
+ *
+ * Ключевое отличие от прошлой версии: внутри не рисованный макет, а настоящий
+ * {@link ActionBar} на подложке {@link PreviewBackgroundDrawable}. За счёт этого
+ * превью показывает ровно то, что увидит пользователь: тот же заголовок
+ * (через {@link TypefaceHelper#getTitleText(int)}, как в DialogsActivity:3645),
+ * тот же эмодзи-статус и ту же центровку, которую считает сам ActionBar.
  */
 @SuppressLint("ViewConstructor")
 public class ChatListPreviewCell extends FrameLayout {
 
-    private final FrameLayout preview;
+    private final ActionBar actionBar;
+    private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable statusDrawable;
+    private Drawable premiumStar;
 
-    private final RectF rect = new RectF();
-    private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-    private float statusProgress;
-    private float centeredTitleProgress;
-    private final float titleProgress = 1f;
-    private String titleText;
-
-    private ValueAnimator animator;
+    private boolean needDivider = true;
 
     public ChatListPreviewCell(Context context) {
         super(context);
         setWillNotDraw(false);
         setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
 
-        outlinePaint.setStyle(Paint.Style.STROKE);
-        outlinePaint.setColor(ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_switchTrack), 0x3F));
-        outlinePaint.setStrokeWidth(Math.max(2, AndroidUtilities.dp(1f)));
+        // parentView = null: его выставит ActionBar.setTitle, повесив дровабл на titleTextView.
+        statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, AndroidUtilities.dp(26));
+        statusDrawable.center = true;
 
-        preview = new FrameLayout(context) {
-            @SuppressLint("DrawAllocation")
-            @Override
-            protected void onDraw(Canvas canvas) {
-                int color = Theme.getColor(Theme.key_switchTrack);
-                int r = Color.red(color);
-                int g = Color.green(color);
-                int b = Color.blue(color);
-                float w = getMeasuredWidth();
-                float h = getMeasuredHeight();
+        actionBar = new ActionBar(context);
+        actionBar.setOccupyStatusBar(false);
+        actionBar.setItemsColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), false);
+        actionBar.createMenu().addItem(0, R.drawable.ic_ab_other);
+        actionBar.setBackground(new PreviewBackgroundDrawable());
+        actionBar.setSupportsHolidayImage(true);
+        addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                Gravity.CENTER, 21, 21, 21, 21));
 
-                textPaint.setColor(ColorUtils.blendARGB(0x00, Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), titleProgress));
-                textPaint.setTextSize(AndroidUtilities.dp(20));
-                titleText = (String) TextUtils.ellipsize(getTitle(), textPaint, w - AndroidUtilities.dp(130 + 35 * statusProgress), TextUtils.TruncateAt.END);
-                textPaint.setTextSize(AndroidUtilities.dp(18 + 2 * titleProgress));
-                textPaint.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_MEDIUM));
+        updateStatus(false);
+        refreshTitlePosition(false);
+    }
 
-                rect.set(0, 0, w, h);
-                Theme.dialogs_onlineCirclePaint.setColor(Color.argb(20, r, g, b));
-                canvas.drawRoundRect(rect, AndroidUtilities.dp(8), AndroidUtilities.dp(8), Theme.dialogs_onlineCirclePaint);
+    /** ActionBar превью — на случай, если экрану понадобится донастроить его под себя. */
+    public ActionBar getActionBar() {
+        return actionBar;
+    }
 
-                float stroke = outlinePaint.getStrokeWidth() / 2;
-                rect.set(stroke, stroke, w - stroke, h - stroke);
-                canvas.drawRoundRect(rect, AndroidUtilities.dp(8), AndroidUtilities.dp(8), outlinePaint);
+    public void setNeedDivider(boolean needDivider) {
+        if (this.needDivider != needDivider) {
+            this.needDivider = needDivider;
+            invalidate();
+        }
+    }
 
-                Drawable search = ContextCompat.getDrawable(context, R.drawable.msg_search).mutate();
-                search.setColorFilter(new PorterDuffColorFilter(Color.argb(204, r, g, b), PorterDuff.Mode.MULTIPLY));
-                search.setBounds((int) w - AndroidUtilities.dp(39), AndroidUtilities.dp(22), (int) w - AndroidUtilities.dp(12), AndroidUtilities.dp(49));
-                search.draw(canvas);
+    /** Перечитать заголовок: сменился {@code AppearanceConfig.titleText} или имя аккаунта. */
+    public void updateTitle(boolean animated) {
+        updateStatus(animated);
+    }
 
-                Theme.dialogs_onlineCirclePaint.setColor(Color.argb(204, r, g, b));
-                for (int i = 0; i < 3; i++) {
-                    float start = 28 + 6.1f * i;
-                    canvas.drawRoundRect(
-                            AndroidUtilities.dpf2(20),
-                            AndroidUtilities.dpf2(start),
-                            AndroidUtilities.dpf2(20 + 20),
-                            AndroidUtilities.dpf2(start + 2.8f),
-                            AndroidUtilities.dp(10),
-                            AndroidUtilities.dp(10),
-                            Theme.dialogs_onlineCirclePaint
-                    );
+    /**
+     * Перечитать эмодзи-статус справа от заголовка. Логика повторяет
+     * DialogsActivity.updateStatus (:3066): сначала кастомный статус, иначе
+     * премиум-звезда, иначе ничего.
+     */
+    public void updateStatus(boolean animated) {
+        final int account = UserConfig.selectedAccount;
+        final TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+
+        Drawable rightDrawable = null;
+        if (user != null) {
+            Long emojiStatusId = UserObject.getEmojiStatusDocumentId(user);
+            if (emojiStatusId != null) {
+                statusDrawable.set(emojiStatusId, animated);
+                statusDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground));
+                rightDrawable = statusDrawable;
+            } else if (MessagesController.getInstance(account).isPremiumUser(user)) {
+                if (premiumStar == null) {
+                    Drawable star = getContext().getResources().getDrawable(R.drawable.msg_premium_liststar).mutate();
+                    premiumStar = new AnimatedEmojiDrawable.WrapSizeDrawable(star, AndroidUtilities.dp(18), AndroidUtilities.dp(18)) {
+                        @Override
+                        public void draw(@NonNull Canvas canvas) {
+                            canvas.save();
+                            canvas.translate(AndroidUtilities.dp(-2), AndroidUtilities.dp(1));
+                            super.draw(canvas);
+                            canvas.restore();
+                        }
+                    };
                 }
+                premiumStar.setColorFilter(new PorterDuffColorFilter(
+                        Theme.getColor(Theme.key_profile_verifiedBackground), PorterDuff.Mode.MULTIPLY));
+                statusDrawable.set(premiumStar, animated);
+                rightDrawable = statusDrawable;
+            }
+        }
 
-                float width = textPaint.measureText(titleText);
-                float titleStart = centeredTitleProgress * ((w - width - AndroidUtilities.dp(30) * statusProgress) / 2 - AndroidUtilities.dp(78)) + AndroidUtilities.dp(78);
-                float titleEnd = titleStart + width;
+        CharSequence title = TypefaceHelper.getTitleText(account);
+        if (animated) {
+            actionBar.setTitleAnimatedX(title, rightDrawable, true, 250);
+        } else {
+            actionBar.setTitle(title, rightDrawable);
+        }
+    }
 
-                Theme.dialogs_onlineCirclePaint.setColor(ColorUtils.blendARGB(0x00, ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_switchTrack), 0x5F), titleProgress * statusProgress));
-                canvas.drawRoundRect(titleEnd + AndroidUtilities.dp(5), AndroidUtilities.dp(22), titleEnd + AndroidUtilities.dp(30), AndroidUtilities.dp(47), AndroidUtilities.dp(4), AndroidUtilities.dp(4), Theme.dialogs_onlineCirclePaint);
-                canvas.drawText(titleText, titleStart, AndroidUtilities.dp(42), textPaint);
+    /**
+     * Переставить заголовок под текущее значение {@code AppearanceConfig.centerTitle}.
+     * Метода вроде {@code ActionBar.refreshTitlePosition} у нас нет, поэтому логика
+     * собрана снаружи из публичного API: гравитация текстовым вьюхам, requestLayout,
+     * а анимация —
+     * доводкой translationX/Y от старой позиции к новой в OnPreDrawListener.
+     */
+    public void updateCentered(boolean animated) {
+        refreshTitlePosition(animated);
+    }
+
+    private void refreshTitlePosition(boolean animated) {
+        final int gravity = AppearanceConfig.centerTitle()
+                ? Gravity.CENTER : (Gravity.LEFT | Gravity.CENTER_VERTICAL);
+
+        final ArrayList<SimpleTextView> views = new ArrayList<>();
+        final SimpleTextView title = actionBar.getTitleTextView();
+        final SimpleTextView title2 = actionBar.getTitleTextView2();
+
+        if (!animated) {
+            if (title != null) title.setGravity(gravity);
+            if (title2 != null) title2.setGravity(gravity);
+            actionBar.requestLayout();
+            return;
+        }
+
+        if (title != null && title.getVisibility() == VISIBLE) views.add(title);
+        if (title2 != null && title2.getVisibility() == VISIBLE) views.add(title2);
+
+        final ArrayList<Float> fromX = new ArrayList<>();
+        final ArrayList<Float> fromY = new ArrayList<>();
+        for (int i = 0; i < views.size(); i++) {
+            SimpleTextView view = views.get(i);
+            view.animate().cancel();
+            fromX.add(view.getTextStartX() + view.getTranslationX());
+            fromY.add(view.getTextStartY() + view.getTranslationY());
+        }
+
+        if (title != null) title.setGravity(gravity);
+        if (title2 != null) title2.setGravity(gravity);
+        actionBar.requestLayout();
+
+        if (views.isEmpty()) {
+            return;
+        }
+        final ViewTreeObserver.OnPreDrawListener listener = new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                getViewTreeObserver().removeOnPreDrawListener(this);
+                for (int i = 0; i < views.size(); i++) {
+                    SimpleTextView view = views.get(i);
+                    AnimatorSet set = new AnimatorSet();
+                    set.playTogether(
+                            ObjectAnimator.ofFloat(view, (Property<View, Float>) View.TRANSLATION_X, fromX.get(i) - view.getTextStartX(), 0f),
+                            ObjectAnimator.ofFloat(view, (Property<View, Float>) View.TRANSLATION_Y, fromY.get(i) - view.getTextStartY(), 0f)
+                    );
+                    set.setDuration(300);
+                    set.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+                    set.start();
+                }
+                return true;
             }
         };
-        preview.setWillNotDraw(false);
-        addView(preview, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.CENTER, 21, 15, 21, 21));
-        updateStatus(false);
-        updateCentered(false);
-    }
-
-    private String getTitle() {
-        int type = AppearanceConfig.titleText();
-        if (type == 1 || type == 2) {
-            TLRPC.User user = UserConfig.getInstance(UserConfig.selectedAccount).getCurrentUser();
-            if (type == 1) {
-                String username = UserObject.getPublicUsername(user);
-                if (!TextUtils.isEmpty(username)) {
-                    return username;
-                }
+        getViewTreeObserver().addOnPreDrawListener(listener);
+        addOnAttachStateChangeListener(new OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(@NonNull View v) {
             }
-            String name = UserObject.getFirstName(user);
-            if (!TextUtils.isEmpty(name)) {
-                return name;
+
+            @Override
+            public void onViewDetachedFromWindow(@NonNull View v) {
+                getViewTreeObserver().removeOnPreDrawListener(listener);
+                removeOnAttachStateChangeListener(this);
             }
-        }
-        return LocaleController.getString(R.string.AppName);
-    }
-
-    public void updateTitle(boolean animate) {
-        if (preview != null) {
-            preview.invalidate();
-        }
-    }
-
-    public void updateStatus(boolean animate) {
-        float to = UserConfig.getInstance(UserConfig.selectedAccount).isPremium() ? 1 : 0;
-        if (to == statusProgress && animate) {
-            return;
-        }
-        if (animate) {
-            animator = ValueAnimator.ofFloat(statusProgress, to).setDuration(250);
-            animator.setInterpolator(Easings.easeInOutQuad);
-            animator.addUpdateListener(animation -> {
-                statusProgress = (Float) animation.getAnimatedValue();
-                invalidate();
-            });
-            animator.start();
-        } else {
-            statusProgress = to;
-            invalidate();
-        }
-    }
-
-    public void updateCentered(boolean animate) {
-        float to = NaConfig.INSTANCE.getCenterActionBarTitleType().Int() != 0 ? 1 : 0;
-        if (to == centeredTitleProgress && animate) {
-            return;
-        }
-        if (animate) {
-            animator = ValueAnimator.ofFloat(centeredTitleProgress, to).setDuration(250);
-            animator.setInterpolator(Easings.easeInOutQuad);
-            animator.addUpdateListener(animation -> {
-                centeredTitleProgress = (Float) animation.getAnimatedValue();
-                invalidate();
-            });
-            animator.start();
-        } else {
-            centeredTitleProgress = to;
-            invalidate();
-        }
+        });
     }
 
     @Override
     public void invalidate() {
         super.invalidate();
-        if (preview != null) {
-            preview.invalidate();
+        if (actionBar != null) {
+            // Цвета ActionBar выставляются один раз в конструкторе, поэтому смену темы
+            // надо донести руками — экран зовёт invalidate() в onResume.
+            setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            actionBar.setItemsColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), false);
+            statusDrawable.setColor(Theme.getColor(Theme.key_profile_verifiedBackground));
+            actionBar.invalidate();
         }
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        statusDrawable.attach();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        statusDrawable.detach();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(21), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(21) : 0), getMeasuredHeight() - 1, Theme.dividerPaint);
+        if (!needDivider) {
+            return;
+        }
+        // Отступ, как у остальных ячеек экрана: у exteraGram линия во всю ширину,
+        // но там нет карточек-секций, внутри которых линия упирается в скругление.
+        canvas.drawLine(LocaleController.isRTL ? 0 : AndroidUtilities.dp(21), getMeasuredHeight() - 1,
+                getMeasuredWidth() - (LocaleController.isRTL ? AndroidUtilities.dp(21) : 0), getMeasuredHeight() - 1,
+                Theme.dividerPaint);
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(72 + 15 + 21), MeasureSpec.EXACTLY));
+        super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), getMeasuredHeight());
     }
 }

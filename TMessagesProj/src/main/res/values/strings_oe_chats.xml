@@ -41,6 +41,7 @@
     <string name="OEChatsPauseOnMinimizeInfo">Pauses media playback when the device is locked or the app is minimized.</string>
     <string name="OEChatsSwipeToPip">Swipe to PiP</string>
     <string name="OEChatsUnmuteWithVolumeButtons">Unmute Videos with Volume Buttons</string>
+    <string name="OEChatsUnmuteWithVolumeButtonsInfo">The volume buttons will unmute a muted video instead of changing the volume.</string>
     <string name="OEChatsStickersAndEmoji">Stickers and Emoji</string>
     <string name="OEChatsDoubleTap">Double Tap</string>
     <string name="OEChatsMessages">Messages</string>
@@ -51,10 +52,11 @@
     <string name="OEChatsHideSendAsPeer">Hide \"Send as…\" Button</string>
     <string name="OEChatsHideSendAsPeerInfo">You can still access the \"Send as…\" menu by long pressing the Emojis/Stickers/GIFs button.</string>
     <string name="OEChatsRemoveMessageTail">Remove Message Tail</string>
-    <string name="OEChatsReplaceEditedWithIcon">Replace \"edited\" with an Icon</string>
+    <string name="OEChatsReplaceEditedWithIcon">Replace \"%1$s\" with an Icon</string>
     <string name="OEChatsShowOnlineStatus">Show Online Indicator</string>
-    <string name="OEChatsHideShareButton">Hide Side \"Share\" Button</string>
+    <string name="OEChatsHideShareButton">Hide Side \"%1$s\" Button</string>
     <string name="OEChatsShowResultsBeforeVoting">Show Results Before Voting</string>
+    <string name="OEChatsShowResultsBeforeVotingInfo">Results of public polls will be visible without casting a vote.</string>
     <string name="OEChatsHideReactions">Hide Reactions</string>
     <string name="OEChatsHideReactionsChannels">Channels</string>
     <string name="OEChatsHideReactionsGroups">Groups</string>
@@ -73,6 +75,7 @@
     <string name="OEChatsSeamlessSwitching">Seamless Switching</string>
     <string name="OEChatsExtendedSettings">Extended Settings</string>
     <string name="OEChatsRememberLastUsedCamera">Remember Last Used Camera</string>
+    <string name="OEChatsRememberLastUsedCameraInfo">The next video message will start with the camera you used last.</string>
     <string name="OEChatsPreferOriginalQuality">Prefer Original Quality</string>
     <string name="OEChatsPauseVideo">Video</string>
     <string name="OEChatsPauseVoice">Voice</string>

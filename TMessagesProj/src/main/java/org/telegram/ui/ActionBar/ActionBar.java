@@ -2535,8 +2535,44 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
     }
 
+    /**
+     * Центрировать ли заголовок. Порт {@code ActionBar.shouldCenterTitle()} exteraGram
+     * (12.9.0, строка 629): либо экран попросил явно ({@link #centerTitle()}), либо
+     * включена настройка exteraGram.
+     *
+     * Чаты сюда не попадают: там заголовок рисует ChatAvatarContainer, а не
+     * titleTextView этого ActionBar. Отдельная центровка заголовка чата — фича
+     * NagramX ({@code NaConfig.centerActionBarTitle}), она живёт своей жизнью и
+     * этой настройкой не управляется.
+     */
     private boolean isCentered() {
-        return NaConfig.INSTANCE.getCenterActionBarTitle().Bool() && NaConfig.INSTANCE.getCenterActionBarTitleType().Int() != 3;
+        if (forceDisableCenterTitle) {
+            return false;
+        }
+        return isCenterTitle || app.exteraless.appearance.AppearanceConfig.INSTANCE.centerTitle();
+    }
+
+    private boolean forceDisableCenterTitle;
+
+    /**
+     * Запретить центровку для конкретного ActionBar. У exteraGram так делают
+     * AudioPlayerAlert и BottomSheetWithRecyclerListView: там заголовок прижат
+     * влево по макету, и центровка его ломает.
+     */
+    public void setForceDisableCenterTitle(boolean value) {
+        if (forceDisableCenterTitle == value) {
+            return;
+        }
+        forceDisableCenterTitle = value;
+        if (titleTextView != null) {
+            for (int a = 0; a < titleTextView.length; a++) {
+                if (titleTextView[a] != null) {
+                    titleTextView[a].setGravity(isCentered()
+                            ? Gravity.CENTER : Gravity.LEFT | Gravity.CENTER_VERTICAL);
+                }
+            }
+        }
+        requestLayout();
     }
 
     // --- Spring Animation ---

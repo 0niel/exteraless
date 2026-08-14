@@ -4390,6 +4390,25 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         wasPlayingAudioBeforePause = false;
     }
 
+    /**
+     * Приложение уходит в фон: остановить голосовое или кружок, если это включено
+     * в настройках. Перенос {@code MediaController.pauseInBackgroundIfNeeded}
+     * exteraGram (12.9.0, строка 4728). Музыка продолжает играть — её ставить на
+     * паузу при сворачивании незачем.
+     */
+    public void pauseInBackgroundIfNeeded() {
+        MessageObject playing = getPlayingMessageObject();
+        if (playing == null) {
+            return;
+        }
+        boolean shouldPause =
+                (playing.isVoice() && app.exteraless.chats.ChatsConfig.INSTANCE.pauseOnMinimizeVoice())
+                        || (playing.isRoundVideo() && app.exteraless.chats.ChatsConfig.INSTANCE.pauseOnMinimizeRound());
+        if (shouldPause && isPlayingMessage(playing) && !isMessagePaused()) {
+            pauseMessage(playing);
+        }
+    }
+
     public boolean pauseMessage(MessageObject messageObject) {
         return pauseMessage(messageObject, true);
     }

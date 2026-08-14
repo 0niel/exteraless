@@ -19,10 +19,13 @@ import app.exteraless.utils.UtilsConfig;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BulletinFactory;
@@ -36,16 +39,14 @@ import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
 
 /**
- * Экран «App Navigation». Порт
- * {@code com/exteragram/messenger/preferences/appearance/AppNavigationPreferencesActivity.java}
- * (566 строк).
+ * Экран «App Navigation».
  *
- * Собран на {@link UniversalRecyclerView}, а не на нашем {@code BaseNekoSettingsActivity}:
- * порядка пунктов бокового меню не собрать.
+ * Собран на {@link UniversalRecyclerView}, а не на {@code BaseNekoSettingsActivity}:
+ * только здесь есть перетаскивание строк, без которого редактор порядка пунктов
+ * бокового меню не собрать.
  *
- * Расхождение с exteraGram, осознанное: у них в секции «General» есть режим нижней панели
- * (показать / скрыть / плавающая) — у нас такого механизма нет вовсе, нижняя панель всегда
- * видима. Строку не показываем, чтобы не выдавать мёртвый переключатель за рабочий.
+ * Режим нижней панели у нас двухпозиционный: плавающей панели в форке нет вовсе,
+ * поэтому в селекторе только «Показать» и «Скрыть».
  */
 public class OpenExteraAppNavigationActivity extends BaseFragment {
 
@@ -53,21 +54,22 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     // которые совпадают с id самих MainMenuItem.
     private static final int ID_TABLET_MODE = -101;
     private static final int ID_BACK_ANIMATION = -102;
+    private static final int ID_BOTTOM_NAVIGATION_BAR = -106;
     private static final int ID_PREDICTIVE_INTENSITY = -103;
     private static final int ID_DRAWER = -104;
     private static final int ID_IMMERSIVE = -105;
 
-    /** Кнопка «добавить разделитель» — id exteraGram (:149). */
+    /** Кнопка «добавить разделитель». */
     private static final int ID_ADD_DIVIDER = -200;
 
     /**
      * Разделителей в списке может быть несколько, а id у них общий (-1), поэтому адаптеру
-     * нужны различимые. exteraGram держит для этого отдельный список стабильных id (:133),
-     * раздавая их от -2000 вниз.
+     * нужны различимые: раздаём стабильные id от -2000 вниз.
      */
     private static final int DIVIDER_ID_BASE = -2000;
 
     private UniversalRecyclerView listView;
+    private ActionBarMenuItem resetItem;
 
     private final ArrayList<Integer> stableDividerIds = new ArrayList<>();
     private int nextDividerId = DIVIDER_ID_BASE;
@@ -97,8 +99,34 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         actionBar.setAdaptiveBackground(listView);
 
+        // Кнопка сброса раскладки меню: появляется, только когда раскладка отличается
+        // от дефолтной, и гаснет обратно после сброса.
+        resetItem = actionBar.createMenu().addItem(0, R.drawable.msg_reset);
+        resetItem.setContentDescription(getString(R.string.Reset));
+        resetItem.setOnClickListener(v -> resetMenuLayout());
+        updateResetButtonVisibility(false);
+
         fragmentView = contentView;
         return fragmentView;
+    }
+
+    private void resetMenuLayout() {
+        MainMenuLayout.reset();
+        stableDividerIds.clear();
+        nextDividerId = DIVIDER_ID_BASE;
+        update();
+    }
+
+    private void updateResetButtonVisibility(boolean animated) {
+        if (resetItem == null) {
+            return;
+        }
+        final boolean show = !MainMenuLayout.getLayout().equals(MainMenuLayout.getDefaultLayout());
+        if (show && resetItem.getVisibility() != View.VISIBLE) {
+            AndroidUtilities.updateViewVisibilityAnimated(resetItem, true, 0.5f, animated);
+        } else if (!show && resetItem.getVisibility() == View.VISIBLE) {
+            AndroidUtilities.updateViewVisibilityAnimated(resetItem, false, 0.5f, animated);
+        }
     }
 
     // ---- содержимое ----
@@ -107,14 +135,17 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         items.add(UItem.asHeader(getString(R.string.OEGeneral)));
         items.add(UItem.asButton(ID_TABLET_MODE, getString(R.string.OETabletMode),
                 tabletModes()[clamp(NekoConfig.tabletMode.Int(), 3)]));
+        items.add(UItem.asButton(ID_BOTTOM_NAVIGATION_BAR, getString(R.string.OEBottomNavigationBarMode),
+                bottomNavigationModes()[NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? 1 : 0]));
+        // Вместо переключателя Spring Animations здесь трёхпозиционный
+        // NaConfig.backAnimationStyle: он покрывает и Spring, и Classic.
         items.add(UItem.asButton(ID_BACK_ANIMATION, getString(R.string.OEBackAnimation),
                 backAnimations()[clamp(NaConfig.INSTANCE.getBackAnimationStyle().Int(), 3)]));
+        items.add(UItem.asShadow(getString(R.string.OEBackAnimationInfo)));
 
         if (android.os.Build.VERSION.SDK_INT >= 34) {
             items.add(UItem.asCustom(ID_PREDICTIVE_INTENSITY, createIntensitySlider()));
             items.add(UItem.asShadow(getString(R.string.OEPredictiveBackInfo)));
-        } else {
-            items.add(UItem.asShadow(null));
         }
 
         items.add(UItem.asHeader(getString(R.string.OEAppNavigation)));
@@ -137,7 +168,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     }
 
     /**
-     * Секция пунктов меню. exteraGram: {@code AppNavigationPreferencesActivity.java:118-150}.
+     * Секция пунктов меню.
      *
      * @param reorderable для видимых пунктов true — им раздаются стабильные id разделителей
      *                    и добавляется кнопка «добавить разделитель»
@@ -177,9 +208,9 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     }
 
     /**
-     * UniversalAdapter это поле использует под другое (кнопка «открыть» у ботов), и ремешок
-     * не рисует. Перетаскивание при этом работает — его даёт allowReorder(true) по долгому
-     * нажатию, — поэтому строки оставлены без ремешка.
+     * Иконку-ремешок повесить некуда: {@code uItem.object2} у нашего UniversalAdapter
+     * занят под кнопку «открыть» у ботов. Перетаскивание при этом работает — его даёт
+     * allowReorder(true) по долгому нажатию, — поэтому строки оставлены без ремешка.
      */
     private UItem createMenuItem(int id, MainMenuHelper.MenuItemInfo info) {
         if (info == null) {
@@ -213,10 +244,31 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
                     });
             return;
         }
+        if (id == ID_BOTTOM_NAVIGATION_BAR) {
+            showChoice(getString(R.string.OEBottomNavigationBarMode), bottomNavigationModes(),
+                    NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? 1 : 0, which -> {
+                        NaConfig.INSTANCE.getHideBottomNavigationBar().setConfigBool(which == 1);
+                        // Со скрытой панелью «Настройки» доступны только из меню; следить за этим
+                        // умеет сама раскладка (MainMenuLayout.ensureSettingsVisibility), поэтому
+                        // достаточно перечитать список и пересобрать вьюхи.
+                        update();
+                        if (getParentLayout() != null) {
+                            getParentLayout().rebuildAllFragmentViews(false, false);
+                        }
+                    });
+            return;
+        }
         if (id == ID_BACK_ANIMATION) {
             showChoice(getString(R.string.OEBackAnimation), backAnimations(),
                     NaConfig.INSTANCE.getBackAnimationStyle().Int(), which -> {
                         NaConfig.INSTANCE.getBackAnimationStyle().setConfigInt(which);
+                        // Пружинные переходы не работают с выключенными анимациями
+                        // интерфейса, поэтому их взводим принудительно.
+                        if (which == BACK_ANIMATION_SPRING) {
+                            MessagesController.getGlobalMainSettings().edit()
+                                    .putBoolean("view_animations", true).apply();
+                            SharedConfig.setAnimationsEnabled(true);
+                        }
                         update();
                     });
             return;
@@ -276,7 +328,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         toggleMenuItem(id);
     }
 
-    /** Перенос пункта между «видимыми» и «скрытыми». exteraGram :548-566. */
+    /** Перенос пункта между «видимыми» и «скрытыми». */
     private void toggleMenuItem(int id) {
         final ArrayList<Integer> layout = MainMenuLayout.getLayoutMutable();
         final ArrayList<Integer> hidden = MainMenuLayout.getHiddenItemsMutable();
@@ -330,6 +382,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         } else {
             MainMenuLayout.save(MainMenuLayout.getLayout(), ids);
         }
+        updateResetButtonVisibility(true);
         getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
     }
 
@@ -339,6 +392,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         if (listView != null && listView.adapter != null) {
             listView.adapter.update(true);
         }
+        updateResetButtonVisibility(true);
         getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
     }
 
@@ -356,9 +410,9 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     }
 
     private boolean hasBottomTabs() {
-        // У NagramX нижняя панель есть всегда; у exteraGram её можно скрыть, и тогда
-        // «Настройки» становятся единственным входом в настройки.
-        return true;
+        // Со скрытой нижней панелью «Настройки» — единственный вход в настройки,
+        // и прятать их нельзя.
+        return !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
     }
 
     private CharSequence[] tabletModes() {
@@ -368,6 +422,20 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
                 getString(R.string.OETabletModeOff),
         };
     }
+
+    /**
+     * Третий режим — «Floating», плавающая панель поверх контента; такого механизма
+     * в форке нет, поэтому показываем только реализуемые два.
+     */
+    private CharSequence[] bottomNavigationModes() {
+        return new CharSequence[]{
+                getString(R.string.OEBottomNavigationModeShow),
+                getString(R.string.OEBottomNavigationModeHide),
+        };
+    }
+
+    /** Значение NaConfig.backAnimationStyle, соответствующее пружинным переходам. */
+    private static final int BACK_ANIMATION_SPRING = 1;
 
     private CharSequence[] backAnimations() {
         return new CharSequence[]{

@@ -185,6 +185,27 @@ object ChatsConfig {
 
     // ---- Статические геттеры для горячих мест в Java ----
 
+    /** Кнопки громкости снимают немоту с видео вместо изменения громкости. */
+    @JvmStatic
+    fun unmuteWithVolumeButtons(): Boolean {
+        ensureLoaded()
+        return unmuteWithVolumeButtons.Bool()
+    }
+
+    /** Ставить голосовое на паузу при сворачивании приложения. */
+    @JvmStatic
+    fun pauseOnMinimizeVoice(): Boolean {
+        ensureLoaded()
+        return pauseOnMinimizeVoice.Bool()
+    }
+
+    /** Ставить кружок на паузу при сворачивании приложения. */
+    @JvmStatic
+    fun pauseOnMinimizeRound(): Boolean {
+        ensureLoaded()
+        return pauseOnMinimizeRound.Bool()
+    }
+
     @JvmStatic
     fun stickerShape(): Int {
         ensureLoaded()
