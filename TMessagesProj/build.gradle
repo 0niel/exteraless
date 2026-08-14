@@ -5,6 +5,7 @@ plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
     id 'com.google.firebase.crashlytics'
+    id 'com.chaquo.python'
 }
 
 def buildTimestamp = System.getenv('BUILD_TIMESTAMP') ?: '0'
@@ -62,25 +63,65 @@ android {
         }
     }
 
+    // Целевые ABI. Ограничение живёт в ndk.abiFilters — этого требует Chaquopy;
+    // см. комментарий у splits ниже.
+    def targetAbis
+    if (nativeTarget == 'universal') {
+        targetAbis = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
+    } else if (nativeTarget == 'SKIP') {
+        targetAbis = ['arm64-v8a']
+    } else if (!nativeTarget.isBlank()) {
+        targetAbis = [nativeTarget]
+    } else {
+        targetAbis = ['arm64-v8a', 'x86_64']
+    }
+
+    // splits.abi выключен намеренно, а не по недосмотру. Два ограничения
+    // несовместимы, оба проверены на этом дереве:
+    //   * без ndk.abiFilters Chaquopy падает на конфигурации
+    //     («Chaquopy requires ndk.abiFilters»);
+    //   * с abiFilters AGP отвергает splits.abi.include
+    //     («Conflicting configuration ... cannot be present when splits abi
+    //     filters are set»).
+    // Поэтому раздельные APK получаются не сплитами, а отдельной сборкой на
+    // каждый ABI: NATIVE_TARGET=arm64-v8a, затем NATIVE_TARGET=x86_64.
+    // Пустой NATIVE_TARGET даёт ОДИН APK с обоими ABI (~+51 МБ на второй
+    // libtmessages.so) — о чём ниже предупреждение в лог.
     splits {
         abi {
-            enable = true
-            reset()
-            universalApk = false
-            if (nativeTarget == 'universal') {
-                universalApk = true
-                include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
-            } else if (!nativeTarget.isBlank()) {
-                include nativeTarget
-            } else {
-                include 'arm64-v8a', 'x86_64'
-            }
+            enable = false
         }
+    }
+
+    if (targetAbis.size() > 1 && nativeTarget != 'universal') {
+        logger.warn("NATIVE_TARGET не задан: собирается ОДИН APK с ABI " +
+                targetAbis.join(', ') + ". Раздельные APK — по одной сборке на ABI " +
+                "(splits.abi несовместим с Chaquopy).")
     }
 
     defaultConfig {
         versionName verName
         versionCode verCode
+
+        // Python plugin engine (Chaquopy). ABI restriction is here (not in splits).
+        ndk {
+            abiFilters(*targetAbis)
+        }
+
+        python {
+            // 3.12 (not docs' 3.11): Chaquopy requires the build host to have the same
+            // minor version for byte-compilation, and this machine has 3.12 only.
+            version '3.12'
+            pip {
+                install 'beautifulsoup4'
+                install 'debugpy'
+                install 'lxml'
+                install 'packaging'
+                install 'pillow'
+                install 'requests'
+                install 'PyYAML'
+            }
+        }
 
         // obtain your own keys at https://core.telegram.org/api/obtaining_api_id
         def appId = '6'
@@ -268,6 +309,12 @@ dependencies {
     implementation 'org.apache.commons:commons-text:1.15.0'
     // translator from nekogram
     implementation 'app.nekogram.translator:translator:1.6.1'
+
+    // plugins engine: Xposed-совместимые хуки (LSPlant), MVEL-фильтры, генерация классов
+    implementation 'com.aliucord:Aliuhook:1.1.4'
+    implementation 'org.mvel:mvel2:2.5.2.Final'
+    implementation 'com.linkedin.dexmaker:dexmaker:2.28.6'
+    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'
 
     compileOnly fileTree('libs')
 }

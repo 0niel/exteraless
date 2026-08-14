@@ -249,3 +249,21 @@
 -keepattributes *Annotation*
 -dontoptimize
 -dontobfuscate
+
+# --- Движок плагинов -------------------------------------------------------
+# Всё ниже достижимо только из Python через рефлексию Chaquopy, для статического
+# анализатора это мёртвый код. minifyEnabled в релизе вырезал бы его целиком.
+-keep class app.exteraless.plugins.** { *; }
+-keep class com.exteragram.messenger.** { *; }
+-keep class de.robv.android.xposed.** { *; }
+-keep class org.mvel2.** { *; }
+-keep class com.android.dx.** { *; }
+-keep class com.google.android.collect.** { *; }
+-dontwarn com.android.dx.**
+-dontwarn org.mvel2.**
+
+# Классы Telegram, к которым плагины обращаются по имени: обфускация выключена
+# (-dontobfuscate), но шринкер всё равно убирает недостижимые члены.
+-keepclassmembers class org.telegram.tgnet.** { *; }
+-keepclassmembers class org.telegram.messenger.MessageObject { *; }
+-keepclassmembers class org.telegram.messenger.SendMessagesHelper { *; }

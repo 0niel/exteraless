@@ -18048,6 +18048,12 @@ public class MessagesController extends BaseController implements NotificationCe
 
     // must be run from Utilities.stageQueue
     public void processUpdates(final TLRPC.Updates updates, boolean fromQueue) {
+        // exteraless plugins: on_updates_hook (CANCEL = контейнер не обрабатывается)
+        if (app.exteraless.plugins.PluginsController.getInstance().hasAnyUpdatesContainerHooks()
+                && app.exteraless.plugins.PluginsController.getInstance()
+                        .executeOnUpdatesHook(currentAccount, updates.getClass().getSimpleName(), updates).isCancel()) {
+            return;
+        }
         ArrayList<Long> needGetChannelsDiff = null;
         boolean needGetDiff = false;
         boolean needReceivedQueue = false;
@@ -18595,6 +18601,23 @@ public class MessagesController extends BaseController implements NotificationCe
                 });
             }
             return true;
+        }
+        // exteraless plugins: on_update_hook (CANCEL = апдейт выкидывается из обработки).
+        // Список принадлежит вызывающему (res.other_updates, updates.updates) и в
+        // некоторых ветках обрабатывается повторно, поэтому фильтруем в копию,
+        // а не мутируем чужое.
+        if (app.exteraless.plugins.PluginsController.getInstance().hasAnyUpdateHooks()) {
+            ArrayList<TLRPC.Update> allowed = new ArrayList<>(updates.size());
+            for (TLRPC.Update u : updates) {
+                if (!app.exteraless.plugins.PluginsController.getInstance()
+                        .executeOnUpdateHook(currentAccount, u.getClass().getSimpleName(), u).isCancel()) {
+                    allowed.add(u);
+                }
+            }
+            if (allowed.isEmpty()) {
+                return true;
+            }
+            updates = allowed;
         }
         long currentTime = System.currentTimeMillis();
         boolean printChanged = false;

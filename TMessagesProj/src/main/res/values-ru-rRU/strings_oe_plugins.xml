@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- exteraless: Python-плагины -->
+    <string name="OpenExteraPlugins">Плагины</string>
+    <string name="PluginsEngineHeader">Движок плагинов</string>
+    <string name="PluginsEngineEnable">Включить плагины</string>
+    <string name="PluginsSafeMode">Безопасный режим</string>
+    <string name="PluginsSafeModeSummary">В безопасном режиме плагины не загружаются. Используйте его, если плагин ломает приложение.</string>
+    <string name="PluginsDeveloperMode">Режим разработчика</string>
+    <string name="PluginsInstallFromFile">Установить из файла</string>
+    <string name="PluginsListHeader">Плагины</string>
+    <string name="PluginsEmpty">Плагины не установлены. Нажмите «Установить из файла», чтобы добавить .py или .plugin файл.</string>
+    <string name="PluginsInstalling">Установка плагина…</string>
+    <string name="PluginsInstallError">Ошибка установки</string>
+    <string name="PluginsInstallReadError">Не удалось прочитать выбранный файл.</string>
+    <string name="PluginsCrashedTitle">Плагин упал</string>
+    <string name="PluginsCrashedMessage">Плагин %1$s был отключён после сбоя.</string>
+    <string name="PluginsMenuOpenSettings">Открыть настройки</string>
+    <string name="PluginsMenuReload">Перезагрузить</string>
+    <string name="PluginsMenuCopyId">Копировать ID</string>
+    <string name="PluginsMenuDelete">Удалить</string>
+    <string name="PluginsDeleteConfirm">Удалить плагин %1$s? Это действие нельзя отменить.</string>
+    <string name="PluginsNotLoaded">Плагин не загружен.</string>
+    <string name="PluginSettingsTitle">Настройки плагина</string>
+    <string name="PluginsInfoRequirements">Зависимости</string>
+</resources>

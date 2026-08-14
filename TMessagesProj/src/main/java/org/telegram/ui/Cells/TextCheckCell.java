@@ -66,6 +66,7 @@ public class TextCheckCell extends FrameLayout {
     private ObjectAnimator animator;
     private boolean drawCheckRipple;
     private int padding;
+    private int defaultPaddingDp;
     private Theme.ResourcesProvider resourcesProvider;
     ImageView imageView;
     private boolean isRTL;
@@ -104,6 +105,9 @@ public class TextCheckCell extends FrameLayout {
         this.resourcesProvider = resourcesProvider;
 
         this.padding = padding;
+        // Исходный отступ в dp: setIcon перебивает поле padding пикселями,
+        // а при переиспользовании ячейки без иконки его надо вернуть.
+        this.defaultPaddingDp = padding;
 
         textView = new TextView(context);
         textView.setTextColor(Theme.getColor(dialog ? Theme.key_dialogTextBlack : Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
@@ -474,6 +478,56 @@ public class TextCheckCell extends FrameLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         attached = false;
+    }
+
+    /**
+     * Обычная серая иконка слева от заголовка.
+     * В отличие от {@link #setColorfullIcon} — без цветной подложки, именно так
+     * выглядят строки на экране настроек движка плагинов.
+     *
+     * {@code resId == 0} убирает иконку и возвращает исходные отступы: ячейки
+     * переиспользуются, и без сброса иконка «залипала» бы на соседней строке.
+     */
+    public void setIcon(int resId) {
+        if (resId == 0) {
+            if (imageView != null) {
+                imageView.setVisibility(GONE);
+                imageView.setImageDrawable(null);
+            }
+            int restored = AndroidUtilities.dp(defaultPaddingDp);
+            padding = defaultPaddingDp;
+            MarginLayoutParams textParams = (MarginLayoutParams) textView.getLayoutParams();
+            textParams.leftMargin = LocaleController.isRTL ? AndroidUtilities.dp(70) : restored;
+            textParams.rightMargin = LocaleController.isRTL ? restored : AndroidUtilities.dp(70);
+            MarginLayoutParams valueParams = (MarginLayoutParams) valueTextView.getLayoutParams();
+            valueParams.leftMargin = LocaleController.isRTL ? AndroidUtilities.dp(70) : restored;
+            valueParams.rightMargin = LocaleController.isRTL ? restored : AndroidUtilities.dp(70);
+            return;
+        }
+        if (imageView == null) {
+            imageView = new RLottieImageView(getContext());
+            imageView.setScaleType(ImageView.ScaleType.CENTER);
+            addView(imageView, LayoutHelper.createFrame(24, 24,
+                    (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL,
+                    21, 0, 21, 0));
+        }
+        int iconPadding = AndroidUtilities.dp(71);
+        padding = iconPadding;
+        MarginLayoutParams textParams = (MarginLayoutParams) textView.getLayoutParams();
+        textParams.leftMargin = LocaleController.isRTL ? textParams.leftMargin : iconPadding;
+        textParams.rightMargin = LocaleController.isRTL ? iconPadding : textParams.rightMargin;
+        MarginLayoutParams valueParams = (MarginLayoutParams) valueTextView.getLayoutParams();
+        valueParams.leftMargin = LocaleController.isRTL ? valueParams.leftMargin : iconPadding;
+        valueParams.rightMargin = LocaleController.isRTL ? iconPadding : valueParams.rightMargin;
+
+        imageView.setVisibility(VISIBLE);
+        imageView.setImageResource(resId);
+        imageView.setPadding(0, 0, 0, 0);
+        imageView.setBackground(null);
+        imageView.setColorFilter(new PorterDuffColorFilter(
+                Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider),
+                PorterDuff.Mode.MULTIPLY));
+        imageView.setAlpha(isEnabled() ? 1.0f : 0.5f);
     }
 
     public void setColorfullIcon(int color, int resId) {

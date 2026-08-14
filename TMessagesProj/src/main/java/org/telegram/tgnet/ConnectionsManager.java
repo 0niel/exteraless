@@ -412,6 +412,17 @@ public class ConnectionsManager extends BaseController {
         final var onComplete = interceptResult.effectiveOnComplete();
         // --- Ghost Mode ---
 
+        // --- exteraless plugins: pre_request_hook (CANCEL = запрос не уходит) ---
+        if (app.exteraless.plugins.PluginsController.getInstance().hasAnyRequestHooks()) {
+            app.exteraless.plugins.HookResult preHook = app.exteraless.plugins.PluginsController.getInstance()
+                    .executePreRequestHook(currentAccount, object.getClass().getSimpleName(), object);
+            if (preHook.isCancel()) {
+                FileLog.d("Plugins: request " + object.getClass().getSimpleName() + " cancelled by plugin");
+                return;
+            }
+        }
+        // --- exteraless plugins ---
+
         try {
             NativeByteBuffer buffer = new NativeByteBuffer(object.getObjectSize());
             object.serializeToStream(buffer);
@@ -477,6 +488,11 @@ public class ConnectionsManager extends BaseController {
                     final TLObject finalResponse = resp;
                     final TLRPC.TL_error finalError = error;
                     Utilities.stageQueue.postRunnable(() -> {
+                        // exteraless plugins: post_request_hook
+                        if (app.exteraless.plugins.PluginsController.getInstance().hasAnyRequestHooks()) {
+                            app.exteraless.plugins.PluginsController.getInstance()
+                                    .executePostRequestHook(currentAccount, object.getClass().getSimpleName(), finalResponse, finalError);
+                        }
                         if (onComplete != null) {
                             onComplete.run(finalResponse, finalError);
                         } else if (onCompleteTimestamp != null) {

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- exteraless: Python-плагины -->
+    <string name="OpenExteraPlugins">Plugins</string>
+    <string name="PluginsEngineHeader">Plugin engine</string>
+    <string name="PluginsEngineEnable">Enable plugins</string>
+    <string name="PluginsSafeMode">Safe mode</string>
+    <string name="PluginsSafeModeSummary">When safe mode is on, no plugins are loaded. Use it if a plugin breaks the app.</string>
+    <string name="PluginsDeveloperMode">Developer mode</string>
+    <string name="PluginsInstallFromFile">Install from file</string>
+    <string name="PluginsListHeader">Plugins</string>
+    <string name="PluginsEmpty">No plugins installed. Tap Install from file to add a .py or .plugin file.</string>
+    <string name="PluginsInstalling">Installing plugin…</string>
+    <string name="PluginsInstallError">Installation failed</string>
+    <string name="PluginsInstallReadError">Couldn\'t read the selected file.</string>
+    <string name="PluginsCrashedTitle">Plugin crashed</string>
+    <string name="PluginsCrashedMessage">Plugin %1$s was disabled after a crash.</string>
+    <string name="PluginsMenuOpenSettings">Open settings</string>
+    <string name="PluginsMenuReload">Reload</string>
+    <string name="PluginsMenuCopyId">Copy ID</string>
+    <string name="PluginsMenuDelete">Delete</string>
+    <string name="PluginsDeleteConfirm">Delete plugin %1$s? This cannot be undone.</string>
+    <string name="PluginsNotLoaded">Plugin is not loaded.</string>
+    <string name="PluginSettingsTitle">Plugin settings</string>
+    <string name="PluginsInfoRequirements">Requirements</string>
+    <string name="PluginNotRespondingTitle">Plugin is not responding</string>
+    <string name="PluginNotRespondingMessage">%1$s has not returned control for several seconds and is freezing the app. Disable it and restart?</string>
+    <string name="PluginDisable">Disable</string>
+    <string name="PluginsInstallTitle">Install plugin</string>
+    <string name="PluginsInstallAction">Install</string>
+    <string name="PluginsInstallConfirm">Install %1$s?\n\nVersion: %2$s\nAuthor: %3$s\n\nPlugins run with full access to the app. Install only what you trust.</string>
+    <string name="PluginsInstallUnknownConfirm">This file could not be recognised as a plugin. Install it anyway?\n\nPlugins run with full access to the app. Install only what you trust.</string>
+    <string name="PluginsInstalled">%1$s installed.</string>
+    <string name="PluginsEngineDisabledHint">The plugin engine is off. Turn it on in Settings → Plugins first.</string>
+    <string name="PluginsEngineEnableAndInstall">Enable and install</string>
+    <string name="PluginsEngineTitle">Plugins Engine</string>
+    <string name="PluginsCompactView">Plugins Compact View</string>
+    <string name="PluginsCompatibilityMode">Compatibility Mode</string>
+    <string name="PluginsCompatibilityModeInfo">Prevents plugin hook failures by disabling ART Profile Saver.</string>
+    <string name="PluginsPythonSdk">Python SDK</string>
+    <string name="PluginsPythonSdkInfo">The SDK is bundled with the app, so there is nothing to download or update.</string>
+    <string name="PluginsLinks">Links</string>
+    <string name="PluginsDocumentation">Documentation</string>
+    <string name="PluginsTrusted">Trusted Plugins</string>
+    <string name="PluginsPoweredBy">Powered by Chaquopy.</string>
+    <string name="PluginsEmptyHint">You can find plugins in @exteraPlugins.</string>
+    <string name="PluginsNotFound">No plugins found</string>
+    <string name="EnablePluginsEngine">Enable Plugins Engine</string>
+    <string name="RestartRequired">Restart the app to apply</string>
+</resources>

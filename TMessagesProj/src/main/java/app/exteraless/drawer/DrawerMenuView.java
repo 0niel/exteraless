@@ -20,12 +20,13 @@ import org.telegram.ui.Components.LayoutHelper;
 
 /**
  * Скролл со списком пунктов бокового меню.
+ * exteraGram: {@code com/exteragram/messenger/drawer/DrawerMenuView.java} (161 строка).
  *
  * Сверху — градиент затухания высотой 16dp, он рисуется только когда список прокручен.
  */
 public class DrawerMenuView extends ScrollView {
 
-    /** Ровно 1 физический пиксель — exteraGram {@code DrawerMenuView:41}. */
+    /** Ровно 1 физический пиксель. */
     private static final float DIVIDER_HEIGHT_DP = 1.0f / AndroidUtilities.density;
     private static final int COLOR_KEY_BACKGROUND = Theme.key_windowBackgroundWhite;
 
@@ -56,7 +57,7 @@ public class DrawerMenuView extends ScrollView {
     }
 
     /**
-     * идёт по сохранённой раскладке,
+     * exteraGram: {@code DrawerMenuView.rebuildMenu} — идёт по сохранённой раскладке,
      * разделитель ставится «отложенно», поэтому висящие в начале и в конце схлопываются.
      */
     public void rebuildMenu(int currentAccount, BaseFragment fragment) {
@@ -110,6 +111,8 @@ public class DrawerMenuView extends ScrollView {
             }
             hasAnyItem = true;
         }
+        // exteraless plugins: пункты плагинов (DRAWER_MENU) в конце шторки.
+        app.exteraless.plugins.menus.MenuInjector.appendDrawerItems(container, currentAccount, onItemClick);
     }
 
     public void updateColors() {
@@ -144,7 +147,6 @@ public class DrawerMenuView extends ScrollView {
         }
     }
 
-    /** exteraGram: {@code DrawerMenuView.createDividerLayoutParams} :42. */
     private static LinearLayout.LayoutParams createDividerLayoutParams() {
         // gravity 87 из exteraGram = Gravity.BOTTOM | Gravity.FILL_HORIZONTAL
         return LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, DIVIDER_HEIGHT_DP,

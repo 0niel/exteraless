@@ -284,6 +284,7 @@ public class ApplicationLoader extends Application {
         app.exteraless.chats.ChatsConfig.init();
         app.exteraless.general.GeneralConfig.init();
         app.exteraless.utils.UtilsConfig.init();
+        app.exteraless.plugins.PluginsController.getInstance().init(applicationContext);
         SharedPrefsHelper.init(applicationContext);
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account

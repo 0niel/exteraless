@@ -1,0 +1,268 @@
+package app.exteraless.plugins;
+
+import android.content.Context;
+
+import com.chaquo.python.PyException;
+import com.chaquo.python.PyObject;
+import com.chaquo.python.Python;
+import com.chaquo.python.android.AndroidPlatform;
+
+import org.telegram.messenger.FileLog;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * Python-рантайм движка плагинов (Chaquopy, CPython 3.12).
+ * Упрощённый аналог PythonPluginsEngine.java exteraGram (3097 строк): без pip,
+ * без dev-сервера, без Xposed — загрузка/выгрузка модулей, события, хуки.
+ *
+ * Вся Python-работа идёт через модуль-посредник {@code extera_utils.plugin_loader}
+ * (лежит в src/main/python), который возвращает JSON-строки — так мост
+ * не зависит от деталей конвертации Chaquopy.
+ *
+ * Потоки: старт интерпретатора и загрузка плагинов — на своём executor;
+ * хуки зовутся синхронно из потока вызывающего (как у exteraGram), GIL их
+ * сериализует. Если движок ещё не поднялся, хук возвращает DEFAULT.
+ */
+public class PythonPluginsEngine {
+
+    private static volatile PythonPluginsEngine instance;
+
+    public static PythonPluginsEngine getInstance() {
+        if (instance == null) {
+            synchronized (PythonPluginsEngine.class) {
+                if (instance == null) {
+                    instance = new PythonPluginsEngine();
+                }
+            }
+        }
+        return instance;
+    }
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "plugins-engine");
+        t.setPriority(Thread.NORM_PRIORITY - 1);
+        return t;
+    });
+
+    private volatile boolean started;
+    private volatile boolean startFailed;
+    private PyObject loader;
+
+    private PythonPluginsEngine() {
+    }
+
+    public boolean isStarted() {
+        return started;
+    }
+
+    public interface StartCallback {
+        void onStarted(boolean ok);
+    }
+
+    /** Идемпотентный запуск интерпретатора. Колбэк придёт на потоке executor'а. */
+    public void ensureStarted(Context appContext, StartCallback callback) {
+        if (started || startFailed) {
+            if (callback != null) {
+                callback.onStarted(started);
+            }
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                if (!Python.isStarted()) {
+                    long t0 = System.currentTimeMillis();
+                    Python.start(new AndroidPlatform(appContext));
+                    FileLog.d("PluginsEngine: Python started in " + (System.currentTimeMillis() - t0) + " ms");
+                }
+                loader = Python.getInstance().getModule("extera_utils.plugin_loader");
+                started = true;
+                // Dev-сервер (порт 42690) — только в developer mode; реализован в plugin_loader.
+                if (PluginsController.getInstance().isDeveloperMode()) {
+                    try {
+                        loader.callAttr("start_dev_server");
+                    } catch (Throwable t) {
+                        FileLog.e("PluginsEngine: dev server start failed", t);
+                    }
+                }
+            } catch (Throwable t) {
+                startFailed = true;
+                FileLog.e("PluginsEngine: failed to start Python", t);
+            }
+            if (callback != null) {
+                callback.onStarted(started);
+            }
+        });
+    }
+
+    // ---------- метаданные ----------
+
+    /**
+     * Прочитать метаданные .py-файла без его выполнения (AST на Python-стороне).
+     * @return JSON {"ok":true,"meta":{...}} или {"ok":false,"error":"..."}; null при сбое моста.
+     */
+    public String readMetadataJson(String path) {
+        if (!started) {
+            return null;
+        }
+        try {
+            return loader.callAttr("read_metadata_json", path).toJava(String.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: readMetadata failed for " + path, t);
+            return null;
+        }
+    }
+
+    // ---------- жизненный цикл ----------
+
+    /** Загрузить плагин (импорт модуля, инстанс BasePlugin, on_plugin_load). Синхронно. */
+    public String loadPlugin(Plugin plugin) {
+        if (!started) {
+            return "{\"ok\":false,\"error\":\"engine not started\"}";
+        }
+        PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
+        watchdog.notePluginEnter(plugin.id);
+        try {
+            String result = loader.callAttr("load_plugin", plugin.path, plugin.id).toJava(String.class);
+            watchdog.notePluginExit(plugin.id);
+            return result;
+        } catch (Throwable t) {
+            watchdog.handlePluginError(plugin.id, t);
+            return "{\"ok\":false,\"error\":" + quote(t.getMessage()) + "}";
+        }
+    }
+
+    /** Выгрузить плагин (on_plugin_unload + очистка). Синхронно. */
+    public void unloadPlugin(Plugin plugin) {
+        if (!started) {
+            return;
+        }
+        PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
+        watchdog.notePluginEnter(plugin.id);
+        try {
+            loader.callAttr("unload_plugin", plugin.id);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: unload failed for " + plugin.id, t);
+        } finally {
+            watchdog.notePluginExit(plugin.id);
+        }
+        plugin.loaded = false;
+        // Пункты меню плагина сняты вместе с ним — подменю надо пересобрать.
+        PluginsController.getInstance().notifyMenuItemsUpdated();
+    }
+
+    /** Полная деинсталляция на Python-стороне: pip-зависимости (refcount),
+     *  вычистка elyx-экстракций. Звать ПОСЛЕ unloadPlugin. */
+    public void uninstallPlugin(String pluginId) {
+        if (!started) {
+            return;
+        }
+        try {
+            loader.callAttr("uninstall_plugin", pluginId);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: uninstall cleanup failed for " + pluginId, t);
+        }
+    }
+
+    // ---------- события и хуки (синхронно, из потока вызывающего) ----------
+
+    public void callAppEvent(String pluginId, String event) {
+        callSimple(pluginId, "call_app_event", event);
+    }
+
+    public HookResult callSendMessageHook(String pluginId, int account, Object params) {
+        PyObject result = callHook(pluginId, "call_send_message_hook", account, params);
+        return new HookResult(HookResult.Strategy.fromString(strategyOf(result)));
+    }
+
+    public HookResult callPreRequestHook(String pluginId, int account, String requestName, Object request) {
+        PyObject result = callHook(pluginId, "call_pre_request_hook", account, requestName, request);
+        return new HookResult(HookResult.Strategy.fromString(strategyOf(result)));
+    }
+
+    public HookResult callPostRequestHook(String pluginId, int account, String requestName, Object response, Object error) {
+        PyObject result = callHook(pluginId, "call_post_request_hook", account, requestName, response, error);
+        return new HookResult(HookResult.Strategy.fromString(strategyOf(result)));
+    }
+
+    public HookResult callUpdateHook(String pluginId, int account, String updateName, Object update) {
+        PyObject result = callHook(pluginId, "call_update_hook", account, updateName, update);
+        return new HookResult(HookResult.Strategy.fromString(strategyOf(result)));
+    }
+
+    public HookResult callUpdatesHook(String pluginId, int account, String containerName, Object updates) {
+        PyObject result = callHook(pluginId, "call_updates_hook", account, containerName, updates);
+        return new HookResult(HookResult.Strategy.fromString(strategyOf(result)));
+    }
+
+    // ---------- экран настроек плагина ----------
+
+    /** @return JSON-список элементов настроек (ui.settings) с текущими значениями. */
+    public String getSettingsJson(String pluginId) {
+        if (!started) {
+            return null;
+        }
+        PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
+        watchdog.notePluginEnter(pluginId);
+        try {
+            return loader.callAttr("get_settings_json", pluginId).toJava(String.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: getSettingsJson failed for " + pluginId, t);
+            return null;
+        } finally {
+            watchdog.notePluginExit(pluginId);
+        }
+    }
+
+    public void notifySettingChanged(String pluginId, String key, String jsonValue) {
+        callSimple(pluginId, "notify_setting_changed", key, jsonValue);
+    }
+
+    public void dispatchSettingClick(String pluginId, String callbackId) {
+        callSimple(pluginId, "dispatch_setting_click", callbackId);
+    }
+
+    // ---------- внутреннее ----------
+
+    private void callSimple(String pluginId, String method, Object... args) {
+        callHook(pluginId, method, args);
+    }
+
+    private PyObject callHook(String pluginId, String method, Object... args) {
+        if (!started) {
+            return null;
+        }
+        PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
+        watchdog.notePluginEnter(pluginId);
+        try {
+            Object[] callArgs = new Object[args.length + 1];
+            callArgs[0] = pluginId;
+            System.arraycopy(args, 0, callArgs, 1, args.length);
+            return loader.callAttr(method, callArgs);
+        } catch (Throwable t) {
+            watchdog.handlePluginError(pluginId, t);
+            return null;
+        } finally {
+            watchdog.notePluginExit(pluginId);
+        }
+    }
+
+    private static String strategyOf(PyObject result) {
+        if (result == null) {
+            return null;
+        }
+        try {
+            return result.toJava(String.class);
+        } catch (PyException e) {
+            return null;
+        }
+    }
+
+    private static String quote(String s) {
+        if (s == null) {
+            return "\"unknown error\"";
+        }
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+}

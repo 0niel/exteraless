@@ -43,6 +43,8 @@ public class UItem extends AdapterWithDiffUtils.Item {
     public CharSequence animatedText;
     public String[] texts;
     public boolean accent, red, transparent, locked;
+    /** Подпись строки переносится на несколько строк, а не обрезается. */
+    public boolean multiline;
     public int spanCount = MAX_SPAN_COUNT;
     public int parentSpanCount;
 
@@ -296,6 +298,25 @@ public class UItem extends AdapterWithDiffUtils.Item {
         UItem i = new UItem(UniversalAdapter.VIEW_TYPE_CHECK, false);
         i.id = id;
         i.text = text;
+        return i;
+    }
+
+    /** Переключатель с иконкой слева. */
+    public static UItem asCheck(int id, CharSequence text, int iconResId) {
+        UItem i = new UItem(UniversalAdapter.VIEW_TYPE_CHECK, false);
+        i.id = id;
+        i.text = text;
+        i.iconResId = iconResId;
+        return i;
+    }
+
+    /** Переключатель с подписью под заголовком. */
+    public static UItem asCheck(int id, CharSequence text, CharSequence value, boolean multiline) {
+        UItem i = new UItem(UniversalAdapter.VIEW_TYPE_CHECK, false);
+        i.id = id;
+        i.text = text;
+        i.textValue = value;
+        i.multiline = multiline;
         return i;
     }
 
@@ -691,6 +712,26 @@ public class UItem extends AdapterWithDiffUtils.Item {
 
     public UItem accent() {
         this.accent = true;
+        return this;
+    }
+
+    public UItem setIcon(int iconResId) {
+        this.iconResId = iconResId;
+        return this;
+    }
+
+    public UItem setValue(CharSequence value) {
+        this.textValue = value;
+        return this;
+    }
+
+    public UItem setMultiline(boolean multiline) {
+        this.multiline = multiline;
+        return this;
+    }
+
+    public UItem setTransparent(boolean transparent) {
+        this.transparent = transparent;
         return this;
     }
 

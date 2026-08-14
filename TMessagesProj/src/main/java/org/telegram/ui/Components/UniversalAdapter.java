@@ -710,7 +710,15 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
                     checkCell.setChecked(item.checked);
                 }
                 checkCell.setEnabled(item.enabled, null);
-                checkCell.setTextAndCheck(item.text, item.checked, divider);
+                // Иконка и подпись — как у exteraGram: setIcon(0) обязателен, иначе
+                // переиспользованная ячейка сохранит иконку соседней строки.
+                checkCell.setIcon(item.iconResId);
+                if (TextUtils.isEmpty(item.textValue)) {
+                    checkCell.setTextAndCheck(item.text, item.checked, divider);
+                } else {
+                    checkCell.setTextAndValueAndCheck(item.text.toString(),
+                            item.textValue.toString(), item.checked, item.multiline, divider);
+                }
                 checkCell.itemId = item.id;
                 if (viewType == VIEW_TYPE_CHECKRIPPLE) {
                     holder.itemView.setBackgroundColor(Theme.getColor(item.checked ? Theme.key_windowBackgroundChecked : Theme.key_windowBackgroundUnchecked));

@@ -4222,6 +4222,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     public void sendMessage(SendMessageParams sendMessageParams) {
+        // exteraless plugins: исходящее сообщение через on_send_message_hook (CANCEL = не отправлять)
+        if (app.exteraless.plugins.PluginsController.getInstance().hasSendMessageHooks()) {
+            app.exteraless.plugins.HookResult hookResult = app.exteraless.plugins.PluginsController.getInstance()
+                    .executeOnSendMessageHook(currentAccount, sendMessageParams);
+            if (hookResult.isCancel()) {
+                return;
+            }
+        }
         String message = sendMessageParams.message;
         String caption = sendMessageParams.caption;
         TLRPC.MessageMedia location = sendMessageParams.location;

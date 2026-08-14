@@ -384,6 +384,12 @@ public class NotificationCenter {
     public static final int updateLoginToken = totalEvents++;
     public static final int accountLogin = totalEvents++;
 
+    // exteraless plugins
+    /** Плагин завис или отвис: слушатели перерисовывают его строку. */
+    public static final int pluginIsNotResponding = totalEvents++;
+    /** Реестр пунктов меню плагинов изменился: пересобрать подменю. */
+    public static final int pluginMenuItemsUpdated = totalEvents++;
+
     private final SparseArray<ArrayList<NotificationCenterDelegate>> observers = new SparseArray<>();
     private final SparseArray<ArrayList<NotificationCenterDelegate>> removeAfterBroadcast = new SparseArray<>();
     private final SparseArray<ArrayList<NotificationCenterDelegate>> addAfterBroadcast = new SparseArray<>();

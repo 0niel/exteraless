@@ -1376,7 +1376,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             filterTabsView != null && !filterTabsView.isEditing() &&
                             !searching &&
                             !rightSlidingDialogContainer.hasFragment() &&
-                            // при открытой шторке вкладки не листаются.
+                            // При открытой шторке вкладки не листаются.
                             (drawerContainer() == null || !drawerContainer().isDrawerOpen()) &&
                             !parentLayout.checkTransitionAnimation() && !parentLayout.isInPreviewMode() && !parentLayout.isPreviewOpenAnimationInProgress() &&
                             (
@@ -4022,7 +4022,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     return;
                 }
                 if (id == -1) {
-                    // левая кнопка переключает свою шторку.
+                    // Левая кнопка переключает свою шторку.
                     if (AppearanceConfig.navigationDrawer() && drawerContainer() != null && canOpenDrawer()) {
                         drawerContainer().toggleDrawer();
                         return;
@@ -5498,7 +5498,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         };
         dialogStoriesCell.setActionBar(actionBar);
-        // бургер занимает место архива.
+        // Бургер занимает место архива.
         dialogStoriesCell.setMenuItemsOffset(getDialogStoriesMenuItemsOffset());
         dialogStoriesCell.allowGlobalUpdates = false;
         dialogStoriesCell.setVisibility(View.GONE);
@@ -5822,7 +5822,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_mainTabsVisible();
         checkUi_forwardCommentFieldVisible();
         checkUi_searchFieldStyle();
-        // иначе до первого уведомления кнопки слева не будет.
+        // Бургер ставится и при создании: иначе до первого mainUserInfoChanged
+        // кнопки слева не будет.
         updateDrawerButton();
 
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
@@ -6905,7 +6906,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // actionMode.setBackgroundColor(Color.TRANSPARENT);
         // actionMode.drawBlur = false;
 
-        // при своей шторке слева уже есть бургер/стрелка.
+        // При своей шторке слева уже есть бургер/стрелка.
         if (hasMainTabs && !AppearanceConfig.navigationDrawer()) {
             actionModeCloseView = new ImageView(getContext());
             actionModeCloseView.setScaleType(ImageView.ScaleType.CENTER);
@@ -7471,7 +7472,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public boolean onBackPressed(boolean invoked) {
-        // сначала закрывается шторка.
+        // Сначала закрывается шторка.
         if (drawerContainer() != null && drawerContainer().isDrawerOpen()) {
             if (invoked) {
                 drawerContainer().closeDrawer(true);
@@ -9254,7 +9255,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (backDrawable != null) {
             backDrawable.setRotation(0, true);
         }
-        // после режима выделения возвращаем бургер.
+        // После режима выделения возвращаем бургер.
         if (menuDrawable != null && actionBar.getBackButton() != null
                 && !(actionBar.getBackButton().getDrawable() instanceof MenuDrawable)) {
             actionBar.setBackButtonDrawable(menuDrawable);
@@ -14147,6 +14148,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         }
 
+        // exteraless plugins: пункты плагинов (MAIN_MENU) в конце меню «⋮».
+        app.exteraless.plugins.menus.MenuInjector.appendMainMenuItems(io, currentAccount);
+
         io.show();
         io.setTranslationY(-dp(64));
     }
@@ -14435,7 +14439,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemSearchVisibility();
     }
 
-    /** exteraGram: {@code DialogsActivity.drawerContainer()} :4901. */
     private DrawerContainer drawerContainer() {
         if (getParentActivity() instanceof LaunchActivity) {
             return ((LaunchActivity) getParentActivity()).drawerLayoutContainer.getDrawerContainer();
@@ -14443,21 +14446,19 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         return null;
     }
 
-    /** exteraGram: {@code DialogsActivity.shouldUseDrawerActionBarLayout()} :8201. */
     private boolean shouldUseDrawerActionBarLayout() {
         // communityId в exteraGram нет: у сообщества свой заголовок со стрелкой «назад», бургер там нельзя.
         return AppearanceConfig.navigationDrawer() && !onlySelect && initialDialogsType == DIALOGS_TYPE_DEFAULT
                 && folderId == 0 && communityId == 0 && searchString == null;
     }
 
-    /** exteraGram: {@code DialogsActivity.getDialogStoriesMenuItemsOffset()} :4966. */
     private float getDialogStoriesMenuItemsOffset() {
         return (isArchive() || shouldUseDrawerActionBarLayout()) ? dp(68) : dpf2(16.66f);
     }
 
     /**
-     * шторку нельзя дёргать во время
-     * поиска, выделения, перетаскивания вкладок и превью справа.
+     * Шторку нельзя дёргать во время поиска, выделения, перетаскивания вкладок
+     * и превью справа.
      */
     public boolean canOpenDrawer() {
         if (!AppearanceConfig.navigationDrawer() || onlySelect || folderId != 0 || communityId != 0
@@ -14473,8 +14474,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     /**
-     * свайп не ловится
-     * в полосе нижних вкладок и не конфликтует со свайпом папок.
+     * Свайп не ловится в полосе нижних вкладок и не конфликтует со свайпом папок.
      */
     public boolean canOpenDrawerBySwipe(MotionEvent ev) {
         final boolean bottomBarVisible = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
@@ -14493,7 +14493,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 || filterTabsView.getCurrentTabId() == filterTabsView.getFirstTabId());
     }
 
-    /** exteraGram: {@code DialogsActivity.updateDrawerButton()} :8790 — бургер вместо «⋮». */
+    /** Бургер вместо «⋮». */
     private void updateDrawerButton() {
         if (dialogStoriesCell != null) {
             dialogStoriesCell.setMenuItemsOffset(getDialogStoriesMenuItemsOffset());
@@ -14535,7 +14535,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor1 = 1f - animatorSearchVisible.getFloatValue();
         final float factor2 = 1f - getRightSlidingProgress();
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
-        // со своей шторкой пункты уезжают в неё, «⋮» не нужен.
+        // Со своей шторкой пункты уезжают в неё, «⋮» не нужен.
         final float factor4 = AppearanceConfig.navigationDrawer() ? 0f : 1f;
         final float factor = factor1 * factor2 * factor3 * factor4;
         FragmentFloatingButton.setAnimatedVisibility(optionsItem, factor);
