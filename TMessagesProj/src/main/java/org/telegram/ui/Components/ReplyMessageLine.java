@@ -179,17 +179,26 @@ public class ReplyMessageLine {
         }
 
         reversedOut = false;
-        color1 = p.colors.get(0) | 0xFF000000;
-        if (hasColor2 = colors.size() >= 2) {
-            color2 = p.colors.get(1) | 0xFF000000;
+        if (oeReplyColors()) {
+            color1 = p.colors.get(0) | 0xFF000000;
+            if (hasColor2 = colors.size() >= 2) {
+                color2 = p.colors.get(1) | 0xFF000000;
+            }
+            if (hasColor3 = colors.size() >= 3) {
+                color3 = p.colors.get(2) | 0xFF000000;
+            }
+            nameColor = accent_color | 0xFF000000;
+        } else {
+            oeResetReplyColors(resourcesProvider);
         }
-        if (hasColor3 = colors.size() >= 3) {
-            color3 = p.colors.get(2) | 0xFF000000;
+        backgroundColor = oeReplyBackground() ? Theme.multAlpha(oeReplyColors() ? nameColor : color1, 0.10f) : Color.TRANSPARENT;
+        if (oeReplyEmoji()) {
+            emojiDocumentId = p.background_emoji_id;
+            stickerDocumentId = p.gift_emoji_id;
+        } else {
+            emojiDocumentId = 0;
+            stickerDocumentId = 0;
         }
-        nameColor = accent_color | 0xFF000000;
-        backgroundColor = Theme.multAlpha(nameColor, 0.10f);
-        emojiDocumentId = p.background_emoji_id;
-        stickerDocumentId = p.gift_emoji_id;
         if (emojiDocumentId != 0 && emoji == null && parentView != null) {
             emoji = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(parentView, false, dp(20), AnimatedEmojiDrawable.CACHE_TYPE_ALERT_PREVIEW_STATIC);
             if (parentView instanceof ChatMessageCell ? ((ChatMessageCell) parentView).isCellAttachedToWindow() : parentView.isAttachedToWindow()) {
@@ -216,6 +225,32 @@ public class ReplyMessageLine {
         }
 
         return nameColorAnimated.set(nameColor);
+    }
+
+    // ---- openExtera: оформление блока ответа (ChatsConfig.replyColors / replyEmoji / replyBackground) ----
+    // Перенесено из exteraGram 12.9.0, ReplyMessageLine.check()/resolveCollectionColor().
+
+    private static boolean oeReplyColors() {
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        return app.exteraless.chats.ChatsConfig.replyColors.Bool();
+    }
+
+    private static boolean oeReplyEmoji() {
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        return app.exteraless.chats.ChatsConfig.replyEmoji.Bool();
+    }
+
+    private static boolean oeReplyBackground() {
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        return app.exteraless.chats.ChatsConfig.replyBackground.Bool();
+    }
+
+    /** openExtera: сброс цветов линии/имени к стоковым «серым», когда replyColors выключен. */
+    private void oeResetReplyColors(Theme.ResourcesProvider resourcesProvider) {
+        hasColor2 = false;
+        hasColor3 = false;
+        color1 = color2 = color3 = Theme.getColor(Theme.key_chat_inReplyLine, resourcesProvider);
+        nameColor = Theme.getColor(Theme.key_chat_inReplyNameText, resourcesProvider);
     }
 
     public static final int TYPE_REPLY = 0;
@@ -352,9 +387,13 @@ public class ReplyMessageLine {
             if (!NaConfig.INSTANCE.getPremiumItemCustomColorInReplies().Bool()) {
                 colorId = 0;
             }
-            resolveColor(messageObject, colorId, resourcesProvider);
-            backgroundColor = Theme.multAlpha(color1, 0.10f);
-            nameColor = color1;
+            if (oeReplyColors()) {
+                resolveColor(messageObject, colorId, resourcesProvider);
+                nameColor = color1;
+            } else {
+                oeResetReplyColors(resourcesProvider);
+            }
+            backgroundColor = oeReplyBackground() ? Theme.multAlpha(color1, 0.10f) : Color.TRANSPARENT;
         } else if (type == TYPE_REPLY && (
             messageObject.overrideLinkColor >= 0 ||
             messageObject.messageOwner != null &&
@@ -405,14 +444,18 @@ public class ReplyMessageLine {
             if (!NaConfig.INSTANCE.getPremiumItemCustomColorInReplies().Bool()) {
                 colorId = 0;
             }
-            resolveColor(messageObject.replyMessageObject, colorId, resourcesProvider);
-            backgroundColor = Theme.multAlpha(color1, 0.10f);
-            nameColor = color1;
+            if (oeReplyColors()) {
+                resolveColor(messageObject.replyMessageObject, colorId, resourcesProvider);
+                nameColor = color1;
+            } else {
+                oeResetReplyColors(resourcesProvider);
+            }
+            backgroundColor = oeReplyBackground() ? Theme.multAlpha(color1, 0.10f) : Color.TRANSPARENT;
         } else {
             hasColor2 = false;
             hasColor3 = false;
             color1 = color2 = color3 = Theme.getColor(Theme.key_chat_inReplyLine, resourcesProvider);
-            backgroundColor = Theme.multAlpha(color1, 0.10f);
+            backgroundColor = oeReplyBackground() || type == TYPE_QUOTE ? Theme.multAlpha(color1, 0.10f) : Color.TRANSPARENT;
             nameColor = Theme.getColor(Theme.key_chat_inReplyNameText, resourcesProvider);
         }
         if (messageObject.shouldDrawWithoutBackground()) {
@@ -435,13 +478,13 @@ public class ReplyMessageLine {
                 reversedOut = true;
                 color1 = Theme.multAlpha(color1, .35f);
             }
-            backgroundColor = Theme.multAlpha(color3, dark ? 0.12f : 0.10f);
+            backgroundColor = oeReplyBackground() || type != TYPE_REPLY ? Theme.multAlpha(color3, dark ? 0.12f : 0.10f) : Color.TRANSPARENT;
             nameColor = Theme.getColor(Theme.key_chat_outReplyNameText, resourcesProvider);
         }
         if ((type == TYPE_REPLY || type == TYPE_LINK || type == TYPE_CONTACT) && messageObject != null && messageObject.overrideLinkEmoji != -1) {
             emojiDocumentId = messageObject.overrideLinkEmoji;
         }
-        if (!NaConfig.INSTANCE.getPremiumItemEmojiInReplies().Bool()) {
+        if (!NaConfig.INSTANCE.getPremiumItemEmojiInReplies().Bool() || !oeReplyEmoji()) {
             emojiDocumentId = 0;
         }
         if (emojiDocumentId != 0 && emoji == null && parentView != null) {

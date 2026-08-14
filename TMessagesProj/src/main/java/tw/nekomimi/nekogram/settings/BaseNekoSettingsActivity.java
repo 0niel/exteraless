@@ -102,9 +102,11 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         fragmentView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         SizeNotifierFrameLayout frameLayout = (SizeNotifierFrameLayout) fragmentView;
 
-        actionBar.setDrawBlurBackground(frameLayout);
+        if (needActionBarBlur()) {
+            actionBar.setDrawBlurBackground(frameLayout);
+        }
 
-        listView = new BlurredRecyclerView(context);
+        listView = new app.exteraless.appearance.SectionCardRecyclerView(context);
         listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -143,8 +145,11 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             return false;
         });
 
-        listView.setSections(true);
-        actionBar.setAdaptiveBackground(listView);
+        // Карточки-секции: штатная геометрия декоратора + радиус из AppearanceConfig.
+        // Тень-elevation форсируется в SectionCardRecyclerView.drawBackgroundRect.
+        // При sectionRadius == 0 — стоковый плоский вид (карточки визуально отсутствуют).
+        listView.setSections(dp(12), dp(app.exteraless.appearance.AppearanceConfig.sectionRadius()), true);
+        setupAdaptiveBackground();
         return fragmentView;
     }
 
@@ -179,6 +184,25 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             actionBar.setOccupyStatusBar(false);
         }
         return actionBar;
+    }
+
+    /**
+     * Фон actionBar, зависящий от прокрутки. Вынесено в метод, чтобы экран мог
+     * сделать шапку прозрачной наверху (topColorKey = -1) — как корневой экран exteraless.
+     * Повторный вызов setAdaptiveBackground после первого не перекрашивает шапку,
+     * поэтому настраивать нужно именно здесь, а не после createView.
+     */
+    /**
+     * Рисовать ли блюр-подложку под actionBar. Экраны с прозрачной шапкой
+     * (корневой экран exteraless) её отключают: подложка закрывает контент под шапкой.
+     * Снять её после вызова нельзя — {@code setDrawBlurBackground(null)} падает.
+     */
+    protected boolean needActionBarBlur() {
+        return true;
+    }
+
+    protected void setupAdaptiveBackground() {
+        actionBar.setAdaptiveBackground(listView);
     }
 
     protected String getKey() {
@@ -338,6 +362,79 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
             var payload = holder.getPayload();
             onBindViewHolder(holder, position, PARTIAL.equals(payload));
+            applySectionBackground(holder, position);
+        }
+
+        /**
+         * openExtera: готовит фон ячейки под механизм карточек-секций.
+         * Единый скруглённый фон группы с тенью-elevation рисует сам список
+         * ({@link app.exteraless.appearance.SectionCardRecyclerView}) в {@code dispatchDraw}
+         * позади контента. Здесь остаётся только выставить прозрачность ячейки:
+         * при sectionRadius > 0 фон ячейки прозрачный (просвечивает карточка), селектор
+         * нажатия рисует сам список отдельно — кликаемость не страдает. При sectionRadius == 0
+         * поведение полностью стоковое: сплошной фон, как задавалось при создании ячейки.
+         */
+        protected void applySectionBackground(@NonNull RecyclerView.ViewHolder holder, int position) {
+            int viewType = holder.getItemViewType();
+            if (!isSectionContent(viewType)) {
+                return;
+            }
+            int radiusDp = app.exteraless.appearance.AppearanceConfig.sectionRadius();
+            if (radiusDp <= 0) {
+                // Дефолт-safe (0) = сток: сплошной фон, ровно как задавалось при создании ячейки.
+                holder.itemView.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                return;
+            }
+            // Карточка-фон рисуется списком; ячейка должна быть прозрачной, чтобы просвечивала.
+            holder.itemView.setBackground(null);
+        }
+
+        /**
+         * true, если ячейки [posA] и [posB] (соседние) принадлежат одной карточке.
+         * Обе должны быть контентными; при separateHeaders заголовок обособляется в свою карточку.
+         */
+        protected boolean cardConnected(int posA, int posB) {
+            int typeA = getItemViewType(posA);
+            int typeB = getItemViewType(posB);
+            if (!isSectionContent(typeA) || !isSectionContent(typeB)) {
+                return false;
+            }
+            if (app.exteraless.appearance.AppearanceConfig.separateHeaders()
+                    && (typeA == TYPE_HEADER || typeB == TYPE_HEADER)) {
+                return false;
+            }
+            return true;
+        }
+
+        /** Типы ячеек со сплошным белым фоном — из них собираются карточки-секции. */
+        protected boolean isSectionContent(int viewType) {
+            // exteraGram: при вынесенных заголовках заголовок лежит на фоне окна,
+            // а не в своей карточке — поэтому он вообще не участвует в секциях.
+            if (viewType == TYPE_HEADER && app.exteraless.appearance.AppearanceConfig.separateHeaders()) {
+                return false;
+            }
+            switch (viewType) {
+                case TYPE_SETTINGS:
+                case TYPE_CHECK:
+                case TYPE_HEADER:
+                case TYPE_NOTIFICATION_CHECK:
+                case TYPE_DETAIL_SETTINGS:
+                case TYPE_TEXT:
+                case TYPE_CHECKBOX:
+                case TYPE_RADIO:
+                case TYPE_ACCOUNT:
+                case TYPE_EMOJI:
+                case TYPE_EMOJI_SELECTION:
+                case TYPE_CREATION:
+                case TYPE_FLICKER:
+                case TYPE_CHECK2:
+                case TYPE_CHECKBOX2:
+                    return true;
+                default:
+                    // TYPE_SHADOW, TYPE_INFO_PRIVACY и кастомные типы подклассов (>= 100)
+                    // считаем границами секций.
+                    return false;
+            }
         }
 
         @NonNull
@@ -356,10 +453,24 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
                     view = new TextCheckCell(mContext, resourcesProvider);
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     break;
-                case TYPE_HEADER:
-                    view = new HeaderCell(mContext, resourcesProvider);
-                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                case TYPE_HEADER: {
+                    HeaderCell headerCell = new HeaderCell(mContext, resourcesProvider);
+                    // exteraGram: вынесенный заголовок лежит на фоне окна — без белой подложки
+                    // и вне карточки. Группировку карточек делает RecyclerListView.setSections
+                    // по предикату вью, поэтому исключаем заголовок именно тегом.
+                    if (app.exteraless.appearance.AppearanceConfig.separateHeaders()) {
+                        headerCell.setTag(RecyclerListView.TAG_NOT_SECTION);
+                        // Метрики сняты с 12.9.0 на устройстве (420 dpi): контейнер 114px,
+                        // сверху 16, текст 90, снизу 8 до карточки; левый отступ 63px.
+                        headerCell.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(6),
+                                AndroidUtilities.dp(24), AndroidUtilities.dp(3));
+                        headerCell.setHeight(34);
+                    } else {
+                        headerCell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    }
+                    view = headerCell;
                     break;
+                }
                 case TYPE_NOTIFICATION_CHECK:
                     view = new NotificationsCheckCell(mContext, resourcesProvider);
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));

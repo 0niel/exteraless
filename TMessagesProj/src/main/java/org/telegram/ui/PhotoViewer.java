@@ -364,7 +364,7 @@ import me.vkryl.core.reference.ReferenceList;
 
 @SuppressLint("WrongConstant")
 @SuppressWarnings("unchecked")
-public class PhotoViewer implements NotificationCenter.NotificationCenterDelegate, GestureDetector2.OnGestureListener, GestureDetector2.OnDoubleTapListener, IPipSourceDelegate, FactorAnimator.Target {
+public class PhotoViewer implements NotificationCenter.NotificationCenterDelegate, GestureDetector2.OnGestureListener, GestureDetector2.OnDoubleTapListener, IPipSourceDelegate, FactorAnimator.Target, AudioManager.OnAudioFocusChangeListener {
     private static final boolean centerTitle = NaConfig.INSTANCE.getCenterActionBarTitle().Bool() && NaConfig.INSTANCE.getCenterActionBarTitleType().Int() != 2;
     private static final int ANIMATOR_ID_POLL_ATTACH_BUTTONS_VISIBLE = 0;
     private final BoolAnimator animatorPollAttachButtonsVisibility = new BoolAnimator(ANIMATOR_ID_POLL_ATTACH_BUTTONS_VISIBLE, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
@@ -1046,6 +1046,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private Theme.ResourcesProvider resourcesProvider;
 
     private boolean pausedOnPause = false;
+    // Аудиофокус просмотрщика, перенос из exteraGram 12.9.0 (PhotoViewer.java:537, 6424).
+    // Без него музыка соседнего приложения не глохнет на видео и не возвращается после.
+    private boolean hasAudioFocus;
+    private final AudioManager photoViewerAudioManager = (AudioManager) ApplicationLoader.applicationContext.getSystemService(Context.AUDIO_SERVICE);
 
     private Runnable setLoadingRunnable = new Runnable() {
         @Override
@@ -1528,6 +1532,49 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         } else {
             return videoPlayer != null && videoPlayer.isPlaying();
         }
+    }
+
+    // Перенос из exteraGram 12.9.0, PhotoViewer.java:15029-15031. Фокусом рулим только когда
+    // включена пауза при сворачивании: иначе просмотрщик ведёт себя как в ванили.
+    private boolean shouldManageAudioFocus() {
+        return NekoConfig.autoPauseVideo.Bool();
+    }
+
+    // Первая ветка отдаёт фокус даже на request=true: опция, выключенная во время
+    // просмотра, сразу возвращает звук чужому плееру.
+    public void requestAudioFocus(boolean request) {
+        if (photoViewerAudioManager == null) {
+            return;
+        }
+        if (request && !shouldManageAudioFocus()) {
+            if (photoViewerAudioManager.abandonAudioFocus(this) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                hasAudioFocus = false;
+            }
+        } else if (!request || currentMessageObject == null || currentMessageObject.isGif()) {
+            if (photoViewerAudioManager.abandonAudioFocus(this) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                hasAudioFocus = false;
+            }
+        } else if (SharedConfig.pauseMusicOnMedia && photoViewerAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            hasAudioFocus = true;
+        }
+    }
+
+    // Колбэк приходит с потока аудиосистемы, плеер трогаем только с UI.
+    @Override
+    public void onAudioFocusChange(int focusChange) {
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!shouldManageAudioFocus()) {
+                return;
+            }
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                if (isVideoPlaying()) {
+                    pauseVideoOrWeb();
+                }
+                hasAudioFocus = false;
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN && !isVideoPlaying()) {
+                playVideoOrWeb();
+            }
+        });
     }
 
     private Runnable updateProgressRunnable = new Runnable() {
@@ -9347,6 +9394,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         if (videoPlayer == null || !textureUploaded || !checkInlinePermissions() || changingTextureView || switchingInlineMode || isInline) {
             return;
         }
+        // При включённой паузе-при-сворачивании фокус остаётся за нами — иначе PiP
+        // заиграл бы, отдав звук чужому плееру.
+        if (!shouldManageAudioFocus()) {
+            requestAudioFocus(false);
+        }
         if (PipInstance != null) {
             PipInstance.destroyPhotoViewer();
         }
@@ -9871,6 +9923,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         if (isEmbedVideo) {
             if (photoViewerWebView != null && !photoViewerWebView.isInAppOnly() && photoViewerWebView.openInPip()) {
                 pipVideoOverlayAnimateFlag = false;
+                if (!shouldManageAudioFocus()) {
+                    requestAudioFocus(false);
+                }
 
                 if (PipInstance != null) {
                     PipInstance.destroyPhotoViewer();
@@ -9888,7 +9943,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
         } else {
             pipVideoOverlayAnimateFlag = false;
-
+            // С включённой опцией по home-кнопке не уходим в PiP — видео просто
+            // встаёт на паузу в onPause().
+            if (shouldManageAudioFocus()) {
+                return;
+            }
             switchToPip(false);
         }
     }
@@ -10593,7 +10652,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 pipItem.setEnabled(true);
                 pipItem.animate().alpha(1.0f).setDuration(175).withEndAction(null).start();
             }
-            playerWasReady = true;
+            if (!playerWasReady) {
+                requestAudioFocus(true);
+                playerWasReady = true;
+            }
             if (currentMessageObject != null && currentMessageObject.isVideo()) {
                 AndroidUtilities.cancelRunOnUIThread(setLoadingRunnable);
                 FileLoader.getInstance(currentMessageObject.currentAccount).removeLoadingVideo(currentMessageObject.getDocument(), true, false);
@@ -11322,6 +11384,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 if (currentMessageObject != null) {
                     currentMessageObject.cachedSavedTimestamp = progress;
                 }
+            }
+            if (onClose) {
+                requestAudioFocus(false);
             }
             videoPlayer.releasePlayer(true);
             videoPlayer = null;
@@ -13900,6 +13965,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
             playVideoOrWeb();
         }
+        // На паузе фокус отдаём, на старте забираем обратно.
+        requestAudioFocus(!playing);
         containerView.invalidate();
     }
 
@@ -16171,6 +16238,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     menuItem.showSubItem(gallery_menu_copy);
                     menuItem.showSubItem(gallery_menu_set_photo);
                 }
+            }
+            if (hasAudioFocus && !isVideo) {
+                requestAudioFocus(false);
             }
             if (isVideo && !isLivePhoto || isEmbedVideo) {
                 speedItem.setVisibility(View.VISIBLE);
@@ -19253,6 +19323,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         if (pausedOnPause && NekoConfig.autoPauseVideo.Bool() && videoPlayer != null && !videoPlayer.isPlaying()) {
             pausedOnPause = false;
             videoPlayer.play();
+            requestAudioFocus(true);
         }
     }
 
@@ -19273,6 +19344,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         if (NekoConfig.autoPauseVideo.Bool() && videoPlayer != null && videoPlayer.isPlaying()) {
             pausedOnPause = true;
             videoPlayer.pause();
+            requestAudioFocus(false);
         }
     }
 
@@ -21403,7 +21475,12 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         boolean forward = x >= width / 3 * 2;
         long current = getCurrentVideoPosition();
         long total = getVideoDuration();
-        return current != C.TIME_UNSET && total > 15 * 1000 && (!forward || total - current > 10000);
+        return current != C.TIME_UNSET && total > 15 * 1000 && (!forward || total - current > doubleTapSeekMillis());
+    }
+
+    /** Шаг перемотки двойным тапом, ChatsConfig.doubleTapSeekDuration (5/10/15/30 с). */
+    private static long doubleTapSeekMillis() {
+        return app.exteraless.chats.ChatsConfig.seekDurationSeconds() * 1000L;
     }
 
     long totalRewinding;
@@ -21418,17 +21495,18 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             boolean forward = x >= width / 3 * 2;
             if (canDoubleTapSeekVideo(e)) {
                 long old = current;
+                final long seekMs = doubleTapSeekMillis();
                 if (x >= width / 3 * 2) {
-                    current += 10000;
+                    current += seekMs;
                 } else if (x < width / 3) {
-                    current -= 10000;
+                    current -= seekMs;
                 }
                 if (old != current) {
                     boolean apply = true;
                     if (current > total) {
                         current = total;
                     } else if (current < 0) {
-                        if (current < -9000) {
+                        if (current < -(seekMs - 1000)) {
                             apply = false;
                         }
                         current = 0;
@@ -21436,7 +21514,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     if (apply) {
                         videoForwardDrawable.setOneShootAnimation(true);
                         videoForwardDrawable.setLeftSide(x < width / 3);
-                        videoForwardDrawable.addTime(10000);
+                        videoForwardDrawable.addTime(seekMs);
                         seekVideoOrWebTo(current);
                         containerView.invalidate();
                         videoPlayerSeekbar.setProgress(current / (float) total, true);
@@ -21478,8 +21556,15 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         return true;
     }
 
+    // Перенос из exteraGram 12.9.0, PhotoViewer.java:8489-8491. До этого метод был заглушкой
+    // на `return false`, хотя тумблер в настройках стоял и точка вызова была готова.
     private boolean enableSwipeToPiP() {
-        return false;
+        return (pipItem.getVisibility() == View.VISIBLE
+                    || (menuItem.getVisibility() == View.VISIBLE && menuItem.isSubItemVisible(gallery_menu_pip)))
+                && app.exteraless.chats.ChatsConfig.swipeToPip.Bool()
+                && pipAvailable && textureUploaded
+                && videoPlayer != null && videoPlayer.getRepeatCount() == 0
+                && checkInlinePermissions() && !changingTextureView && !switchingInlineMode && !isInline;
     }
 
     @Override

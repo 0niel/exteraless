@@ -413,7 +413,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="vnd.android.cursor.item/vnd.nu.gpu.nagram.android.profile"/>
+                <data android:mimeType="vnd.android.cursor.item/vnd.com.exteraless.app.android.profile"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
@@ -460,8 +460,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="vnd.android.cursor.item/vnd.nu.gpu.nagram.android.call"/>
-                <data android:mimeType="vnd.android.cursor.item/vnd.nu.gpu.nagram.android.call.video"/>
+                <data android:mimeType="vnd.android.cursor.item/vnd.com.exteraless.app.android.call"/>
+                <data android:mimeType="vnd.android.cursor.item/vnd.com.exteraless.app.android.call.video"/>
             </intent-filter>
         </activity-alias>
         <activity
@@ -850,6 +850,12 @@
         <provider
             android:authorities="${applicationId}.streaming"
             android:name="tw.nekomimi.nekogram.streaming.MediaStreamingProvider"
+            android:exported="false"
+            android:grantUriPermissions="true"/>
+
+        <provider
+            android:authorities="${applicationId}.icon_pack_provider"
+            android:name="app.exteraless.icons.IconPackProvider"
             android:exported="false"
             android:grantUriPermissions="true"/>
 

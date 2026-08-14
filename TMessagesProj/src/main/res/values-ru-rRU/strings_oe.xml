@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OpenExteraInfo">Фичи, перенесённые из exteraGram</string>
+
+    <string name="OpenExteraFormatting">Форматирование</string>
+    <string name="RelativeLastSeen">Относительное «был(а) в сети»</string>
+    <string name="RelativeLastSeenInfo">Показывает «5 минут назад» вместо точного времени для тех, кто был в сети за последние сутки.</string>
+
+    <string name="OpenExteraChats">Чаты</string>
+    <string name="AddCommaAfterMention">Запятая после упоминания</string>
+    <string name="OpenExteraChatsInfo">При упоминании ботов запятая не добавляется.</string>
+
+    <string name="OpenExteraSections">Разделы</string>
+
+    <string name="OpenExteraCategories">Категории</string>
+    <string name="OpenExteraGeneral">Основные</string>
+    <string name="OpenExteraGeneralInfo">Перевод, форматирование, хранилище, профиль</string>
+    <string name="OpenExteraAppearance">Внешний вид</string>
+    <string name="OpenExteraAppearanceInfo">Аватары, список чатов, папки, размытие</string>
+    <string name="OpenExteraChatsCategoryInfo">Стикеры, действия, камера, плеер</string>
+    <string name="OpenExteraOther">Ещё</string>
+    <string name="OpenExteraOtherInfo">Аналитика, резервная копия, сброс</string>
+
+    <string name="OpenExteraLinks">Ссылки</string>
+    <string name="OpenExteraSource">Исходный код</string>
+</resources>

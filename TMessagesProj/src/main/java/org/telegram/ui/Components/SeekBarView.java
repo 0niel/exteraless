@@ -466,26 +466,57 @@ public class SeekBarView extends FrameLayout {
         return configStyle;
     }
 
+    // Метрики MD3-слайдера. exteraGram встраивает настоящий com.google.android.material.slider.Slider
+    // (com/exteragram/messenger/utils/ui/MaterialSliderUiHelper.java:60-69): trackHeight 8dp,
+    // thumbHeight 24dp, thumbWidth 3dp, trackStopIndicatorSize 0, haloRadius 0; из темы
+    // Widget.Material3.Slider (res/values/styles.xml:8902) — thumbTrackGapSize 6dp,
+    // trackInsideCornerSize 2dp. Зависимости material в дереве нет — рисуем сами теми же числами.
+    private static final int MD3_TRACK_HEIGHT_DP = 8;
+    private static final float MD3_THUMB_WIDTH_DP = 3;
+    private static final float MD3_THUMB_HEIGHT_DP = 24;
+    private static final float MD3_THUMB_TRACK_GAP_DP = 6;
+    private static final float MD3_TRACK_INSIDE_CORNER_DP = 2;
+
+    /**
+     * Material-слайдер не включается для двусторонней шкалы,
+     * при заданном минимуме, при буферизации, при своей толщине линии и при наличии таймкодов.
+     * Условие exteraGram {@code lineWidthDp != 3} у нас выражено флагом hasCustomLineWidthValue:
+     * lineWidthDp мы сами переписываем под стиль.
+     */
+    private boolean canUseMaterialSlider() {
+        if (twoSided || minProgress > 0f || bufferedProgress > 0f || hasCustomLineWidthValue) {
+            return false;
+        }
+        return timestamps == null || timestamps.isEmpty();
+    }
+
+    private int effectiveStyle = SLIDER_STYLE_DEFAULT;
+
     private void updateModernState() {
         int style = getEffectiveSliderStyle();
+        if (style == SLIDER_STYLE_MD3 && !canUseMaterialSlider()) {
+            style = SLIDER_STYLE_DEFAULT;
+        }
+        effectiveStyle = style;
         isModern = style == SLIDER_STYLE_MODERN || style == SLIDER_STYLE_MD3;
         isModern &= (timestamps == null || timestamps.isEmpty());
 
         if (!hasCustomLineWidthValue || style != SLIDER_STYLE_DEFAULT) {
-            lineWidthDp = style == SLIDER_STYLE_MODERN ? 17 : (style == SLIDER_STYLE_MD3 ? 13 : 3);
+            lineWidthDp = style == SLIDER_STYLE_MODERN ? 17 : (style == SLIDER_STYLE_MD3 ? MD3_TRACK_HEIGHT_DP : 3);
         }
 
         if (isModern && style == SLIDER_STYLE_MD3) {
-            thumbSize = AndroidUtilities.dp(4);
+            thumbSize = AndroidUtilities.dp(MD3_THUMB_WIDTH_DP);
+        } else if (thumbSize != AndroidUtilities.dp(24)) {
+            thumbSize = AndroidUtilities.dp(24);
         }
     }
 
     private int needCustomDraw() {
         updateModernState();
 
-        int style = getEffectiveSliderStyle();
-        if (isModern && style == SLIDER_STYLE_MD3) {
-            return style;
+        if (isModern && effectiveStyle == SLIDER_STYLE_MD3) {
+            return SLIDER_STYLE_MD3;
         }
 
         return -1;
@@ -588,14 +619,17 @@ public class SeekBarView extends FrameLayout {
                 canvas.drawCircle(thumbX + selectorWidth / 2, y + thumbSize / 2, currentRadius, outerPaint1);
             }
         } else if (needCustomDraw() == SLIDER_STYLE_MD3) {
-            float radius = AndroidUtilities.dp(8);
-            float radius2 = AndroidUtilities.dp(3);
-            float indicatorRadius = AndroidUtilities.dp(10);
-            float padding = AndroidUtilities.dp(7);
+            // геометрия по exteraGram: дорожка 8dp, торцы скруглены наполовину (4dp),
+            // внутренние углы у ползунка 2dp, зазор 6dp, ползунок 3x24dp
+            float radius = AndroidUtilities.dp(MD3_TRACK_HEIGHT_DP / 2f);
+            float radius2 = AndroidUtilities.dp(MD3_TRACK_INSIDE_CORNER_DP);
+            float indicatorRadius = thumbSize / 2f;
+            float padding = AndroidUtilities.dp(MD3_THUMB_TRACK_GAP_DP);
+            float thumbOverflow = AndroidUtilities.dp((MD3_THUMB_HEIGHT_DP - MD3_TRACK_HEIGHT_DP) / 2f);
 
             rect.set(left, top, thumbX + selectorWidth / 2f - padding, bottom);
             if (rect.left < rect.right) {
-                if (rect.right - rect.left < AndroidUtilities.dp(7)) {
+                if (rect.right - rect.left < radius + radius2) {
                     canvas.drawRoundRect(rect, radius2, radius2, outerPaint1);
                 } else {
                     updatePath(path, rect, radius, radius2);
@@ -605,7 +639,7 @@ public class SeekBarView extends FrameLayout {
 
             rect.set(thumbX + selectorWidth / 2f + thumbSize + padding, top, right, bottom);
             if (rect.left < rect.right) {
-                if (rect.right - rect.left < AndroidUtilities.dp(7)) {
+                if (rect.right - rect.left < radius + radius2) {
                     canvas.drawRoundRect(rect, radius2, radius2, innerPaint1);
                 } else {
                     updatePath(path, rect, radius2, radius);
@@ -614,7 +648,7 @@ public class SeekBarView extends FrameLayout {
             }
 
             // left, top, right, bottom, rx, ry
-            rect.set(thumbX + selectorWidth / 2f, top - AndroidUtilities.dp(5), thumbX + selectorWidth / 2f + thumbSize, bottom + AndroidUtilities.dp(5));
+            rect.set(thumbX + selectorWidth / 2f, top - thumbOverflow, thumbX + selectorWidth / 2f + thumbSize, bottom + thumbOverflow);
             canvas.drawRoundRect(rect, indicatorRadius, indicatorRadius, outerPaint1);
         }
 

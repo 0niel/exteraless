@@ -1,0 +1,101 @@
+package app.exteraless.general
+
+import android.content.SharedPreferences
+import org.telegram.messenger.ApplicationLoader
+import org.telegram.messenger.FileLog
+import tw.nekomimi.nekogram.NekoConfig
+import tw.nekomimi.nekogram.config.ConfigItem
+
+/**
+ * Настройки экранов «General» и «Other» раздела openExtera.
+ *
+ * Схема повторяет [app.exteraless.OpenExteraConfig]: те же SharedPreferences, тот же [ConfigItem].
+ * Здесь живут ТОЛЬКО те настройки, которых нет ни в NekoConfig, ни в NaConfig, ни в
+ * OpenExteraConfig — всё остальное экраны берут из существующих ConfigItem, чтобы не плодить дубли.
+ * Ключи с префиксом OEGeneral.
+ */
+object GeneralConfig {
+
+    private val sync = Any()
+    private val configs = ArrayList<ConfigItem>()
+
+    @Volatile
+    private var configLoaded = false
+
+    @JvmStatic
+    fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
+
+    /**
+     * Сбор аналитики Google. Аналог `useGoogleAnalytics` из exteraGram.
+     * Firebase Analytics SDK в сборке не подключён, поэтому значение только хранится
+     * и применяется, если SDK когда-нибудь появится (см. [analyticsCollection]).
+     */
+    @JvmField
+    val analyticsCollection = addConfig("OEGeneralAnalyticsCollection", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun analyticsCollection(): Boolean = analyticsCollection.Bool()
+
+    /**
+     * «Download Speed Boost» — трёхпозиционный выбор (0: Off, 1: Fast, 2: Ultra).
+     * В exteraGram 12.9.0 у него тоже нет бэкенда — значение только хранится.
+     */
+    @JvmField
+    val downloadSpeedBoost = addConfig("OEGeneralDownloadSpeedBoost", ConfigItem.configTypeInt, 0)
+
+    private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
+        val item = ConfigItem(key, type, defaultValue)
+        configs.add(item)
+        return item
+    }
+
+    @JvmStatic
+    fun init() {
+        loadConfig(false)
+    }
+
+    @JvmStatic
+    fun loadConfig(force: Boolean) {
+        synchronized(sync) {
+            if (configLoaded && !force) return
+            if (ApplicationLoader.applicationContext == null) return
+            val preferences = getPreferences()
+            for (item in configs) {
+                try {
+                    when (item.type) {
+                        ConfigItem.configTypeBool ->
+                            item.value = preferences.getBoolean(item.key, item.defaultValue as Boolean)
+
+                        ConfigItem.configTypeInt ->
+                            item.value = preferences.getInt(item.key, item.defaultValue as Int)
+
+                        ConfigItem.configTypeLong ->
+                            item.value = preferences.getLong(item.key, item.defaultValue as Long)
+
+                        ConfigItem.configTypeFloat ->
+                            item.value = preferences.getFloat(item.key, item.defaultValue as Float)
+
+                        ConfigItem.configTypeString ->
+                            item.value = preferences.getString(item.key, item.defaultValue as String?)
+                    }
+                } catch (e: Exception) {
+                    FileLog.e(e)
+                }
+            }
+            configLoaded = true
+        }
+    }
+
+    /** Сбрасывает настройки этих экранов к значениям по умолчанию. */
+    @JvmStatic
+    fun reset() {
+        synchronized(sync) {
+            val editor = getPreferences().edit()
+            for (item in configs) {
+                editor.remove(item.key)
+                item.value = item.defaultValue
+            }
+            editor.apply()
+        }
+    }
+}

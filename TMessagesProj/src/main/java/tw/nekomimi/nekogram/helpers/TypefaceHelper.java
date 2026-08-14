@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.text.SpannableStringBuilder;
+import android.text.TextUtils;
 import android.text.Spanned;
 import android.text.style.LeadingMarginSpan;
 
@@ -16,6 +17,7 @@ import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.TypefaceSpan;
@@ -141,6 +143,22 @@ public class TypefaceHelper {
             TLRPC.User self = UserConfig.getInstance(currentAccount).getCurrentUser();
             if (self != null && self.first_name != null) {
                 title = self.first_name;
+            }
+        }
+        // openExtera: заголовок списка чатов (AppearanceConfig.titleText).
+        // Перенесено из exteraGram 12.9.0, LocaleUtils.getActionBarTitle(int).
+        // 0 — имя приложения (NagramX customTitle), 1 — username, 2 — имя.
+        final int oeTitleText = app.exteraless.appearance.AppearanceConfig.titleText();
+        if (oeTitleText != 0) {
+            TLRPC.User self = UserConfig.getInstance(currentAccount).getCurrentUser();
+            String username = oeTitleText == 1 ? UserObject.getPublicUsername(self) : null;
+            if (!TextUtils.isEmpty(username)) {
+                title = username;
+            } else {
+                String firstName = UserObject.getFirstName(self);
+                if (!TextUtils.isEmpty(firstName)) {
+                    title = firstName;
+                }
             }
         }
         var builder = new SpannableStringBuilder(title);

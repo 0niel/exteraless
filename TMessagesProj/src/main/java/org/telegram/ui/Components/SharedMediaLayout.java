@@ -1,5 +1,7 @@
 package org.telegram.ui.Components;
 
+import app.exteraless.utils.AppUtils;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
@@ -5879,7 +5881,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             velX = velocityTracker.getXVelocity();
             velY = velocityTracker.getYVelocity();
             if (!startedTracking) {
-                if (Math.abs(velX) >= 3000 && Math.abs(velX) > Math.abs(velY)) {
+                if (Math.abs(velX) >= AppUtils.getSwipeVelocity() && Math.abs(velX) > Math.abs(velY)) {
                     prepareForMoving(ev, velX < 0);
                 }
             }
@@ -5890,7 +5892,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         if (startedTracking) {
             float x = mediaPages[0].getX();
             tabsAnimation = new AnimatorSet();
-            backAnimation = Math.abs(x) < mediaPages[0].getMeasuredWidth() / 3.0f && (Math.abs(velX) < 3500 || Math.abs(velX) < Math.abs(velY));
+            backAnimation = Math.abs(x) < mediaPages[0].getMeasuredWidth() / 3.0f && (Math.abs(velX) < AppUtils.getSwipeVelocity() || Math.abs(velX) < Math.abs(velY));
             float dx;
             ValueAnimator invalidate = ValueAnimator.ofFloat(0, 1);
             invalidate.addUpdateListener(anm -> onTabProgress(getTabProgress()));

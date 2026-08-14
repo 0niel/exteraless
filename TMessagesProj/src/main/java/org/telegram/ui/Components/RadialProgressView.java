@@ -19,6 +19,8 @@ import android.view.animation.DecelerateInterpolator;
 
 import androidx.annotation.Keep;
 
+import app.exteraless.appearance.M3CircularProgress;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 
@@ -51,6 +53,13 @@ public class RadialProgressView extends View {
 
     private boolean noProgress = true;
     private final Theme.ResourcesProvider resourcesProvider;
+
+    // M3-индикатор.
+    // (CircularProgressIndicator / LoadingIndicator из com.google.android.material).
+    // Зависимости у нас нет — дуга с дорожкой и зазором рисуется вручную.
+    private int currentStyle = M3CircularProgress.STYLE_LEGACY;
+    private int trackColor;
+    private M3CircularProgress m3;
 
     public RadialProgressView(Context context) {
         this(context, null);
@@ -216,6 +225,61 @@ public class RadialProgressView extends View {
         progressPaint.setColor(progressColor);
     }
 
+    /**
+     * Стиль 0 — сток, 2 — CircularProgressIndicator,
+     * 3 — он же с волной. Стиль 1 (LoadingIndicator, M3 Expressive) не воспроизводим:
+     * ему нужны морф-фигуры из com.google.android.material, поэтому он остаётся стоковым.
+     */
+    public void setStyle(int style) {
+        style = M3CircularProgress.degradeStyle(style);
+        if (currentStyle == style) {
+            return;
+        }
+        currentStyle = style;
+        if (M3CircularProgress.isCircular(style)) {
+            if (m3 == null) {
+                m3 = new M3CircularProgress();
+            }
+            // IndicatorTrackGapSize = dp(2)
+            m3.setGap(AndroidUtilities.dp(2));
+            m3.setTrackColor(trackColor);
+            setWavy(currentStyle == M3CircularProgress.STYLE_WAVY);
+        }
+        invalidate();
+    }
+
+    public boolean isMaterial3ProgressStyle() {
+        return M3CircularProgress.isCircular(currentStyle);
+    }
+
+    public void setTrackColor(int color) {
+        trackColor = color;
+        if (m3 != null) {
+            m3.setTrackColor(color);
+        }
+    }
+
+    /** SetWavyValues(dp(15), dp(1.6f), dp(5), 0.05f). */
+    @Keep
+    public void setWavy(boolean wavy) {
+        if (m3 == null) {
+            return;
+        }
+        if (wavy) {
+            m3.setWavyValues(AndroidUtilities.dp(15), AndroidUtilities.dp(1.6f), AndroidUtilities.dp(5));
+        } else {
+            m3.setWavy(false);
+        }
+    }
+
+    public void setWavyValues(int wavelength, int amplitude, int speed, float amplitudeRampProgressMin) {
+        if (currentStyle != M3CircularProgress.STYLE_WAVY || m3 == null) {
+            return;
+        }
+        // amplitudeRampProgressMin у exteraGram относится к MDC-спеку; в ручной отрисовке не участвует
+        m3.setWavyValues(wavelength, amplitude, speed);
+    }
+
     public void toCircle(boolean toCircle, boolean animated) {
         this.toCircle = toCircle;
         if (!animated) {
@@ -228,14 +292,23 @@ public class RadialProgressView extends View {
         int x = (getMeasuredWidth() - size) / 2;
         int y = (getMeasuredHeight() - size) / 2;
         cicleRect.set(x, y, x + size, y + size);
-        canvas.drawArc(cicleRect, radOffset, drawingCircleLenght = currentCircleLength, false, progressPaint);
+        drawArc(canvas);
         updateAnimation();
     }
 
     public void draw(Canvas canvas, float cx, float cy) {
         cicleRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy +  size / 2f);
-        canvas.drawArc(cicleRect, radOffset, drawingCircleLenght = currentCircleLength, false, progressPaint);
+        drawArc(canvas);
         updateAnimation();
+    }
+
+    private void drawArc(Canvas canvas) {
+        drawingCircleLenght = currentCircleLength;
+        if (m3 != null && M3CircularProgress.isCircular(currentStyle)) {
+            m3.draw(canvas, cicleRect, radOffset, drawingCircleLenght, progressPaint);
+            return;
+        }
+        canvas.drawArc(cicleRect, radOffset, drawingCircleLenght, false, progressPaint);
     }
 
     public boolean isCircle() {

@@ -1,5 +1,6 @@
 package org.telegram.ui.Components;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
@@ -12,12 +13,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
+import app.exteraless.appearance.M3CircularProgress;
+
 import org.telegram.messenger.AndroidUtilities;
 
 public class CircularProgressDrawable extends Drawable {
 
     public float size = AndroidUtilities.dp(18);
     public float thickness = AndroidUtilities.dp(2.25f);
+
+    // M3-индикатор.
+    // (CircularProgressIndicatorSpec + IndeterminateDrawable). Зависимости
+    // com.google.android.material у нас нет, поэтому дуга/дорожка рисуются вручную.
+    private int currentStyle = M3CircularProgress.STYLE_LEGACY;
+    private int trackColor;
+    private M3CircularProgress m3;
 
     public CircularProgressDrawable() {
         this(0xffffffff);
@@ -29,6 +39,56 @@ public class CircularProgressDrawable extends Drawable {
         this.size = size;
         this.thickness = thickness;
         setColor(color);
+    }
+    // Конструктор с цветом дорожки включает стиль 2
+    public CircularProgressDrawable(float size, float thickness, int trackColor, int color) {
+        this.size = size;
+        this.thickness = thickness;
+        this.trackColor = trackColor;
+        setColor(color);
+        setStyle(M3CircularProgress.STYLE_CIRCULAR, null);
+        setTrackColor(trackColor);
+    }
+
+    /**
+     * Стиль 1 (LoadingIndicator из M3 Expressive) у нас не воспроизводится
+     * и остаётся стоковой отрисовкой.
+     * Context не используется — сохранён ради совпадения сигнатуры с exteraGram.
+     */
+    public void setStyle(int style, Context context) {
+        style = M3CircularProgress.degradeStyle(style);
+        if (currentStyle == style) {
+            return;
+        }
+        currentStyle = style;
+        if (M3CircularProgress.isCircular(style)) {
+            if (m3 == null) {
+                m3 = new M3CircularProgress();
+            }
+            m3.setGap(AndroidUtilities.dp(2));
+            m3.setTrackColor(trackColor);
+            if (style == M3CircularProgress.STYLE_WAVY) {
+                m3.setWavyValues(AndroidUtilities.dp(7), AndroidUtilities.dp(0.75f), AndroidUtilities.dp(6));
+            } else {
+                m3.setWavy(false);
+            }
+        }
+        invalidateSelf();
+    }
+
+    public void setTrackColor(int color) {
+        trackColor = color;
+        if (m3 != null) {
+            m3.setTrackColor(color);
+        }
+    }
+
+    /** (амплитуда, длина волны, скорость) в dp. */
+    public void setWavyValues(float amplitude, float wavelength, float speed) {
+        if (m3 == null) {
+            return;
+        }
+        m3.setWavyValues(AndroidUtilities.dp(wavelength), AndroidUtilities.dp(amplitude), AndroidUtilities.dp(speed));
     }
 
     private long start = -1;
@@ -64,6 +124,11 @@ public class CircularProgressDrawable extends Drawable {
             start = SystemClock.elapsedRealtime();
         }
         updateSegment();
+        if (m3 != null && M3CircularProgress.isCircular(currentStyle)) {
+            m3.draw(canvas, bounds, angleOffset + segment[0], segment[1] - segment[0], paint);
+            invalidateSelf();
+            return;
+        }
         canvas.drawArc(
             bounds,
             angleOffset + segment[0],

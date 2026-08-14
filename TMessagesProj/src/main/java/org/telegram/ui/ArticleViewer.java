@@ -8,6 +8,8 @@
 
 package org.telegram.ui;
 
+import app.exteraless.utils.AppUtils;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.LocaleController.formatString;
@@ -1229,14 +1231,14 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
                     tracker.computeCurrentVelocity(1000);
                     float velX = tracker.getXVelocity();
                     float velY = tracker.getYVelocity();
-                    if ((sheet == null || !sheet.nestedVerticalScroll) && !startedTracking && velX >= 3500 && velX > Math.abs(velY)) {
+                    if ((sheet == null || !sheet.nestedVerticalScroll) && !startedTracking && velX >= AppUtils.getSwipeVelocity() && velX > Math.abs(velY)) {
                         prepareForMoving(event);
                     }
                     if (startedTracking) {
                         View movingView = movingPage ? pages[0] : containerView;
                         float x = !movingPage && sheet != null ? sheet.getBackProgress() * sheet.windowView.getWidth() : movingView.getX();
 
-                        final boolean backAnimation = x < movingView.getMeasuredWidth() * .3f && (velX < 2500 || velX < velY) || !lastWebviewAllowedScroll;
+                        final boolean backAnimation = x < movingView.getMeasuredWidth() * .3f && (velX < AppUtils.getSwipeVelocity() || velX < velY) || !lastWebviewAllowedScroll;
                         float distToMove;
                         AnimatorSet animatorSet = new AnimatorSet();
                         if (!backAnimation) {

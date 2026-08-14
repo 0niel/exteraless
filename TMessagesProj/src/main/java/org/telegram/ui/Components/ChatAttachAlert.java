@@ -110,6 +110,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.camera.CameraController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
@@ -1095,6 +1096,21 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
 
     private View bottomFadeView;
     protected FrameLayout buttonsRecyclerViewWrapper;
+
+    // exteraGram 12.9.0, ChatAttachAlert.java:238 — при hideCameraTile плитки камеры в сетке нет,
+    // и снимок делать неоткуда; exteraGram вешает вместо неё плавающую кнопку поверх шторки.
+    private FragmentFloatingButton cameraFloatingButton;
+
+    /**
+     * Мост к камере плитки. exteraGram зовёт публичный ChatAttachAlertPhotoLayout.openCamera(boolean)
+     * (ChatAttachAlertPhotoLayout.java:4593) прямо из клик-листенера; у нас этот метод private
+     * (ChatAttachAlertPhotoLayout.java:2490), а файл правит другой агент. Достаточно одной строки
+     * в конструкторе ChatAttachAlertPhotoLayout:
+     *     parentAlert.openInAppCameraAction = () -> openCamera(true);
+     * Пока хук не выставлен, тап по кнопке ведёт себя как долгий — уходит в системную камеру.
+     */
+    public Runnable openInAppCameraAction;
+
     protected RecyclerListView buttonsRecyclerView;
 
     private LinearLayoutManager buttonsLayoutManager;
@@ -2597,10 +2613,19 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                 }
             }
 
+            // exteraGram 12.9.0, ChatAttachAlert.java:2913-2925 — FAB камеры едет вместе с рядом
+            // кнопок вложений, поэтому пересчитываем её положение на каждое их движение.
+            @Override
+            public void setAlpha(float alpha) {
+                super.setAlpha(alpha);
+                updateCameraButtonVisibility();
+            }
+
             @Override
             public void setTranslationY(float translationY) {
                 super.setTranslationY(translationY);
                 currentAttachLayout.onButtonsTranslationYUpdated();
+                updateCameraButtonVisibility();
             }
         };
         buttonsRecyclerView = new RecyclerListView(context) {
@@ -2945,6 +2970,38 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
         botProgressView.setScaleY(0.1f);
         botProgressView.setVisibility(View.GONE);
         containerView.addView(botProgressView, LayoutHelper.createFrame(28, 28, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 10, 10));
+
+        // exteraGram 12.9.0, ChatAttachAlert.java:3119-3136 — плавающая кнопка камеры.
+        cameraFloatingButton = new FragmentFloatingButton(context, resourcesProvider);
+        cameraFloatingButton.setImageResource(R.drawable.camera);
+        cameraFloatingButton.setOnClickListener(v -> {
+            // ChatAttachAlert.java:4265-4274 (lambda$new$17) — тап открывает встроенную камеру.
+            if (currentAttachLayout != photoLayout || photoLayout == null) {
+                return;
+            }
+            photoLayout.checkCamera(false);
+            if (openInAppCameraAction != null) {
+                openInAppCameraAction.run();
+            } else if (delegate != null) {
+                // Хук не выставлен: openCamera() у нас private. Не молчим — уводим в системную камеру.
+                delegate.didPressedButton(0, false, true, 0, 0, 0, isCaptionAbove(), false, 0);
+            }
+        });
+        cameraFloatingButton.setOnLongClickListener(v -> {
+            // ChatAttachAlert.java:4276-4284 (lambda$new$18) — долгий тап отдаёт съёмку системной камере.
+            // exteraGram передаёт invertMedia = false, хотя аналогичный лонг-тап по плитке
+            // (ChatAttachAlertPhotoLayout.java:2509) передаёт isCaptionAbove(); повторяем exteraGram.
+            if (delegate != null) {
+                delegate.didPressedButton(0, false, true, 0, 0, 0, false, false, 0);
+            }
+            return true;
+        });
+        // BoolAnimator внутри FragmentFloatingButton стартует со значением true (FragmentFloatingButton.java:38),
+        // т.е. кнопка изначально видима; гасим её без анимации, иначе она мигает при открытии шторки.
+        cameraFloatingButton.setButtonVisible(false, false);
+        FrameLayout.LayoutParams cameraFloatingButtonLayoutParams = FragmentFloatingButton.createDefaultLayoutParams();
+        cameraFloatingButtonLayoutParams.bottomMargin += dp(70);
+        containerView.addView(cameraFloatingButton, cameraFloatingButtonLayoutParams);
 
         moveCaptionButton = new ImageView(context);
         moveCaptionButton.setScaleType(ImageView.ScaleType.CENTER);
@@ -4686,6 +4743,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
         }
         nextAttachLayout.onShow(currentAttachLayout);
         nextAttachLayout.setVisibility(View.VISIBLE);
+        updateCameraButtonVisibility(); // exteraGram 12.9.0, ChatAttachAlert.java:5882
 
         if (layout.getParent() != null) {
             containerView.removeView(nextAttachLayout);
@@ -5285,6 +5343,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                 commentTextView.setLayoutParams(lp);
             }
         }
+        updateCameraButtonVisibility(); // exteraGram 12.9.0, ChatAttachAlert.java:5811
         return true;
     }
 
@@ -5872,6 +5931,58 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                 }
             }
         }
+        updateCameraButtonVisibility(); // exteraGram 12.9.0, ChatAttachAlert.java:6118
+    }
+
+    /**
+     * exteraGram 12.9.0, ChatAttachAlert.java:6121-6150. Кнопка живёт только на вкладке галереи,
+     * только при скрытой плитке и только пока ничего не выбрано — иначе её место занимает
+     * кнопка отправки.
+     */
+    public void updateCameraButtonVisibility() {
+        if (cameraFloatingButton == null) {
+            return;
+        }
+        final boolean show = app.exteraless.chats.ChatsConfig.hideCameraTile.Bool()
+                && (nextAttachLayout != null ? nextAttachLayout == photoLayout : currentAttachLayout == photoLayout)
+                && photoLayout != null
+                && hasGoodCameraForFloatingButton()
+                && !photoLayout.cameraOpened
+                && !isPhotoPicker
+                && photoLayout.getSelectedItemsCount() == 0;
+        float alpha = buttonsRecyclerViewWrapper.getAlpha();
+        if (buttonsRecyclerViewWrapper.getVisibility() != View.VISIBLE) {
+            alpha = 0f;
+        }
+        // Ряд кнопок вложений уезжает вниз либо растворяется — кнопка повторяет ту из двух
+        // трансляций, которая больше, чтобы не наехать на него.
+        final float translationY = Math.max(buttonsRecyclerViewWrapper.getTranslationY(), (1f - alpha) * dp(70));
+        if (!show) {
+            if (cameraFloatingButton.getButtonVisible()) {
+                cameraFloatingButton.setButtonVisible(false, true);
+            }
+            return;
+        }
+        cameraFloatingButton.setTranslationY(translationY);
+        if (!cameraFloatingButton.getButtonVisible()) {
+            cameraFloatingButton.setButtonVisible(true, true);
+        }
+    }
+
+    /**
+     * exteraGram читает package-private ChatAttachAlertPhotoLayout.deviceHasGoodCamera
+     * (ChatAttachAlertPhotoLayout.java:153). У нас поле приватное, а файл чужой, поэтому тот же
+     * признак собираем из публичного состояния: deviceHasGoodCamera выставляется ровно так же —
+     * false без inappCamera и false пока камера не инициализирована (в том числе когда
+     * не выдано разрешение), см. ChatAttachAlertPhotoLayout.checkCamera():2437.
+     */
+    private boolean hasGoodCameraForFloatingButton() {
+        return SharedConfig.inappCamera && CameraController.getInstance().isCameraInitied();
+    }
+
+    /** exteraGram 12.9.0, ChatAttachAlert.java:6722 — вызывается из ChatAttachAlertPhotoLayout. */
+    public void onCameraStateChanged() {
+        updateCameraButtonVisibility();
     }
 
     public void updateLayout(AttachAlertLayout layout, boolean animated, int dy) {
@@ -5908,6 +6019,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
         } else if (dy != 0) {
             previousScrollOffsetY = scrollOffsetY[idx];
         }
+        updateCameraButtonVisibility(); // exteraGram 12.9.0, ChatAttachAlert.java:7775
     }
 
     @Override

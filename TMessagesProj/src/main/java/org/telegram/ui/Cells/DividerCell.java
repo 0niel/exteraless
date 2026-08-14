@@ -19,6 +19,8 @@ import androidx.core.graphics.ColorUtils;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 
+import xyz.nextalone.nagram.NaConfig;
+
 public class DividerCell extends View {
 
     private boolean forceDarkTheme;
@@ -42,6 +44,11 @@ public class DividerCell extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        // Разделители скрыты — не рисуем линию вовсе (ветка forceDarkTheme берёт цвет
+        // не из key_divider, поэтому одного патча в Theme.getColor не хватает).
+        if (NaConfig.INSTANCE.getHideDividers().Bool()) {
+            return;
+        }
         if (forceDarkTheme) {
             paint.setColor(ColorUtils.blendARGB(Color.BLACK, Theme.getColor(Theme.key_voipgroup_dialogBackground, resourcesProvider),  0.2f));
         } else {

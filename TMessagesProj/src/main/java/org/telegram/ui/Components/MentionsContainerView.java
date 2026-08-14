@@ -1,5 +1,7 @@
 package org.telegram.ui.Components;
 
+import app.exteraless.OpenExteraConfig;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 
 import android.content.Context;
@@ -635,13 +637,13 @@ public class MentionsContainerView extends FrameLayout implements NotificationCe
                 TLRPC.Chat chat = (TLRPC.Chat) object;
                 String username = ChatObject.getPublicUsername(chat);
                 if (username != null) {
-                    delegate.replaceText(start, len, "@" + username + " " , false);
+                    delegate.replaceText(start, len, "@" + username + (OpenExteraConfig.addCommaAfterMention() ? ", " : " ") , false);
                 }
             } else if (object instanceof TLRPC.User) {
                 TLRPC.User user = (TLRPC.User) object;
 
                 if (UserObject.getPublicUsername(user) != null) {
-                    delegate.replaceText(start, len, "@" + UserObject.getPublicUsername(user) + " ", false);
+                    delegate.replaceText(start, len, "@" + UserObject.getPublicUsername(user) + ((user.bot || !OpenExteraConfig.addCommaAfterMention()) ? " " : ", "), false);
                 } else {
                     String name = UserObject.getFirstName(user, false);
                     Spannable spannable = new SpannableString(name + " ");

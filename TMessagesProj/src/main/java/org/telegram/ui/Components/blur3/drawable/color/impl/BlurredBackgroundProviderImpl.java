@@ -148,6 +148,7 @@ public class BlurredBackgroundProviderImpl {
                 })
                 .setStrokeColorTop(0xFFFFFFFF, 0x20FFFFFF)
                 .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+                .setStrokeColorFull((r, isDark) -> Theme.getDividerColor(r))
                 .setShadowColor(0x20000000, 0)
                 //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
                 .setStrokeWidth(dpf2(0.55f), dpf2(0.55f))
@@ -184,6 +185,7 @@ public class BlurredBackgroundProviderImpl {
             })
             .setStrokeColorTop(0, 0)
             .setStrokeColorBottom(0, 0)
+            .setStrokeColorFull(0, 0)
             .setShadowColor(0, 0)
             .setShadowLayer(0, 0, 0)
             .setStrokeWidth(0, 0)
@@ -199,6 +201,7 @@ public class BlurredBackgroundProviderImpl {
                 })
                 .setStrokeColorTop(0, 0)
                 .setStrokeColorBottom(0, 0)
+                .setStrokeColorFull(0, 0)
                 .setShadowColor(0, 0)
                 .setShadowLayer(0, 0, 0)
                 .setStrokeWidth(0, 0)
@@ -250,6 +253,8 @@ public class BlurredBackgroundProviderImpl {
                 })
                 .setStrokeColorTop(0x28FFFFFF, 0x28FFFFFF)
                 .setStrokeColorBottom(0x14FFFFFF, 0x14FFFFFF)
+                // Цвет сплошного контура (режим SOLID)
+                .setStrokeColorFull(0x28FFFFFF, 0x28FFFFFF)
                 .setStrokeWidth(dpf2(2 / 3f), dpf2(2 / 3f))
                 .build();
     }

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OEAppearanceTitle">Оформление</string>
+
+    <string name="OEAppearanceAvatarCorners">Закругление аватарок</string>
+    <string name="OEAppearanceAvatarCornersLeft">Квадрат</string>
+    <string name="OEAppearanceAvatarCornersRight">Круг</string>
+    <string name="OEAppearanceSingleCornerRadius">Единое закругление</string>
+    <string name="OEAppearanceSingleCornerRadiusInfo">Форумы будут иметь ту же форму аватарок, что и чаты.</string>
+
+    <string name="OEAppearanceChatList">Список чатов</string>
+    <string name="OEAppearanceForceSnow">Всегда показывать снежинки</string>
+    <string name="OEAppearanceCenterTitle">Заголовок по центру</string>
+    <string name="OEAppearanceHideStories">Скрыть истории</string>
+    <string name="OEAppearanceHideFloatingButton">Скрыть плавающую кнопку</string>
+    <string name="OEAppearanceHideSearchBar">Скрыть строку поиска</string>
+    <string name="OEAppearanceSenderMiniAvatars">Мини-аватарки отправителей</string>
+    <string name="OEAppearanceChatListInfo">Снежинки будут падать в шапке, боковом меню и на фоне чатов.</string>
+
+    <string name="OEAppearanceFolders">Папки</string>
+    <string name="OEAppearanceTabTitleStyle">Заголовок папки</string>
+    <string name="OEAppearanceTabTitleStyleTextOnly">Только названия</string>
+    <string name="OEAppearanceTabTitleStyleIconsOnly">Только иконки</string>
+    <string name="OEAppearanceTabTitleStyleTextWithIcons">Названия с иконками</string>
+    <string name="OEAppearanceTabCounter">Счётчик уведомлений</string>
+    <string name="OEAppearanceHideAllChats">Скрыть вкладку «%1$s»</string>
+    <string name="OEAppearanceFoldersInfo">Иконки папок синхронизируются с вашим аккаунтом.</string>
+
+    <string name="OEAppearanceNavigation">Навигация</string>
+    <string name="OEAppearanceHideBottomNavigationBar">Скрыть нижнюю панель</string>
+    <string name="OEAppearanceHideTabTitles">Скрыть подписи на панели</string>
+    <string name="OEAppearanceHideContactsTab">Скрыть вкладку «Контакты»</string>
+    <string name="OEAppearanceTabletMode">Планшетный режим</string>
+    <string name="OEAppearanceNavigationInfo">Относится к нижней панели навигации и боковому меню.</string>
+
+    <string name="OEAppearanceGeneral">Общее оформление</string>
+    <string name="OEAppearanceUseSystemFonts">Системные шрифты</string>
+    <string name="OEAppearanceUseSystemEmoji">Системные эмодзи</string>
+    <string name="OEAppearanceSwitchStyle">Стиль переключателей</string>
+    <string name="OEAppearanceSliderStyle">Стиль слайдеров</string>
+    <string name="OEAppearanceBackAnimation">Анимация «назад»</string>
+    <string name="OEAppearanceBackAnimationClassic">Классическая</string>
+    <string name="OEAppearanceBackAnimationSpring">Пружинная</string>
+    <string name="OEAppearanceBackAnimationPredictive">Predictive Back</string>
+    <string name="OEAppearanceSpringAnimations">Пружинное затухание</string>
+    <string name="OEAppearanceHideDividers">Скрыть разделители</string>
+    <string name="OEAppearanceGeneralInfo">Пружинные анимации делают переходы между экранами и открытие меню плавнее.</string>
+
+    <string name="OEAppearanceBlur">Размытие</string>
+    <string name="OEAppearanceForceBlur">Принудительное размытие</string>
+    <string name="OEAppearanceDisableAvatarBlur">Отключить размытие аватарок</string>
+    <string name="OEAppearanceBlurInfo">Размытие будет применяться ко всем темам, независимо от их настроек.</string>
+
+    <string name="OEAppearanceNeedRestart">Перезапустите приложение, чтобы применить настройку.</string>
+
+    <string name="OEAppearanceMaterialDesign3" translatable="false">Material Design 3</string>
+    <string name="OEAppearanceGooeyAvatar">«Желейная» анимация аватарок</string>
+    <string name="OEAppearanceCustomThemes">Индивидуальные темы в чатах</string>
+    <string name="OEAppearanceCustomThemesInfo">Каждый чат будет показывать выбранную для него тему.</string>
+    <string name="OEAppearanceSections">Секции</string>
+    <string name="OEAppearanceSectionRadius">Радиус секций</string>
+    <string name="OEAppearanceSectionRadiusOff">Выкл.</string>
+    <string name="OEAppearanceSectionRadiusMax">Макс.</string>
+    <string name="OEAppearanceSeparateHeaders">Отдельные заголовки</string>
+    <string name="OEAppearanceDividerStyle">Стиль разделителя</string>
+    <string name="OEAppearanceDividerHidden">Скрыт</string>
+    <string name="OEAppearanceDividerLine">Линия</string>
+    <string name="OEAppearanceDividerSegments">Сегменты</string>
+    <string name="OEAppearanceGlassOutline">Стеклянный контур</string>
+    <string name="OEAppearanceGlassOutlineGlare">Блик</string>
+    <string name="OEAppearanceGlassOutlineSolid">Сплошной</string>
+    <string name="OEAppearanceGlassOutlineHidden">Скрыт</string>
+    <string name="OEAppearanceGlassMessageMenu">Стеклянное меню сообщения</string>
+    <string name="OEAppearanceIconPacks">Наборы иконок</string>
+    <string name="OEAppearanceIconPacksInfo">Заменить иконки приложения на свой набор.</string>
+    <string name="OEAppearancePillStack">Плашки</string>
+    <string name="OEAppearancePillStackInfo">Настройка информационных плашек в списке чатов.</string>
+    <string name="OEAppearanceNavigationSub">Меню в правом верхнем углу и боковое меню</string>
+    <string name="OEAppearanceComingSoon">Этот экран пока недоступен в exteraless.</string>
+    <string name="OEAppNavigation">Навигация в приложении</string>
+    <string name="OEGeneral">Основные</string>
+    <string name="OETabletMode">Планшетный режим</string>
+    <string name="OETabletModeAuto">Автоматически</string>
+    <string name="OETabletModeOn">Включён</string>
+    <string name="OETabletModeOff">Выключен</string>
+    <string name="OEBackAnimation">Анимация возврата</string>
+    <string name="OEBackAnimationClassic">Классическая</string>
+    <string name="OEBackAnimationSpring">Пружинная</string>
+    <string name="OEBackAnimationPredictive">Предиктивная</string>
+    <string name="OEPredictiveBackIntensity">Интенсивность жеста</string>
+    <string name="OEPredictiveBackOff">Выкл</string>
+    <string name="OEPredictiveBackMax">Макс</string>
+    <string name="OEPredictiveBackInfo">Настраивает, насколько далеко сдвигается экран при жесте назад.</string>
+    <string name="OENavigationDrawer">Боковое меню</string>
+    <string name="OENavigationDrawerImmersive">Иммерсивная анимация</string>
+    <string name="OENavigationDrawerInfo">Заменяет меню в правом верхнем углу на боковую панель, открывающуюся свайпом.</string>
+    <string name="OEMainMenuItems">Элементы меню</string>
+    <string name="OEMainMenuItemsInfo">Нажмите, чтобы скрыть или показать пункты, удерживайте для изменения порядка. Изменения применяются к верхнему меню и боковой панели.</string>
+    <string name="OEMainMenuHiddenItems">Скрытые элементы</string>
+    <string name="OEMainMenuAddDivider">Добавить разделитель</string>
+    <string name="OEMainMenuDivider">Разделитель</string>
+    <string name="OEMainMenuRemoveSettingsInfo">Настройки нельзя скрыть, если отключена нижняя панель навигации.</string>
+</resources>

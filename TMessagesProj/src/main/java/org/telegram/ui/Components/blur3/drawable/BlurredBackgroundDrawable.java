@@ -30,6 +30,7 @@ import androidx.core.math.MathUtils;
 
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.Blur3HashImpl;
+import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSource;
@@ -48,6 +49,8 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
     public BlurredBackgroundDrawable() {
         boundProps.strokeWidthTop = dpf2(1);
         boundProps.strokeWidthBottom = dpf2(2 / 3f);
+        // Сплошной контур в пикселях, не в dp
+        boundProps.strokeWidthFull = 1.0f;
 
         shadowLayerRadius = dpf2(1);
         shadowLayerDx = 0;
@@ -187,6 +190,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
 
     protected BlurredBackgroundColorProvider colorProvider;
     protected int shadowColor, backgroundColor, strokeColorTop, strokeColorBottom;
+    protected int strokeColorFull;
 
     public BlurredBackgroundDrawable setColorProvider(BlurredBackgroundColorProvider colorProvider) {
         this.colorProvider = colorProvider;
@@ -195,19 +199,44 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         if (colorProvider instanceof BlurredBackgroundProvider) {
             BlurredBackgroundProvider provider = (BlurredBackgroundProvider) colorProvider;
             setStrokeWidth(provider.getStrokeWidthTop(), provider.getStrokeWidthBottom());
-            setShadowParams(provider.getShadowRadius(), provider.getShadowDx(), provider.getShadowDy());
+            // параметры тени выставляет updateColors()
         }
         return this;
     }
 
+    /**
+     * При GLARE (дефолт) — ровно прежнее поведение; SOLID гасит блик и тень и включает
+     * сплошную обводку, HIDDEN гасит и обводку, и тень.
+     */
     @CallSuper
     public void updateColors() {
         if (colorProvider == null) return;
 
+        final GlassOutlineStyle outlineStyle = GlassOutlineStyle.current();
+        final boolean glare = outlineStyle == GlassOutlineStyle.GLARE;
+        final boolean solid = outlineStyle == GlassOutlineStyle.SOLID;
+
+        if (boundProps.useFullStroke != solid) {
+            boundProps.useFullStroke = solid;
+            boundProps.build();
+        }
+
         backgroundColor = colorProvider.getBackgroundColor();
-        shadowColor = colorProvider.getShadowColor();
-        strokeColorTop = colorProvider.getStrokeColorTop();
-        strokeColorBottom = colorProvider.getStrokeColorBottom();
+        shadowColor = glare ? colorProvider.getShadowColor() : 0;
+        strokeColorTop = glare ? colorProvider.getStrokeColorTop() : 0;
+        strokeColorBottom = glare ? colorProvider.getStrokeColorBottom() : 0;
+        strokeColorFull = solid ? colorProvider.getStrokeColorFull() : 0;
+
+        if (colorProvider instanceof BlurredBackgroundProvider) {
+            final BlurredBackgroundProvider provider = (BlurredBackgroundProvider) colorProvider;
+            if (glare) {
+                setShadowParams(provider.getShadowRadius(), provider.getShadowDx(), provider.getShadowDy());
+            } else {
+                setShadowParams(0, 0, 0);
+            }
+        }
+
+        invalidateSelf();
     }
 
 
@@ -228,6 +257,8 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
 
         public float strokeWidthTop;
         public float strokeWidthBottom;
+        public float strokeWidthFull;
+        public boolean useFullStroke = false;
 
         public final Path path = new Path();
         public boolean radiiAreSame = true;
@@ -253,6 +284,28 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
             path.close();
 
             final float radiusMax = Math.min(boundsWithPadding.width(), boundsWithPadding.height()) / 2f;
+
+            // Сплошной контур по всему периметру
+            if (useFullStroke) {
+                System.arraycopy(radii, 0, tmpRadii, 0, 8);
+                if (radiiAreSame && radii[0] > radiusMax) {
+                    Arrays.fill(tmpRadii, radiusMax);
+                }
+                strokePathTop.rewind();
+                strokePathTop.addRoundRect(
+                    boundsWithPadding.left, boundsWithPadding.top,
+                    boundsWithPadding.right, boundsWithPadding.bottom,
+                    tmpRadii, Path.Direction.CW);
+                strokePathTop.addRoundRect(
+                    boundsWithPadding.left + strokeWidthFull, boundsWithPadding.top + strokeWidthFull,
+                    boundsWithPadding.right - strokeWidthFull, boundsWithPadding.bottom - strokeWidthFull,
+                    tmpRadii, Path.Direction.CCW);
+                strokePathTop.close();
+
+                strokePathBottom.rewind();
+                strokePathBottom.close();
+                return;
+            }
 
             Arrays.fill(tmpRadii, 0);
             tmpRadii[0] = radii[0]; tmpRadii[1] = radii[1]; tmpRadii[2] = radii[2]; tmpRadii[3] = radii[3];
@@ -709,6 +762,16 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
 
     private void drawStrokeInternalIfNeeded(Canvas canvas) {
         if (!NaConfig.INSTANCE.getStrokeOnViews().Bool()) return;
+
+        if (boundProps.useFullStroke) {
+            final int strokeColorFull = Theme.multAlpha(this.strokeColorFull, alpha / 255f);
+            if (Color.alpha(strokeColorFull) > 0) {
+                paintStrokeFill.setColor(strokeColorFull);
+                canvas.drawPath(boundProps.strokePathTop, paintStrokeFill);
+            }
+            return;
+        }
+
         final int strokeColorTop = Theme.multAlpha(this.strokeColorTop, alpha / 255f);
         final int strokeColorBottom = Theme.multAlpha(this.strokeColorBottom, alpha / 255f);
 
@@ -778,10 +841,16 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         ninePatchHashBuilder.addF(shadowLayerDy);
         ninePatchHashBuilder.add(withStroke);
         if (withStroke) {
-            ninePatchHashBuilder.add(strokeColorTop);
-            ninePatchHashBuilder.add(strokeColorBottom);
-            ninePatchHashBuilder.addF(boundProps.strokeWidthTop);
-            ninePatchHashBuilder.addF(boundProps.strokeWidthBottom);
+            ninePatchHashBuilder.add(boundProps.useFullStroke);
+            if (boundProps.useFullStroke) {
+                ninePatchHashBuilder.add(strokeColorFull);
+                ninePatchHashBuilder.addF(boundProps.strokeWidthFull);
+            } else {
+                ninePatchHashBuilder.add(strokeColorTop);
+                ninePatchHashBuilder.add(strokeColorBottom);
+                ninePatchHashBuilder.addF(boundProps.strokeWidthTop);
+                ninePatchHashBuilder.addF(boundProps.strokeWidthBottom);
+            }
         }
 
         final long hash = ninePatchHashBuilder.get();
@@ -816,6 +885,24 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
                         final boolean radiiAreSame = radiiAreSame(radii);
                         final float radiusMax = Math.min(rect.width(), rect.height()) / 2f;
                         final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+                        if (boundProps.useFullStroke) {
+                            System.arraycopy(radii, 0, tmpRadii, 0, 8);
+                            if (radiiAreSame && radii[0] > radiusMax) {
+                                Arrays.fill(tmpRadii, radiusMax);
+                            }
+                            final Path strokePathFull = new Path();
+                            strokePathFull.addRoundRect(rect.left, rect.top, rect.right, rect.bottom,
+                                    tmpRadii, Path.Direction.CW);
+                            strokePathFull.addRoundRect(
+                                    rect.left + boundProps.strokeWidthFull, rect.top + boundProps.strokeWidthFull,
+                                    rect.right - boundProps.strokeWidthFull, rect.bottom - boundProps.strokeWidthFull,
+                                    tmpRadii, Path.Direction.CCW);
+                            strokePathFull.close();
+                            strokePaint.setColor(strokeColorFull);
+                            canvas.drawPath(strokePathFull, strokePaint);
+                            return;
+                        }
 
                         if (Color.alpha(strokeColorTop) > 0 && radii[0] > 0) {
                             Arrays.fill(tmpRadii, 0);

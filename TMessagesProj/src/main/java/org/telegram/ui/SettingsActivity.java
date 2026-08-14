@@ -1,5 +1,7 @@
 package org.telegram.ui;
 
+import app.exteraless.settings.OpenExteraSettingsActivity;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.AndroidUtilities.replaceSingleTag;
@@ -655,6 +657,14 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     }
 
     private ArrayList<Integer> accountNumbers = new ArrayList<>();
+
+    // exteraGram 12.9.0, SettingsActivity.java:984-987 — число активных сессий
+    // показывается значением справа от строки «Devices».
+    private String getDevicesCount() {
+        final int count = getMessagesController().lastKnownSessionsCount;
+        return count > 0 ? String.format(LocaleController.getInstance().getCurrentLocale(), "%d", count) : "";
+    }
+
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         if (searchItem.isSearchFieldVisible2()) {
             items.add(UItem.asSpace(ActionBar.getCurrentActionBarHeight()));
@@ -731,6 +741,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         }
 
         items.add(SettingCell.Factory.of(100, 0xFF3CCFFF, 0xFF007AFF, R.drawable.filled_profile_settings, getString(R.string.NekoSettings)));
+        // Как в exteraGram 12.9.0 (SettingsActivity.java:899): фирменный красный 0xFFE83030
+        // на обе точки градиента и логотип приложения вместо шестерёнки.
+        items.add(SettingCell.Factory.of(102, 0xFFE83030, 0xFFE83030, R.mipmap.icon_foreground, getString(R.string.OpenExtera), getString(R.string.OpenExteraInfo)));
         items.add(UItem.asShadow(null));
 
         items.add(SettingCell.Factory.of(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
@@ -742,9 +755,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         items.add(SettingCell.Factory.of(5, IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom, R.drawable.settings_sounds, getString(R.string.SettingsNotifications), getString(R.string.SettingsNotificationsInfo)));
         items.add(SettingCell.Factory.of(6, IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom, R.drawable.settings_data, getString(R.string.SettingsData), getString(R.string.SettingsDataInfo)));
         items.add(SettingCell.Factory.of(7, IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom, R.drawable.settings_folders, getString(R.string.SettingsFolders), getString(R.string.SettingsFoldersInfo)));
-        items.add(SettingCell.Factory.of(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo)));
+        items.add(SettingCell.Factory.of(8, IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom, R.drawable.settings_devices, getString(R.string.SettingsDevices), getString(R.string.SettingsDevicesInfo), getDevicesCount()));
         items.add(SettingCell.Factory.of(9, IconBackgroundColors.ORANGE_DEEP.top, IconBackgroundColors.ORANGE_DEEP.bottom, R.drawable.settings_power, getString(R.string.SettingsPowerSaving), getString(R.string.SettingsPowerSavingInfo)));
-        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), LocaleController.getCurrentLanguageName()));
+        items.add(SettingCell.Factory.of(10, IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom, R.drawable.settings_language, getString(R.string.SettingsLanguage), null, LocaleController.getCurrentLanguageName()));
 
         boolean hidePremium = NaConfig.INSTANCE.getHidePremiumSection().Bool();
         boolean hideHelp = NaConfig.INSTANCE.getHideHelpSection().Bool();
@@ -948,6 +961,10 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             }
             case 100: {
                 presentFragment(new NekoSettingsActivity());
+                break;
+            }
+            case 102: {
+                presentFragment(new OpenExteraSettingsActivity());
                 break;
             }
         }
@@ -1282,6 +1299,10 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
             iconBackground.setColor(iconColorTop, iconColorBottom);
             iconView.setImageResource(icon);
+            // exteraGram, SettingsActivity.java:577 — строке-входу в настройки форка ставится
+            // CENTER_CROP, чтобы логотип занял всю плашку, остальным CENTER.
+            iconView.setScaleType(icon == R.mipmap.icon_foreground
+                    ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             titleView.setText(title);
             subtitleView.setVisibility((twoLines = !TextUtils.isEmpty(subtitle)) ? View.VISIBLE : View.GONE);
             subtitleView.setText(subtitle);
@@ -1382,7 +1403,10 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 item.id = id;
                 item.iconResId = icon;
                 item.text = title;
-                item.subtext = subtitle;
+                // Подпись намеренно отбрасывается — так же, как в exteraGram 12.9.0
+                // (SettingsActivity.java:539-560: subtext не присваивается вовсе).
+                // Из-за этого twoLines остаётся false и строка меряется в dp(50), а не dp(60).
+                // Параметр оставлен в сигнатуре, чтобы не трогать 11 мест вызова.
                 item.textValue = value;
                 item.longValue = ((long) iconColorBottom << 32) | (iconColorTop & 0xFFFFFFFFL);
                 return item;

@@ -6,6 +6,7 @@ import static org.telegram.messenger.AndroidUtilities.find;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.text.TextUtils;
+import app.exteraless.utils.MarkdownUtils;
 import org.telegram.messenger.AndroidUtilities;
 
 import org.commonmark.Extension;
@@ -75,10 +76,14 @@ public class MarkdownParser {
 
     private static final int MAX_RICH_TEXT_LEN = 8192;
     private static final int MAX_FILE_SIZE = 64 * 1024;
+    /** Размер куска, на которые режется код в Instant View. */
+    private static final int PREFORMATTED_CHUNK_SIZE = 8192;
 
     public static boolean isMarkdown(MessageObject msg) {
         if (msg == null) return false;
-        return isExtensionMarkdown(msg.getExtension()) || isMimeMarkdown(msg.getMimeType());
+        // третий дизъюнкт — .txt/.json/.kt/.py/Dockerfile и ещё ~60 типов, они открываются
+        // тем же вьюером, но одним преформатированным блоком с подсветкой
+        return isExtensionMarkdown(msg.getExtension()) || isMimeMarkdown(msg.getMimeType()) || MarkdownUtils.isExteraMarkdown(msg);
     }
 
     public static boolean isExtensionMarkdown(String ext) {
@@ -145,10 +150,18 @@ public class MarkdownParser {
             }
             if (fileText.length() > MAX_FILE_SIZE) return null;
 
-            final String title = parse(fileText, page.blocks);
-            if (!TextUtils.isEmpty(title)) {
-                webpage.flags |= TLObject.FLAG_2;
-                webpage.title = title;
+            // код и текстовые конфиги markdown-парсеру отдавать нельзя: он съест решётки как
+            // заголовки, а звёздочки как курсив. Такой файл кладём целиком в pageBlockPreformatted,
+            // ArticleViewer подсветит его по language
+            final String language = MarkdownUtils.getPreformattedLanguage(filename, messageObject.getExtension(), messageObject.getMimeType());
+            if (TextUtils.isEmpty(language)) {
+                final String title = parse(fileText, page.blocks);
+                if (!TextUtils.isEmpty(title)) {
+                    webpage.flags |= TLObject.FLAG_2;
+                    webpage.title = title;
+                }
+            } else {
+                MarkdownUtils.appendPreformattedBlocks(page.blocks, fileText, language, PREFORMATTED_CHUNK_SIZE);
             }
         } catch (Exception e) {
             FileLog.e(e);

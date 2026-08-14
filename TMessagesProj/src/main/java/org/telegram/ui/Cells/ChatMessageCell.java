@@ -1430,6 +1430,43 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private boolean pollHasVoteRestrictions;
     private boolean pollClosed;
     private boolean pollResultsPreview;
+
+    /**
+     * openExtera: «хвостик» пузыря убран (ChatsConfig.removeMessageTail).
+     * Сам пузырь рисует Theme.MessageDrawable.generatePath — там патч ещё не стоит,
+     * см. отчёт. Здесь только зависимые от хвостика геометрии в ячейке.
+     */
+    private static boolean oeRemoveMessageTail() {
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        return app.exteraless.chats.ChatsConfig.removeMessageTail.Bool();
+    }
+
+    /**
+     * openExtera: показывать результаты опроса до голосования
+     * (ChatsConfig.showResultsBeforeVoting). Перенесено из exteraGram 12.9.0,
+     * ChatMessageCell.isPollResultsPreviewEnabled().
+     */
+    private static boolean isPollResultsPreviewEnabled(MessageObject messageObject, TLRPC.TL_messageMediaPoll media) {
+        if (messageObject == null || media == null) {
+            return false;
+        }
+        if (messageObject.forceShowPollResults) {
+            return true;
+        }
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        if (!app.exteraless.chats.ChatsConfig.showResultsBeforeVoting.Bool()
+                || media.poll == null
+                || media.results == null
+                || media.results.total_voters <= 0
+                || media.results.results == null
+                || media.results.results.isEmpty()) {
+            return false;
+        }
+        if (media.poll.closed) {
+            return false;
+        }
+        return !media.poll.hide_results_until_close || media.poll.creator;
+    }
     private long lastPollCloseTime;
     private String closeTimeText;
     private int closeTimeWidth;
@@ -6831,11 +6868,13 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             ArrayList<TLRPC.PollAnswerVoters> newResults = null;
             TLRPC.Poll newPoll = null;
             int newVoters = 0;
+            boolean newPollResultsPreview = false;
             if (MessageObject.getMedia(messageObject.messageOwner) instanceof TLRPC.TL_messageMediaPoll) {
                 TLRPC.TL_messageMediaPoll mediaPoll = (TLRPC.TL_messageMediaPoll) MessageObject.getMedia(messageObject.messageOwner);
                 newResults = mediaPoll.results.results;
                 newPoll = mediaPoll.poll;
                 newVoters = mediaPoll.results.total_voters;
+                newPollResultsPreview = isPollResultsPreviewEnabled(messageObject, mediaPoll);
             }
             if (newResults != null && lastPollResults != null && newVoters != lastPollResultsVoters) {
                 pollChanged = true;
@@ -6843,7 +6882,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             if (!pollChanged && newResults != lastPollResults) {
                 pollChanged = true;
             }
-            if (!pollChanged && (messageObject.forceShowPollResults != pollResultsPreview)) {
+            if (!pollChanged && (newPollResultsPreview != pollResultsPreview)) {
                 pollChanged = true;
             }
             if (lastPoll != newPoll && (lastPoll != null && lastPoll.closed) != newPoll.closed) {
@@ -6856,7 +6895,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             animatePollAvatars = false;
             if (pollChanged && attachedToWindow) {
                 pollAnimationProgressTime = 0.0f;
-                if ((pollVoted || pollResultsPreview) && !(messageObject.isVoted() || messageObject.forceShowPollResults)) {
+                if ((pollVoted || pollResultsPreview) && !(messageObject.isVoted() || newPollResultsPreview)) {
                     pollUnvoteInProgress = true;
                 }
                 animatePollAvatars = lastPollResultsVoters == 0 || lastPollResultsVoters != 0 && newVoters == 0;
@@ -9800,8 +9839,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     availableTimeWidth = photoWidth - dp(14);
                     backgroundWidth = photoWidth + dp(12);
 
-                    photoImage.setRoundRadius(0);
-                    canChangeRadius = false;
+                    // openExtera: форма стикеров (app.exteraless.chats.ChatsConfig)
+                    int oeStickerShape = app.exteraless.chats.ChatsConfig.stickerShape();
+                    if (oeStickerShape == 1) {
+                        photoImage.setRoundRadius(dp(6));
+                        canChangeRadius = false;
+                    } else if (oeStickerShape == 2) {
+                        canChangeRadius = true;
+                    } else {
+                        photoImage.setRoundRadius(0);
+                        canChangeRadius = false;
+                    }
                     if (!messageObject.isOutOwner() && MessageObject.isPremiumSticker(messageObject.getDocument())) {
                         flipImage = true;
                     }
@@ -11407,7 +11455,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             total_voters = media.results.total_voters;
             timerTransitionProgress = media.poll.close_date - ConnectionsManager.getInstance(currentAccount).getCurrentTime() < 60 ? 0.0f : 1.0f;
             pollClosed = media.poll.closed;
-            pollResultsPreview = messageObject.forceShowPollResults;
+            pollResultsPreview = isPollResultsPreviewEnabled(messageObject, media);
             pollHideResults = media.poll.hide_results_until_close;
             title = media.poll.question;
             if (pollClosed) {
@@ -13492,10 +13540,15 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                                     radii[a * 2] = radii[a * 2 + 1] = dp(pinnedBottom ? Math.min(5, SharedConfig.bubbleRadius) : SharedConfig.bubbleRadius);
                                     continue;
                                 }
+                                // openExtera: без хвостика скругляем и «хвостовой» угол
+                                if (oeRemoveMessageTail() && a == (out ? 2 : 3)) {
+                                    radii[a * 2] = radii[a * 2 + 1] = dp(SharedConfig.bubbleRadius);
+                                    continue;
+                                }
                             }
                             radii[a * 2] = radii[a * 2 + 1] = 0;
                         }
-                        if (!out && !drawPinnedBottom && currentPosition == null && (currentPosition == null || pollInstantViewTouchesBottom)) {
+                        if (!oeRemoveMessageTail() && !out && !drawPinnedBottom && currentPosition == null && (currentPosition == null || pollInstantViewTouchesBottom)) {
                             path.moveTo(rect.left + dp(6), rect.top);
                             path.lineTo(rect.left + dp(6), rect.bottom - dp(6) - dp(2 + 3));
                             AndroidUtilities.rectTmp.set(
@@ -18615,7 +18668,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else if (messageObject.messageOwner.fwd_from != null && messageObject.messageOwner.fwd_from.imported) {
                 currentTimeString.insert(0, " ");
             } else {
-                String toInsert = edited && !NaConfig.INSTANCE.getUseEditedIcon().Bool() ? ", " : " ";
+                String toInsert = edited && !TimeStringHelper.useEditedIcon() ? ", " : " "; // openExtera: + ChatsConfig.replaceEditedWithIcon
                 currentTimeString.insert(0, toInsert);
             }
         }
@@ -18656,7 +18709,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
         timeTextWidth = timeWidth = (int) Math.ceil(Theme.chat_timePaint.measureText(currentTimeString, 0, currentTimeString == null ? 0 : currentTimeString.length()));
         if (timeString instanceof SpannableStringBuilder) {
-            if (edited && NaConfig.INSTANCE.getUseEditedIcon().Bool() && TimeStringHelper.editedDrawable != null) {
+            if (edited && TimeStringHelper.useEditedIcon() && TimeStringHelper.editedDrawable != null) { // openExtera: + ChatsConfig.replaceEditedWithIcon
                 timeTextWidth = timeWidth += TimeStringHelper.editedDrawable.getIntrinsicWidth();
             }
             if (ayuDeleted && NaConfig.INSTANCE.getUseDeletedIcon().Bool() && TimeStringHelper.deletedDrawable != null) {
@@ -23358,7 +23411,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 buttonX -= dp(10);
             }
             commentButtonRect.set(
-                    buttonX - dp((currentMessageObject == null || !currentMessageObject.isOutOwner()) && !drawPinnedBottom && currentPosition == null && (currentMessageObject == null || currentMessageObject.type != MessageObject.TYPE_POLL || pollInstantViewTouchesBottom) ? 6 : 0),
+                    buttonX - dp(!oeRemoveMessageTail() && (currentMessageObject == null || !currentMessageObject.isOutOwner()) && !drawPinnedBottom && currentPosition == null && (currentMessageObject == null || currentMessageObject.type != MessageObject.TYPE_POLL || pollInstantViewTouchesBottom) ? 6 : 0),
                     (int) buttonY,
                     endX - dp(14),
                     layoutHeight - dp(h) + 1

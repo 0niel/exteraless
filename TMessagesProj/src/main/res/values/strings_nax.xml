@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="NagramX" translatable="false">Nagram X</string>
+    <string name="NagramX" translatable="false">exteraless</string>
     <string name="XChannel">Nagram X Channel</string>
     <string name="EnableSaveDeletedMessages">Save Deleted Messages</string>
     <string name="DeletedMessage">deleted</string>
@@ -182,6 +182,7 @@
     <string name="HideDividers">Hide Dividers</string>
     <string name="IconReplacements">Icon Replacements</string>
     <string name="IconReplacementSolar">Solar Icons by @Design480</string>
+    <string name="IconReplacementRemix">Remix Icons by @Remixicon</string>
     <string name="DebugMenuEnableInvoicePayment">Enable Invoice Payment</string>
     <string name="DebugMenuDisableInvoicePayment">Disable Invoice Payment</string>
     <string name="DebugMenuUseCamera2Api">Use Camera 2 API</string>

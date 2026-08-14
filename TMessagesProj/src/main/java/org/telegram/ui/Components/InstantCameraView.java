@@ -59,6 +59,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
+import android.view.KeyEvent;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -103,6 +104,7 @@ import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorPro
 import org.telegram.ui.Components.voip.CellFlickerDrawable;
 import org.telegram.ui.Stories.recorder.DualCameraView;
 import org.telegram.ui.Stories.recorder.FlashViews;
+import org.telegram.ui.Stories.recorder.SliderView;
 import org.telegram.ui.Stories.recorder.StoryEntry;
 
 import java.io.File;
@@ -141,6 +143,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private final FlashViews.ImageViewInvertable switchCameraButton;
     private final FlashViews.ImageViewInvertable flashButton;
     private final FlashViews flashViews;
+    private ItemOptions flashOptions;
     private RLottieDrawable flashOnDrawable, flashOffDrawable;
     private RLottieDrawable switchCameraDrawable;
     private ImageView muteImageView;
@@ -296,7 +299,11 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         rect = new RectF();
 
         flashViews = new FlashViews(getContext(), null, this, null);
-        flashViews.setWarmth(.5f);
+        // Тёплость и яркость фронтальной вспышки берём из настроек, а не константой:
+        // на случай раннего вызова до init().
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        flashViews.setWarmth(app.exteraless.chats.ChatsConfig.flashWarmth());
+        flashViews.setIntensity(app.exteraless.chats.ChatsConfig.flashIntensity());
         addView(flashViews.backgroundView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
 
         cameraContainer = new InstantViewCameraContainer(context) {
@@ -400,6 +407,52 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         flashButton.setOnClickListener(v -> {
             flashing = !flashing;
             updateFlash();
+        });
+        // Долгий тап по вспышке открывает регулировку тёплости и яркости.
+        // Только на фронталке: у тыльной это обычный торч, крутить там нечего.
+        flashButton.setOnLongClickListener(v -> {
+            if (!isFrontface || !cameraReady || !isCameraSessionInitiated() || cameraThread == null) {
+                return false;
+            }
+            // Пока попап открыт, подсветку включаем принудительно — иначе ползунки нечем оценить;
+            // если до тапа она была выключена, на закрытии возвращаем как было.
+            final boolean wasFlashing = flashing;
+            if (!wasFlashing) {
+                flashing = true;
+                updateFlash();
+            }
+            flashOptions = ItemOptions.makeOptions(this, resourcesProvider, flashButton)
+                .addView(
+                    new SliderView(getContext(), SliderView.TYPE_WARMTH)
+                        .setValue(app.exteraless.chats.ChatsConfig.flashWarmth())
+                        .setOnValueChange(value -> {
+                            app.exteraless.chats.ChatsConfig.flashWarmth.setConfigInt(Math.round(value * 100));
+                            flashViews.setWarmth(value);
+                        })
+                )
+                .addSpaceGap()
+                .addView(
+                    // нижняя граница яркости у кружка 0.5f, а не.65f как в сторис
+                    new SliderView(getContext(), SliderView.TYPE_INTENSITY)
+                        .setMinMax(.5f, 1f)
+                        .setValue(app.exteraless.chats.ChatsConfig.flashIntensity())
+                        .setOnValueChange(value -> {
+                            app.exteraless.chats.ChatsConfig.flashIntensity.setConfigInt(Math.round(value * 100));
+                            flashViews.setIntensity(value);
+                        })
+                )
+                .setOnDismiss(() -> {
+                    if (!wasFlashing) {
+                        flashing = false;
+                        updateFlash();
+                    }
+                })
+                .setDimAlpha(50)
+                .setGravity(Gravity.RIGHT)
+                .translate(dp(46), dp(4))
+                .setBackgroundColor(0xbb1b1b1b)
+                .show();
+            return true;
         });
         updateFlash();
 
@@ -798,7 +851,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             if (bothCameras) {
                 for (int a = 0; a < 2; ++a) {
                     if (camera2Sessions[a] == null) {
-                        camera2Sessions[a] = Camera2Session.create(a == (isFrontface ? 0 : 1), MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize, MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize);
+                        camera2Sessions[a] = Camera2Session.create(a == (isFrontface ? 0 : 1), app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize), app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize));
                         if (camera2Sessions[a] != null) {
                             camera2Sessions[a].setRecordingVideo(true);
                             previewSize[a] = new Size(camera2Sessions[a].getPreviewWidth(), camera2Sessions[a].getPreviewHeight());
@@ -812,7 +865,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 }
                 if (camera2SessionCurrent == null) return;
             } else {
-                camera2SessionCurrent = camera2Sessions[isFrontface ? 0 : 1] = Camera2Session.create(isFrontface, MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize, MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize);
+                camera2SessionCurrent = camera2Sessions[isFrontface ? 0 : 1] = Camera2Session.create(isFrontface, app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize), app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize));
                 if (camera2SessionCurrent == null) return;
                 camera2SessionCurrent.setRecordingVideo(true);
                 previewSize[0] = new Size(camera2SessionCurrent.getPreviewWidth(), camera2SessionCurrent.getPreviewHeight());
@@ -1138,6 +1191,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void hideCamera(boolean async) {
+        // Попап регулировки вспышки закрываем до destroy: он держит ссылку на flashButton,
+        // а его onDismiss дёргает updateFlash() — сессии камеры к тому моменту должны быть живы.
+        if (flashOptions != null) {
+            flashOptions.dismiss();
+            flashOptions = null;
+        }
         destroy(async);
         cameraContainer.setTranslationX(0);
         textureOverlayView.setTranslationX(0);
@@ -1179,7 +1238,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     camera2SessionCurrent = null;
                     camera2Sessions[isFrontface ? 1 : 0] = null;
                 }
-                camera2SessionCurrent = camera2Sessions[isFrontface ? 0 : 1] = Camera2Session.create(isFrontface, MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize, MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize);
+                camera2SessionCurrent = camera2Sessions[isFrontface ? 0 : 1] = Camera2Session.create(isFrontface, app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize), app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize));
                 if (camera2SessionCurrent == null) return;
                 camera2SessionCurrent.setRecordingVideo(true);
                 previewSize[0] = new Size(camera2SessionCurrent.getPreviewWidth(), camera2SessionCurrent.getPreviewHeight());
@@ -2163,6 +2222,22 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private static final int FRAME_RATE = 30;
         private static final int IFRAME_INTERVAL = 1;
 
+        /**
+         * Реальная частота кадров для энкодера. Перенос из exteraGram 12.9.0,
+         * InstantCameraView.java:2429: 60 отдаётся только если драйвер подтвердил
+         * расширенный диапазон, иначе кадры снимутся в 60, а запишутся как 30.
+         */
+        private int resolveEncoderFrameRate() {
+            if (!app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool()) {
+                return FRAME_RATE;
+            }
+            if (useCamera2) {
+                final Camera2Session session = camera2SessionCurrent;
+                return session != null ? session.getRecordingFrameRate() : FRAME_RATE;
+            }
+            return FRAME_RATE;
+        }
+
         private File videoFile;
         private File fileToWrite;
         private boolean writingToDifferentFile;
@@ -2364,7 +2439,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             }
 
             started = true;
-            int resolution = MessagesController.getInstance(currentAccount).roundVideoSize;
+            int resolution = app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(currentAccount).roundVideoSize);
             int bitrate = MessagesController.getInstance(currentAccount).roundVideoBitrate * 1024;
             AndroidUtilities.runOnUIThread(() -> {
                 NotificationCenter.getInstance(currentAccount).postNotificationName(NotificationCenter.stopAllHeavyOperations, 512);
@@ -3273,7 +3348,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
                 format.setInteger(MediaFormat.KEY_BIT_RATE, videoBitrate);
-                format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
+                format.setInteger(MediaFormat.KEY_FRAME_RATE, resolveEncoderFrameRate());
                 format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
 
                 videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -3647,7 +3722,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private String createFragmentShader(Size previewSize) {
-        if (SharedConfig.deviceIsLow() || !allowBigSizeCamera() || previewSize != null && Math.max(previewSize.getHeight(), previewSize.getWidth()) * 0.7f < MessagesController.getInstance(currentAccount).roundVideoSize) {
+        if (SharedConfig.deviceIsLow() || !allowBigSizeCamera() || previewSize != null && Math.max(previewSize.getHeight(), previewSize.getWidth()) * 0.7f < app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(currentAccount).roundVideoSize)) {
             return "#extension GL_OES_EGL_image_external : require\n" +
                     "precision highp float;\n" +
                     "varying vec2 vTextureCoord;\n" +
@@ -3703,7 +3778,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private String createFragmentShaderV2(Size previewSize) {
-        if (SharedConfig.deviceIsLow() || !allowBigSizeCamera() || previewSize != null && Math.max(previewSize.getHeight(), previewSize.getWidth()) * 0.7f < MessagesController.getInstance(currentAccount).roundVideoSize) {
+        if (SharedConfig.deviceIsLow() || !allowBigSizeCamera() || previewSize != null && Math.max(previewSize.getHeight(), previewSize.getWidth()) * 0.7f < app.exteraless.utils.AppUtils.getRoundVideoResolution(MessagesController.getInstance(currentAccount).roundVideoSize)) {
             return "#extension GL_OES_EGL_image_external : require\n" +
                     "precision highp float;\n" +
                     "varying vec2 vTextureCoord;\n" +
@@ -3878,8 +3953,107 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
     ValueAnimator finishZoomTransition;
 
-    public void finishZoom() {
+    // ---- Зум кнопками громкости при записи кружка ----
+    // Перенос из exteraGram 12.9.0, InstantCameraView.java:3012-3022 (onKeyDown)
+    // и :1421-1508 (adjustZoom). Настройки у exteraGram нет, фича захардкожена.
+
+    private ValueAnimator volumeZoomAnimator;
+
+    /** База геометрического шага зума: столько «ступеней» укладывается в диапазон. */
+    private static final double ZOOM_STEP_BASE = 1.75d;
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                adjustZoom(true);
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                adjustZoom(false);
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    /**
+     * Шаг зума. У Camera2 диапазон мультипликативный, поэтому шаг геометрический:
+     * число ступеней считается как log(max)/log(1.75), а множитель — max^(1/ступени).
+     * У Camera1 диапазон нормированный 0..1, там шаг линейный, 0.125.
+     */
+    private void adjustZoom(boolean up) {
+        cancelZoomAnimations();
+
+        final float from;
+        final float target;
+        if (useCamera2) {
+            final Camera2Session session = camera2SessionCurrent;
+            if (session == null) {
+                return;
+            }
+            final float minZoom = session.getMinZoom();
+            final float maxZoom = session.getMaxZoom();
+            if (maxZoom <= minZoom) {
+                return;
+            }
+            from = Utilities.clamp(pinchScale <= 0f ? minZoom : pinchScale, maxZoom, minZoom);
+            int steps = (int) Math.round(Math.log(maxZoom) / Math.log(ZOOM_STEP_BASE));
+            if (steps < 1) {
+                steps = 1;
+            }
+            final float factor = (float) Math.pow(maxZoom, 1.0d / steps);
+            final float raw = up ? from * factor : Math.max(1.0f, from / factor);
+            target = Utilities.clamp(raw, maxZoom, minZoom);
+        } else {
+            from = Utilities.clamp(pinchScale, 1f, 0f);
+            target = Utilities.clamp(from + (up ? 0.125f : -0.125f), 1f, 0f);
+        }
+
+        if (Math.abs(from - target) < 0.0001f) {
+            return;
+        }
+
+        volumeZoomAnimator = ValueAnimator.ofFloat(from, target);
+        volumeZoomAnimator.setDuration(175L);
+        volumeZoomAnimator.setInterpolator(CubicBezierInterpolator.DEFAULT);
+        volumeZoomAnimator.addUpdateListener(animator -> {
+            final float zoom = (float) animator.getAnimatedValue();
+            if (useCamera2) {
+                if (camera2SessionCurrent != null) {
+                    camera2SessionCurrent.setZoom(zoom);
+                }
+            } else if (cameraSession != null) {
+                cameraSession.setZoom(zoom);
+            }
+            pinchScale = zoom;
+            syncZoomControlView(zoom);
+        });
+        volumeZoomAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                volumeZoomAnimator = null;
+            }
+        });
+        volumeZoomAnimator.start();
+    }
+
+    /** Отменяет и шаговый зум, и откат после щипка — exteraGram :1565-1576. */
+    private void cancelZoomAnimations() {
+        if (volumeZoomAnimator != null) {
+            volumeZoomAnimator.cancel();
+            volumeZoomAnimator = null;
+        }
         if (finishZoomTransition != null) {
+            finishZoomTransition.cancel();
+            finishZoomTransition = null;
+        }
+    }
+
+    public void finishZoom() {
+        // exteraGram 12.9.0, InstantCameraView.java:2856-2860 — при staticZoom зум остаётся
+        // там, где его оставили пальцы, и не анимируется обратно.
+        if (finishZoomTransition != null || app.exteraless.chats.ChatsConfig.staticZoom.Bool()) {
             return;
         }
 

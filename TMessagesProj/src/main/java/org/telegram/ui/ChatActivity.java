@@ -8,6 +8,9 @@
 
 package org.telegram.ui;
 
+import app.exteraless.OpenExteraConfig;
+import app.exteraless.appearance.GlassMenuHelper;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.LocaleController.formatPluralStringComma;
@@ -20347,7 +20350,7 @@ public class ChatActivity extends BaseFragment implements
                 tagItem.setIcon(hasReactions ? R.drawable.menu_tag_edit : R.drawable.menu_tag_plus, true);
             }
         }
-        if (selectionReactionsOverlay != null) {
+        if (selectionReactionsOverlay != null && !disabledReactions()) {
             List<MessageObject> selected = new ArrayList<>();
             SparseArray<MessageObject> objs = selectedMessagesIds[0];
             for (int i = 0; i < objs.size(); i++) {
@@ -32335,7 +32338,7 @@ public class ChatActivity extends BaseFragment implements
 
             List<TLRPC.TL_availableReaction> availableReacts = getMediaDataController().getEnabledReactionsList();
             final boolean isEphemeral = message != null && message.isEphemeral();
-            final boolean nekoXShowReactionsView = !NaConfig.INSTANCE.getHideReactions().Bool() && (NaConfig.INSTANCE.getShowReactions().Bool() || onDoubleTapped); // Show reactions and hide them from tap
+            final boolean nekoXShowReactionsView = !NaConfig.INSTANCE.getHideReactions().Bool() && !disabledReactions() && (NaConfig.INSTANCE.getShowReactions().Bool() || onDoubleTapped); // Show reactions and hide them from tap; openExtera: + разбивка по типам чатов
             boolean isReactionsViewAvailable = nekoXShowReactionsView && !isEphemeral && !suggestEdit && !isSecretChat() && !isInScheduleMode() && currentUser == null && primaryMessage.hasReactions() && (!ChatObject.isChannel(currentChat) || currentChat.megagroup) && !ChatObject.isMonoForum(currentChat) && !availableReacts.isEmpty() && primaryMessage.messageOwner.reactions.can_see_list && !primaryMessage.isSecretMedia();
             final boolean isReactionsAvailable;
             if (suggestEdit || isEphemeral) {
@@ -32390,6 +32393,13 @@ public class ChatActivity extends BaseFragment implements
             Drawable shadowDrawable = getParentActivity().getResources().getDrawable(R.drawable.popup_fixed_alert4).mutate();
             shadowDrawable.getPadding(backgroundPaddings);
             popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
+            // openExtera: матовое стекло под меню сообщения — (applyToPopup).
+            // Гейт тот же, что в exteraGram: настройка + доступный блюр.
+            // Флаг выключен или блюр недоступен -> ниже ничего не меняется, popup остаётся прежним.
+            final boolean glassMenu = GlassMenuHelper.isEnabled(currentAccount, themeDelegate);
+            if (glassMenu) {
+                GlassMenuHelper.applyToPopup(scrimBlur3Factory, themeDelegate, popupLayout);
+            }
             MessageSeenView messageSeenView = null;
 
             boolean addGap = false;
@@ -33531,6 +33541,10 @@ public class ChatActivity extends BaseFragment implements
                     scrimPopupContainerLayout.addView(reactionsLayout, params);
                     scrimPopupContainerLayout.setReactionsLayout(reactionsLayout);
                     scrimPopupContainerLayout.setClipChildren(false);
+                    // openExtera: (applyToReactions)
+                    if (glassMenu) {
+                        GlassMenuHelper.applyToReactions(scrimBlur3Factory, themeDelegate, reactionsLayout);
+                    }
                     MessageObject messageWithReactions = message;
                     MessageObject.GroupedMessages group = getValidGroupedMessage(message);
                     if (group != null) {
@@ -33593,7 +33607,12 @@ public class ChatActivity extends BaseFragment implements
                     shadowDrawable2.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
 
                     FrameLayout fl = new FrameLayout(contentView.getContext());
-                    fl.setBackground(shadowDrawable2);
+                    // openExtera: нижняя плашка тоже стеклянная — (createPanelBackground)
+                    if (glassMenu) {
+                        fl.setBackground(GlassMenuHelper.createPanelBackground(scrimBlur3Factory, themeDelegate, fl));
+                    } else {
+                        fl.setBackground(shadowDrawable2);
+                    }
                     fl.addView(tv, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 11, 11, 11, 11));
                     scrimPopupContainerLayout.addView(fl, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT, isReactionsAvailable ? 16 : 0, -8, isReactionsAvailable ? 36 : 0, 0));
                     scrimPopupContainerLayout.applyViewBottom(fl);
@@ -33616,7 +33635,12 @@ public class ChatActivity extends BaseFragment implements
                     shadowDrawable2.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
 
                     FrameLayout fl = new FrameLayout(contentView.getContext());
-                    fl.setBackground(shadowDrawable2);
+                    // openExtera: нижняя плашка тоже стеклянная — (createPanelBackground)
+                    if (glassMenu) {
+                        fl.setBackground(GlassMenuHelper.createPanelBackground(scrimBlur3Factory, themeDelegate, fl));
+                    } else {
+                        fl.setBackground(shadowDrawable2);
+                    }
                     fl.addView(tv, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 11, 11, 11, 11));
                     scrimPopupContainerLayout.addView(fl, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT, isReactionsAvailable ? 16 : 0, -8, isReactionsAvailable ? 36 : 0, 0));
                     scrimPopupContainerLayout.applyViewBottom(fl);
@@ -33681,6 +33705,11 @@ public class ChatActivity extends BaseFragment implements
             ReactionsContainerLayout finalReactionsLayout1 = reactionsLayout;
             if (reactionsLayout != null) {
                 reactionsLayout.setParentLayout(scrimPopupContainerLayout);
+            }
+            // openExtera: на стекле сплошной разделитель между группами пунктов заменяется
+            // еле заметной подложкой — (separatorColor) + :37-50 (applyToGaps)
+            if (glassMenu) {
+                GlassMenuHelper.applyToGaps(popupLayout, GlassMenuHelper.separatorColor(true, themeDelegate));
             }
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
@@ -33795,6 +33824,11 @@ public class ChatActivity extends BaseFragment implements
             }
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
+            // openExtera: снимок экрана как источник блюра для меню —.
+            // dimBehindView(v, true) идёт без блюра, поэтому scrimBlur3SourceBitmap иначе остался бы пустым.
+            if (glassMenu) {
+                GlassMenuHelper.captureBlur(scrimBlur3SourceBitmap, scrimBlur3Factory, fragmentView);
+            }
             dimBehindView(v, true);
             hideHints(false);
             if (topUndoView != null) {
@@ -37047,6 +37081,21 @@ public class ChatActivity extends BaseFragment implements
 
     public boolean isChannel() {
         return ChatObject.isChannelAndNotMegaGroup(currentChat);
+    }
+
+    /**
+     * openExtera: реакции отключены для этого типа чата.
+     * Перенесено из exteraGram 12.9.0, ChatActivity.disabledReactions().
+     */
+    public boolean disabledReactions() {
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        if (app.exteraless.chats.ChatsConfig.hideReactionsInChannels.Bool() && isChannel()) {
+            return true;
+        }
+        if (app.exteraless.chats.ChatsConfig.hideReactionsInGroups.Bool() && !isChannel() && currentChat != null) {
+            return true;
+        }
+        return app.exteraless.chats.ChatsConfig.hideReactionsInPrivate.Bool() && currentUser != null;
     }
 
     public boolean canScheduleMessage() {
@@ -41476,7 +41525,7 @@ public class ChatActivity extends BaseFragment implements
                 }
                 String username = ChatObject.getPublicUsername(chat);
                 if (username != null) {
-                    sb.append("@").append(username).append(" ");
+                    sb.append("@").append(username).append(OpenExteraConfig.addCommaAfterMention() ? ", " : " ");
                 } else {
                     return;
                 }
@@ -41502,7 +41551,7 @@ public class ChatActivity extends BaseFragment implements
                 }
                 String username = UserObject.getPublicUsername(user);
                 if (username != null) {
-                    sb.append("@").append(username).append(" ");
+                    sb.append("@").append(username).append((user.bot || !OpenExteraConfig.addCommaAfterMention()) ? " " : ", ");
                 } else {
                     String name = UserObject.getFirstName(user, false);
                     Spannable spannable = new SpannableString(name + " ");
@@ -43329,6 +43378,10 @@ public class ChatActivity extends BaseFragment implements
                             getString(R.string.ImportAyuDBAlert),
                             R.drawable.msg_photo_settings_solar, getString(R.string.Import), true,
                             () -> AyuData.importAyuDatabase(ChatActivity.this, finalLocFile));
+                } else if (app.exteraless.icons.IconPackManager.isIconPack(message)) {
+                    // openExtera: иконпак, присланный файлом в чат
+                    app.exteraless.icons.IconPackManager.getInstance()
+                            .handleIconPack(ChatActivity.this, locFile);
                 } else if (message.getDocumentName().toLowerCase().endsWith("attheme")) {
                     Theme.ThemeInfo themeInfo = Theme.applyThemeFile(locFile, message.getDocumentName(), null, true);
                     if (themeInfo != null) {

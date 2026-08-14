@@ -713,7 +713,50 @@ public class MessageObject {
         if (NaConfig.INSTANCE.getHideReactions().Bool()) {
             return false;
         }
+        if (oeReactionsHiddenForDialog()) {
+            return false;
+        }
         return !isRepostPreview;
+    }
+
+    /**
+     * openExtera: реакции скрыты для типа чата, которому принадлежит сообщение
+     * (ChatsConfig.hideReactionsInChannels / InGroups / InPrivate).
+     *
+     * В exteraGram (exteraGram 12.9.0) разбивка по типам живёт только в
+     * ChatActivity.disabledReactions() и гасит панель реакций; отрисовку реакций
+     * в ячейке гасим здесь — сделано по смыслу, с exteraGram не сверено.
+     * Результат кэшируется: тип чата у сообщения не меняется.
+     */
+    private int oeChatKind; // 0 — не считали, 1 — личка, 2 — канал, 3 — группа
+
+    private boolean oeReactionsHiddenForDialog() {
+        try {
+            app.exteraless.chats.ChatsConfig.ensureLoaded();
+            final boolean inChannels = app.exteraless.chats.ChatsConfig.hideReactionsInChannels.Bool();
+            final boolean inGroups = app.exteraless.chats.ChatsConfig.hideReactionsInGroups.Bool();
+            final boolean inPrivate = app.exteraless.chats.ChatsConfig.hideReactionsInPrivate.Bool();
+            if (!inChannels && !inGroups && !inPrivate) {
+                return false;
+            }
+            if (oeChatKind == 0) {
+                final long dialogId = getDialogId();
+                if (dialogId >= 0) {
+                    oeChatKind = 1;
+                } else {
+                    TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-dialogId);
+                    oeChatKind = ChatObject.isChannelAndNotMegaGroup(chat) ? 2 : 3;
+                }
+            }
+            switch (oeChatKind) {
+                case 1: return inPrivate;
+                case 2: return inChannels;
+                default: return inGroups;
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+            return false;
+        }
     }
 
     public boolean shouldDrawReactionsInLayout() {

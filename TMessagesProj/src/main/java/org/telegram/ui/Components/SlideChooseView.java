@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.TextPaint;
@@ -18,6 +20,8 @@ import androidx.core.math.MathUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
+
+import xyz.nextalone.nagram.NaConfig;
 
 public class SlideChooseView extends View {
 
@@ -56,6 +60,9 @@ public class SlideChooseView extends View {
     private final Theme.ResourcesProvider resourcesProvider;
 
     private boolean touchWasClose = false;
+
+    private Path materialPath;
+    private RectF materialRect;
 
     public SlideChooseView(Context context) {
         this(context, null);
@@ -217,8 +224,20 @@ public class SlideChooseView extends View {
         lineSize = (getMeasuredWidth() - circleSize * optionsStr.length - gapSize * 2 * (optionsStr.length - 1) - sideSide * 2) / Math.max(1, optionsStr.length - 1);
     }
 
+    /**
+     * Material-слайдер включается только для
+     * непрерывной шкалы без пунктира и без ограничения снизу.
+     * У NagramX вместо булева флага три стиля (NaConfig.sliderStyle), MD3 — второй.
+     */
+    private boolean canUseMaterialSlider() {
+        return NaConfig.INSTANCE.getSliderStyle().Int() == SeekBarView.SLIDER_STYLE_MD3
+                && optionsStr != null && optionsStr.length > 1
+                && dashedFrom < 0 && minIndex <= 0;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        final boolean material = canUseMaterialSlider();
         float selectedIndexAnimated = selectedIndexAnimatedHolder.set(selectedIndex);
         float movingAnimated = movingAnimatedHolder.set(moving ? 1 : 0);
         int cy = getMeasuredHeight() / 2 + AndroidUtilities.dp(11);
@@ -230,26 +249,28 @@ public class SlideChooseView extends View {
             int color = ColorUtils.blendARGB(getThemedColor(Theme.key_switchTrack), Theme.multAlpha(getThemedColor(Theme.key_switchTrackChecked), minIndex != Integer.MIN_VALUE && a <= minIndex ? .50f : 1.0f), ut);
             paint.setColor(color);
             linePaint.setColor(color);
-            canvas.drawCircle(cx, cy, AndroidUtilities.lerp(circleSize / 2, AndroidUtilities.dp(6), t), paint);
-            if (a != 0) {
-                int x = cx - circleSize / 2 - gapSize - lineSize;
-                int width = lineSize;
-                if (dashedFrom != -1 && a - 1 >= dashedFrom) {
-                    x += AndroidUtilities.dp(3);
-                    width -= AndroidUtilities.dp(3);
-                    int dash = width / AndroidUtilities.dp(13);
-                    if (lastDash != dash) {
-                        float gap = (width - dash * AndroidUtilities.dp(8)) / (float) (dash - 1);
-                        linePaint.setPathEffect(new DashPathEffect(new float[]{AndroidUtilities.dp(6), gap}, 0));
-                        lastDash = dash;
+            if (!material) {
+                canvas.drawCircle(cx, cy, AndroidUtilities.lerp(circleSize / 2, AndroidUtilities.dp(6), t), paint);
+                if (a != 0) {
+                    int x = cx - circleSize / 2 - gapSize - lineSize;
+                    int width = lineSize;
+                    if (dashedFrom != -1 && a - 1 >= dashedFrom) {
+                        x += AndroidUtilities.dp(3);
+                        width -= AndroidUtilities.dp(3);
+                        int dash = width / AndroidUtilities.dp(13);
+                        if (lastDash != dash) {
+                            float gap = (width - dash * AndroidUtilities.dp(8)) / (float) (dash - 1);
+                            linePaint.setPathEffect(new DashPathEffect(new float[]{AndroidUtilities.dp(6), gap}, 0));
+                            lastDash = dash;
+                        }
+                        canvas.drawLine(x + AndroidUtilities.dp(1), cy, x + width - AndroidUtilities.dp(1), cy, linePaint);
+                    } else {
+                        float nt = MathUtils.clamp(1f - Math.abs(a - selectedIndexAnimated - 1), 0, 1);
+                        float nct = MathUtils.clamp(1f - Math.min(Math.abs(a - selectedIndexAnimated), Math.abs(a - selectedIndexAnimated - 1)), 0, 1);
+                        width -= AndroidUtilities.dp(3) * nct;
+                        x += AndroidUtilities.dp(3) * nt;
+                        canvas.drawRect(x, cy - AndroidUtilities.dp(1), x + width, cy + AndroidUtilities.dp(1), paint);
                     }
-                    canvas.drawLine(x + AndroidUtilities.dp(1), cy, x + width - AndroidUtilities.dp(1), cy, linePaint);
-                } else {
-                    float nt = MathUtils.clamp(1f - Math.abs(a - selectedIndexAnimated - 1), 0, 1);
-                    float nct = MathUtils.clamp(1f - Math.min(Math.abs(a - selectedIndexAnimated), Math.abs(a - selectedIndexAnimated - 1)), 0, 1);
-                    width -= AndroidUtilities.dp(3) * nct;
-                    x += AndroidUtilities.dp(3) * nt;
-                    canvas.drawRect(x, cy - AndroidUtilities.dp(1), x + width, cy + AndroidUtilities.dp(1), paint);
                 }
             }
             int size = optionsSizes[a];
@@ -286,10 +307,97 @@ public class SlideChooseView extends View {
         }
 
         float cx = sideSide + (lineSize + gapSize * 2 + circleSize) * selectedIndexAnimated + circleSize / 2;
+        if (material) {
+            drawMaterialSlider(canvas, cx, cy);
+            return;
+        }
         paint.setColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_switchTrackChecked), 80));
         canvas.drawCircle(cx, cy, AndroidUtilities.dp(12 * movingAnimated), paint);
         paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
         canvas.drawCircle(cx, cy, AndroidUtilities.dp(6), paint);
+    }
+
+    /**
+     * MD3-слайдер с засечками. exteraGram встраивает com.google.android.material.slider.Slider
+     * (MaterialSliderUiHelper.java:45-69): trackHeight 8dp, thumb 3x24dp, засечки радиусом 2dp,
+     * haloRadius 0; зазор 6dp и внутренний угол 2dp — из темы Widget.Material3.Slider
+     * (res/values/styles.xml:8902). Зависимости material в дереве нет, рисуем теми же числами.
+     * Цвета — SlideChooseView.java:168-171: активная дорожка key_switchTrackChecked,
+     * неактивная key_switchTrack, засечки key_windowBackgroundWhite.
+     * Метод drawContent exteraGram не декомпилирован (831 инструкция), поэтому подписи
+     * оставлены на прежних местах.
+     */
+    private void drawMaterialSlider(Canvas canvas, float thumbCx, int cy) {
+        final float trackHeight = AndroidUtilities.dp(8);
+        final float thumbWidth = AndroidUtilities.dp(3);
+        final float thumbHeight = AndroidUtilities.dp(24);
+        final float gap = AndroidUtilities.dp(6);
+        final float insideCorner = AndroidUtilities.dp(2);
+        final float radius = trackHeight / 2f;
+        final float tickRadius = AndroidUtilities.dp(2);
+
+        final float left = sideSide + circleSize / 2f;
+        final float right = getMeasuredWidth() - sideSide - circleSize / 2f;
+        final float top = cy - trackHeight / 2f;
+        final float bottom = cy + trackHeight / 2f;
+        final float activeRight = thumbCx - thumbWidth / 2f - gap;
+        final float inactiveLeft = thumbCx + thumbWidth / 2f + gap;
+
+        if (materialPath == null) {
+            materialPath = new Path();
+        }
+        if (materialRect == null) {
+            materialRect = new RectF();
+        }
+
+        paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
+        if (activeRight > left) {
+            materialRect.set(left, top, activeRight, bottom);
+            if (materialRect.width() < radius + insideCorner) {
+                canvas.drawRoundRect(materialRect, insideCorner, insideCorner, paint);
+            } else {
+                updateMaterialPath(materialRect, radius, insideCorner);
+                canvas.drawPath(materialPath, paint);
+            }
+        }
+
+        paint.setColor(getThemedColor(Theme.key_switchTrack));
+        if (inactiveLeft < right) {
+            materialRect.set(inactiveLeft, top, right, bottom);
+            if (materialRect.width() < radius + insideCorner) {
+                canvas.drawRoundRect(materialRect, insideCorner, insideCorner, paint);
+            } else {
+                updateMaterialPath(materialRect, insideCorner, radius);
+                canvas.drawPath(materialPath, paint);
+            }
+        }
+
+        paint.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        for (int a = 0; a < optionsStr.length; a++) {
+            final float tickCx = left + (right - left) * a / (float) (optionsStr.length - 1);
+            if (tickCx > activeRight && tickCx < inactiveLeft) {
+                continue;
+            }
+            canvas.drawCircle(tickCx, cy, tickRadius, paint);
+        }
+
+        paint.setColor(getThemedColor(Theme.key_switchTrackChecked));
+        materialRect.set(thumbCx - thumbWidth / 2f, cy - thumbHeight / 2f, thumbCx + thumbWidth / 2f, cy + thumbHeight / 2f);
+        canvas.drawRoundRect(materialRect, thumbWidth / 2f, thumbWidth / 2f, paint);
+    }
+
+    private void updateMaterialPath(RectF rect, float radiusLeft, float radiusRight) {
+        materialPath.reset();
+        materialPath.moveTo(rect.left + radiusLeft, rect.top);
+        materialPath.lineTo(rect.right - radiusRight, rect.top);
+        materialPath.quadTo(rect.right, rect.top, rect.right, rect.top + radiusRight);
+        materialPath.lineTo(rect.right, rect.bottom - radiusRight);
+        materialPath.quadTo(rect.right, rect.bottom, rect.right - radiusRight, rect.bottom);
+        materialPath.lineTo(rect.left + radiusLeft, rect.bottom);
+        materialPath.quadTo(rect.left, rect.bottom, rect.left, rect.bottom - radiusLeft);
+        materialPath.lineTo(rect.left, rect.top + radiusLeft);
+        materialPath.quadTo(rect.left, rect.top, rect.left + radiusLeft, rect.top);
+        materialPath.close();
     }
 
     @Override

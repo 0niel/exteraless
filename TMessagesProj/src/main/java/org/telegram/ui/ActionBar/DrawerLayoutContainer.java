@@ -22,6 +22,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import app.exteraless.drawer.DrawerContainer;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
@@ -31,6 +33,13 @@ public class DrawerLayoutContainer extends FrameLayout {
     private INavigationLayout parentActionBarLayout;
     private ActionBarLayout actionBarLayout;
     private boolean inLayout;
+
+    /**
+     * Своя шторка exteraGram. null, пока выключена настройка navigationDrawer —
+     * тогда контейнер ведёт себя ровно как раньше (exteraGram:
+     * {@code org/telegram/ui/ActionBar/DrawerLayoutContainer.java:32,136,276}).
+     */
+    private DrawerContainer drawerContainer;
 
     public DrawerLayoutContainer(Context context) {
         super(context);
@@ -47,17 +56,53 @@ public class DrawerLayoutContainer extends FrameLayout {
         this.actionBarLayout = actionBarLayout;
     }
 
+    public INavigationLayout getParentActionBarLayout() {
+        return parentActionBarLayout;
+    }
+
+    public DrawerContainer getDrawerContainer() {
+        return drawerContainer;
+    }
+
+    /**
+     * Старая шторка освобождается и убирается из иерархии, новая кладётся поверх
+     * на весь экран.
+     * Зовётся только из {@code LaunchActivity.syncDrawerContainerEnabled()}.
+     */
+    public void setDrawerContainer(DrawerContainer container) {
+        if (drawerContainer == container) {
+            return;
+        }
+        if (drawerContainer != null) {
+            drawerContainer.dispose();
+            removeView(drawerContainer);
+        }
+        drawerContainer = container;
+        if (container != null) {
+            addView(container, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        }
+    }
+
     public boolean isDrawCurrentPreviewFragmentAbove() {
         return false;
     }
 
+    @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return false;
+        return drawerContainer != null && drawerContainer.handleEdgeSwipeTouch(ev);
     }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        return parentActionBarLayout.checkTransitionAnimation();
+        if (drawerContainer != null) {
+            if (drawerContainer.getVisibility() == VISIBLE) {
+                return false;
+            }
+            if (drawerContainer.handleEdgeSwipeIntercept(ev)) {
+                return true;
+            }
+        }
+        return parentActionBarLayout != null && parentActionBarLayout.checkTransitionAnimation();
     }
 
     @Override

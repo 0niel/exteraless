@@ -23,6 +23,8 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import app.exteraless.appearance.AppearanceConfig;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.DocumentObject;
 import org.telegram.messenger.Emoji;
@@ -118,7 +120,11 @@ public class ReactedUserHolderView extends FrameLayout {
                 return params.checkOnTouchEvent(event, this);
             }
         };
-        avatarView.setRoundRadius(AndroidUtilities.dp(avatarSize));
+        // openExtera: сток просит радиус во всю сторону, а не в половину, поэтому глобальное
+        // масштабирование в ImageReceiver держало аватарку круглой до середины слайдера.
+        // setRoundRadius(ExteraConfig.getAvatarCorners(avatarSize)).
+        avatarView.getImageReceiver().setAvatarCornersApplied(true);
+        avatarView.setRoundRadius(AppearanceConfig.getAvatarCorners(AndroidUtilities.dp(avatarSize)));
         addView(avatarView, LayoutHelper.createFrameRelatively(avatarSize, avatarSize, Gravity.START | Gravity.CENTER_VERTICAL, 10, 0, 0, 0));
         if (style == STYLE_STORY) {
             setClipChildren(false);

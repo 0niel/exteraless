@@ -8,6 +8,8 @@
 
 package org.telegram.ui.ActionBar;
 
+import app.exteraless.utils.AppUtils;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
@@ -30,6 +32,7 @@ import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -956,7 +959,20 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     @Override
     public void drawHeaderShadow(Canvas canvas, int alpha, int y) {
-        if (headerShadowDrawable != null && SharedConfig.drawActionBarShadow) {
+        if (!SharedConfig.drawActionBarShadow) {
+            return;
+        }
+        // exteraGram 12.9.0, ActionBarLayout.java:2603-2615 — вместо градиентной тени
+        // ровно одна линия в 1 px цветом разделителя.
+        final Paint forced = Theme.forcedDividerPaint;
+        if (forced != null) {
+            final int prevAlpha = forced.getAlpha();
+            forced.setAlpha(Math.min(alpha, prevAlpha));
+            canvas.drawLine(0, y, getMeasuredWidth(), y, forced);
+            forced.setAlpha(prevAlpha);
+            return;
+        }
+        if (headerShadowDrawable != null) {
             alpha = alpha / 2;
             if (headerShadowDrawable.getAlpha() != alpha) {
                 headerShadowDrawable.setAlpha(alpha);
@@ -1084,6 +1100,13 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             clipPath.addRoundRect(AndroidUtilities.rectTmp, r, r, Path.Direction.CW);
             canvas.clipPath(clipPath);
         }
+        if (m3BackTransition() && predictiveBackBackgroundDrawable != null) {
+            app.exteraless.utils.PredictiveBackAnimationHelper.drawTransitionBackground(
+                    canvas, predictiveBackBackgroundDrawable, getWidth(), getHeight(), predictiveBackTmpRect);
+        } else if (springRouteBackgroundDrawable != null) {
+            app.exteraless.utils.PredictiveBackAnimationHelper.drawTransitionBackground(
+                    canvas, springRouteBackgroundDrawable, getWidth(), getHeight(), predictiveBackTmpRect);
+        }
         super.dispatchDraw(canvas);
         if (isLayersLayout) {
             canvas.restore();
@@ -1120,6 +1143,40 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (child != bottomSheetTabs && bottomSheetTabsClip != null) {
             bottomSheetTabsClip.clip(canvas, withShadow, isKeyboardVisible, getWidth(), (int) getY() + getHeight(), 1.0f);
             withShadow = false;
+        }
+
+        // Material 3 predictive back: закрывающийся фрагмент — карточка, за ним уменьшенный предыдущий,
+        // между ними scrim. Ветка самодостаточна: рисует ребёнка и выходит.
+        if (m3BackTransition() && (child == containerView || child == containerViewBack)) {
+            final float m3Scale;
+            if (child == containerView) {
+                scrimPaint.setColor(Color.argb(predictiveBackAnimation.getScrimAlpha(Theme.isCurrentThemeDark()), 0, 0, 0));
+                canvas.drawRect(0, 0, getWidth(), getHeight(), scrimPaint);
+                predictiveBackAnimation.getClosingRect(predictiveBackRect);
+                m3Scale = predictiveBackAnimation.getClosingScale();
+            } else {
+                predictiveBackAnimation.getEnteringRect(predictiveBackRect);
+                m3Scale = predictiveBackAnimation.getEnteringScale();
+            }
+            canvas.translate(predictiveBackRect.left, predictiveBackRect.top);
+            canvas.scale(m3Scale, m3Scale);
+            AndroidUtilities.rectTmp.set(0, 0, child.getWidth(), child.getHeight());
+            final float m3Radius = predictiveBackAnimation.getCornerRadius() / Math.max(0.01f, m3Scale);
+            clipPath.rewind();
+            clipPath.addRoundRect(AndroidUtilities.rectTmp, m3Radius, m3Radius, Path.Direction.CW);
+            canvas.clipPath(clipPath);
+            final boolean m3Result = super.drawChild(canvas, child, drawingTime);
+            canvas.restoreToCount(restoreCount2);
+            return m3Result;
+        }
+        // exteraGram 12.9.0, drawChild: на «пружинном маршруте» (открытие/закрытие фрагмента
+        // без жеста предиктивного назад) уезжающий экран дополнительно притемняется.
+        // Множитель гаснет по мере ухода фрагмента вправо. Заметно в тёмной теме.
+        if (springRouteBackgroundDrawable != null && child == containerView) {
+            final float k = MathUtils.clamp((width - translationX) / (float) width, 0.0f, 0.8f);
+            scrimPaint.setColor(Color.argb(
+                    (int) (predictiveBackAnimation.getScrimAlpha(Theme.isCurrentThemeDark()) * k), 0, 0, 0));
+            canvas.drawRect(0, 0, getWidth(), getHeight(), scrimPaint);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isSheet && (!USE_SPRING_ANIMATION || !isTransitionAnimationInProgress() && !animationInProgress) && (translationX != 0 || overrideWidthOffset != -1)) {
             if (child == containerView) {
@@ -1217,7 +1274,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 }
             } else if (child == containerViewBack) {
                 float opacity = MathUtils.clamp(widthOffset / (float) width, 0, 0.8f);
-                scrimPaint.setColor(Color.argb((int) ((USE_SPRING_ANIMATION ? USE_ACTIONBAR_CROSSFADE ? 0x29 : 0x7a : 120) * opacity), 0x00, 0x00, 0x00));
+                // exteraGram 12.9.0, drawChild: (springAnimations ? 102 : 120) * opacity.
+                // У нас при пружинах было 0x7a=122 — нижний экран затемнялся заметно сильнее.
+                // Режим crossfade — специфика NagramX, у exteraGram его нет, значение оставлено.
+                scrimPaint.setColor(Color.argb((int) ((USE_SPRING_ANIMATION ? USE_ACTIONBAR_CROSSFADE ? 0x29 : 102 : 120) * opacity), 0x00, 0x00, 0x00));
                 if (overrideWidthOffset != -1) {
                     canvas.drawRect(0, top, getWidth(), getHeight() * 1.5f, scrimPaint);
                 } else {
@@ -1303,6 +1363,15 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     private void onSlideAnimationEnd(final boolean backAnimation) {
+        // openExtera: контейнеры ниже меняются местами — масштаб карточки надо снять до этого
+        springRouteYRatio = 0f;
+        springRouteBackgroundDrawable = null;
+        containerView.setScaleX(1f);
+        containerView.setScaleY(1f);
+        containerView.setTranslationY(0f);
+        containerViewBack.setScaleX(1f);
+        containerViewBack.setScaleY(1f);
+        containerViewBack.setTranslationY(0f);
         if (!backAnimation) {
             if (fragmentsStack.size() < 2) {
                 checkBlackScreen("onSlideAnimationEnd exit");
@@ -1461,7 +1530,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     int dx = Math.max(0, (int) (ev.getX() - startedTrackingX));
                     int dy = Math.abs((int) ev.getY() - startedTrackingY);
                     velocityTracker.addMovement(ev);
-                    if (!transitionAnimationInProgress && !inPreviewMode && maybeStartTracking && !startedTracking && dx >= AndroidUtilities.getPixelsInCM(0.4f, true) && Math.abs(dx) / 3 > dy) {
+                    if (!transitionAnimationInProgress && !inPreviewMode && maybeStartTracking && !startedTracking && dx >= AndroidUtilities.getPixelsInCM(0.15f, true) && Math.abs(dx) / 3 > dy) {
                         BaseFragment currentFragment = fragmentsStack.get(fragmentsStack.size() - 1);
                         if (currentFragment.canBeginSlide() && findScrollingChild(this, ev.getX(), ev.getY()) == null) {
                             startedTrackingX = (int) ev.getX();
@@ -1488,6 +1557,19 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                                 if (USE_ACTIONBAR_CROSSFADE) {
                                     swipeProgress = MathUtils.clamp((float) dx / containerView.getMeasuredWidth(), 0f, 1f);
                                 }
+                                if (oeM3Motion() && containerView.getMeasuredWidth() > 0) {
+                                    // openExtera: карточка сжимается и следует за пальцем по вертикали
+                                    final float m3s = AndroidUtilities.lerp(1.0f, 0.85f,
+                                            MathUtils.clamp((float) dx / containerView.getMeasuredWidth(), 0f, 1f));
+                                    containerView.setScaleX(m3s);
+                                    containerView.setScaleY(m3s);
+                                    final float maxY = Math.max(0f,
+                                            (containerView.getMeasuredHeight() * (1f - m3s)) / 2f - dp(8));
+                                    springRouteYRatio = MathUtils.clamp(
+                                            (ev.getY() - startedTrackingY)
+                                                    / (containerView.getMeasuredHeight() / 2f), 1f, -1f);
+                                    containerView.setTranslationY(springRouteYRatio * maxY);
+                                }
                             }
                             setInnerTranslationX(dx);
                         }
@@ -1502,7 +1584,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     if (!inPreviewMode && !transitionAnimationPreviewMode && !startedTracking && currentFragment.isSwipeBackEnabled(ev)) {
                         float velX = velocityTracker.getXVelocity();
                         float velY = velocityTracker.getYVelocity();
-                        if (velX >= 3500 && velX > Math.abs(velY) && currentFragment.canBeginSlide()) {
+                        if (velX >= AppUtils.getSwipeVelocity() && velX > Math.abs(velY) && currentFragment.canBeginSlide()) {
                             startedTrackingX = (int) ev.getX();
                             prepareForMoving();
                             if (!beginTrackingSent) {
@@ -1517,7 +1599,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         float x = containerView.getX();
                         float velX = velocityTracker.getXVelocity();
                         float velY = velocityTracker.getYVelocity();
-                        final boolean backAnimation = (newBackTransitions() ? x < dp(56) / 2 || velX < -1000 : x < containerView.getMeasuredWidth() / 3.0f) && (velX < 3500 || Math.abs(velX) < Math.abs(velY));
+                        final boolean backAnimation = (newBackTransitions() ? x < dp(56) / 2 || velX < -1000 : x < containerView.getMeasuredWidth() / 4.0f) && (velX < AppUtils.getSwipeVelocity() || Math.abs(velX) < Math.abs(velY));
                         animateBackEndAnimation(backAnimation, velX);
                     } else {
                         maybeStartTracking = false;
@@ -1554,6 +1636,143 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private boolean predictiveBackHasProgress;
     private float predictiveBackY;
     private boolean predictiveBackLeft;
+
+    // ---- Material 3 predictive back (порт exteraGram) ----
+    private final app.exteraless.utils.PredictiveBackAnimationHelper predictiveBackAnimation = new app.exteraless.utils.PredictiveBackAnimationHelper();
+    private final RectF predictiveBackRect = new RectF();
+    private final Rect predictiveBackTmpRect = new Rect();
+    private Drawable predictiveBackBackgroundDrawable;
+    /** M3-режим включён для текущего жеста (решается один раз в onBackStarted). */
+    private boolean m3PredictiveBack;
+
+    /**
+     * Подложка нижележащего фрагмента на время обычного (не жестового) пружинного перехода.
+     * Без неё уменьшенный экран открывает щель в цвет окна. Порт exteraGram:
+     * ActionBarLayout.springRouteBackgroundDrawable.
+     */
+    private Drawable springRouteBackgroundDrawable;
+    /** Вертикальное следование карточки за пальцем при ручном свайпе, -1..1. */
+    private float springRouteYRatio;
+
+    /** Включены ли перенесённые из exteraGram M3-анимации переходов. */
+    private static boolean oeM3Motion() {
+        return app.exteraless.utils.UtilsConfig.predictiveBack();
+    }
+
+    /** Стартовый радиус карточки — физические углы экрана. */
+    private float getPredictiveBackStartCornerRadius() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return 0;
+        }
+        final WindowInsets insets = getRootWindowInsets();
+        if (insets == null) {
+            return 0;
+        }
+        float r = 0;
+        final int[] positions = new int[]{
+                android.view.RoundedCorner.POSITION_TOP_LEFT,
+                android.view.RoundedCorner.POSITION_TOP_RIGHT,
+                android.view.RoundedCorner.POSITION_BOTTOM_RIGHT,
+                android.view.RoundedCorner.POSITION_BOTTOM_LEFT
+        };
+        for (int position : positions) {
+            final RoundedCorner corner = insets.getRoundedCorner(position);
+            if (corner != null) {
+                r = Math.max(r, corner.getRadius());
+            }
+        }
+        return r;
+    }
+
+    /** Рисуем ли сейчас M3-карточку. */
+    private boolean m3BackTransition() {
+        return m3PredictiveBack && predictiveBackInProgress && predictiveBackHasProgress;
+    }
+
+    private void applyPredictiveBackProgress(float progress, float touchY) {
+        final float p = clamp01(progress);
+        predictiveBackHasProgress = p > 0 || animationInProgress;
+        predictiveBackY = touchY;
+        predictiveBackAnimation.update(p, touchY);
+        containerView.setTranslationX(0);
+        containerViewBack.setTranslationX(0);
+        setInnerTranslationX(predictiveBackAnimation.getSlideDistance());
+        containerView.invalidate();
+        containerViewBack.invalidate();
+        invalidate();
+    }
+
+    /** Докатывание/откат M3-жеста. */
+    private void animatePredictiveBackEndAnimation(final boolean backAnimation) {
+        final float startProgress = predictiveBackAnimation.getProgress();
+        final float startAlpha = containerView.getAlpha();
+        final float slideDistance = predictiveBackAnimation.getSlideDistance();
+
+        final ValueAnimator animator;
+        if (backAnimation) {
+            animator = ValueAnimator.ofFloat(startProgress, 0f);
+            animator.addUpdateListener(anm -> {
+                final float value = (float) anm.getAnimatedValue();
+                applyPredictiveBackProgress(value, predictiveBackY);
+                predictiveBackAnimation.setScrimAlphaMultiplier(startProgress != 0 ? value / startProgress : 0f);
+                if (containerView.getAlpha() != 1f) {
+                    containerView.setAlpha(startAlpha + (1f - startAlpha) * anm.getAnimatedFraction());
+                }
+            });
+            animator.setDuration(Math.max(120, (int) (startProgress * 220f)));
+            animator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+        } else {
+            predictiveBackAnimation.prepareCommit();
+            animator = ValueAnimator.ofFloat(0f, 1f);
+            animator.addUpdateListener(anm -> {
+                predictiveBackAnimation.updateCommitProgress((float) anm.getAnimatedValue());
+                containerView.setAlpha(predictiveBackAnimation.getClosingAlpha());
+                setInnerTranslationX(slideDistance + (containerView.getMeasuredWidth() - slideDistance) * anm.getAnimatedFraction());
+                containerView.invalidate();
+                containerViewBack.invalidate();
+                invalidate();
+            });
+            animator.setDuration(predictiveBackAnimation.getPostCommitDuration());
+        }
+
+        final AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(animator);
+        animatorSet.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+                resetPredictiveBackState();
+                containerView.setAlpha(1.0f);
+                onSlideAnimationEnd(true);
+                backAnimator = null;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (cancelled) return;
+                resetPredictiveBackState();
+                containerView.setAlpha(1.0f);
+                onSlideAnimationEnd(backAnimation);
+                backAnimator = null;
+            }
+        });
+        backAnimator = animatorSet;
+        backAnimatorIsBack = backAnimation;
+        animationInProgress = true;
+        layoutToIgnore = containerViewBack;
+        animatorSet.start();
+    }
+
+    private void resetPredictiveBackState() {
+        predictiveBackInProgress = false;
+        predictiveBackHasProgress = false;
+        m3PredictiveBack = false;
+        predictiveBackBackgroundDrawable = null;
+        predictiveBackAnimation.reset();
+    }
+
     public boolean onBackStarted(float touchX, float touchY) {
         if (animationInProgress) {
             if (backAnimator != null) {
@@ -1588,7 +1807,21 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         predictiveInput = true;
         predictiveBackLeft = touchX < AndroidUtilities.displaySize.x / 2f;
         predictiveBackY = touchY;
+        m3PredictiveBack = app.exteraless.utils.UtilsConfig.predictiveBack() && !isSheet;
+        if (m3PredictiveBack) {
+            predictiveBackAnimation.start(
+                    containerView.getMeasuredWidth(),
+                    getMeasuredHeight(),
+                    touchY,
+                    predictiveBackLeft,
+                    getPredictiveBackStartCornerRadius()
+            );
+        }
         prepareForMoving();
+        if (m3PredictiveBack) {
+            predictiveBackBackgroundDrawable = app.exteraless.utils.PredictiveBackAnimationHelper
+                    .getTransitionBackground(fragmentsStack, getLastFragment());
+        }
         if (parentActivity != null && parentActivity.getCurrentFocus() != null) {
             AndroidUtilities.hideKeyboard(parentActivity.getCurrentFocus());
         }
@@ -1597,7 +1830,18 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     public void onBackProgress(float t) {
+        onBackProgress(t, predictiveBackY);
+    }
+
+    public void onBackProgress(float t, float touchY) {
         if (!predictiveInput) return;
+        // Чувствительность применяется только к живому жесту; докат и откат зовут
+        // applyPredictiveBackProgress напрямую, иначе множитель наложился бы дважды
+        t = app.exteraless.utils.UtilsConfig.adjustPredictiveBackProgress(t);
+        if (m3PredictiveBack) {
+            applyPredictiveBackProgress(t, touchY);
+            return;
+        }
         final float dx = dp(56) * CubicBezierInterpolator.StandardDecelerate.getInterpolation(t);
         predictiveBackHasProgress = t > 0;
         containerView.setTranslationX(dx);
@@ -1629,6 +1873,17 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         final BaseFragment currentFragment = !fragmentsStack.isEmpty() ? fragmentsStack.get(fragmentsStack.size() - 1) : null;
         if (currentFragment == null) return;
 
+        if (m3PredictiveBack) {
+            if (m3BackTransition()) {
+                animatePredictiveBackEndAnimation(backAnimation);
+                return;
+            }
+            // жест закончился, не начавшись — просто выходим из M3-режима
+            m3PredictiveBack = false;
+            predictiveBackBackgroundDrawable = null;
+            predictiveBackAnimation.reset();
+        }
+
         float x = containerView.getX();
         AnimatorSet animatorSet = new AnimatorSet();
         float distToMove;
@@ -1636,19 +1891,15 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
         if (USE_SPRING_ANIMATION) {
             FloatValueHolder valueHolder = new FloatValueHolder((x / containerView.getMeasuredWidth()) * SPRING_MULTIPLIER);
-            if (!backAnimation) {
-                currentSpringAnimation = new SpringAnimation(valueHolder)
-                        .setSpring(new SpringForce(SPRING_MULTIPLIER)
-                                .setStiffness(SPRING_STIFFNESS)
-                                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
-                if (velX != 0) {
-                    currentSpringAnimation.setStartVelocity(velX / 15f);
-                }
-            } else {
-                currentSpringAnimation = new SpringAnimation(valueHolder)
-                        .setSpring(new SpringForce(0f)
-                                .setStiffness(SPRING_STIFFNESS)
-                                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            currentSpringAnimation = new SpringAnimation(valueHolder)
+                    .setSpring(new SpringForce(backAnimation ? 0f : SPRING_MULTIPLIER)
+                            .setStiffness(SPRING_STIFFNESS)
+                            .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            if (velX != 0) {
+                // exteraGram 12.9.0, onTouchEvent/ACTION_UP: скорость переводится в ту же
+                // нормированную шкалу 0..1000, в которой живёт пружина. У нас было velX/15 —
+                // на экране 1080 px это в ~14 раз слабее, флик почти не докидывал экран.
+                currentSpringAnimation.setStartVelocity((velX / containerView.getMeasuredWidth()) * SPRING_MULTIPLIER);
             }
             currentSpringAnimation.addUpdateListener((animation, value, velocity) -> {
                 var progress = value / SPRING_MULTIPLIER;
@@ -1657,6 +1908,14 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 setInnerTranslationX(progress * containerView.getMeasuredWidth());
                 if (USE_ACTIONBAR_CROSSFADE) {
                     swipeProgress = progress;
+                }
+                if (oeM3Motion() && !m3PredictiveBack) {
+                    // openExtera: доводим масштаб и вертикальный сдвиг карточки после отпускания
+                    final float m3s = AndroidUtilities.lerp(1.0f, 0.85f, MathUtils.clamp(progress, 0f, 1f));
+                    containerView.setScaleX(m3s);
+                    containerView.setScaleY(m3s);
+                    containerView.setTranslationY(springRouteYRatio * Math.max(0f,
+                            (containerView.getMeasuredHeight() * (1f - m3s)) / 2f - dp(8)));
                 }
 
                 if (!backAnimation) {
@@ -1668,6 +1927,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             });
             currentSpringAnimation.addEndListener((animation, canceled, value, velocity) -> {
                 predictiveBackInProgress = false;
+                m3PredictiveBack = false;
                 onSlideAnimationEnd(backAnimation);
             });
             currentSpringAnimation.start();
@@ -1727,6 +1987,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             public void onAnimationCancel(Animator animation) {
                 cancelled = true;
                 predictiveBackInProgress = false;
+                m3PredictiveBack = false;
                 containerView.setAlpha(1.0f);
                 onSlideAnimationEnd(true);
                 backAnimator = null;
@@ -1735,6 +1996,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             public void onAnimationEnd(Animator animator) {
                 if (cancelled) return;
                 predictiveBackInProgress = false;
+                m3PredictiveBack = false;
                 containerView.setAlpha(1.0f);
                 onSlideAnimationEnd(backAnimation);
                 backAnimator = null;
@@ -1795,6 +2057,19 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 currentSpringAnimation.cancel();
             }
             currentSpringAnimation = null;
+        }
+        // openExtera: подложка и масштаб карточки живут только на время перехода
+        springRouteBackgroundDrawable = null;
+        springRouteYRatio = 0f;
+        if (containerView != null) {
+            containerView.setScaleX(1f);
+            containerView.setScaleY(1f);
+            containerView.setTranslationY(0f);
+        }
+        if (containerViewBack != null) {
+            containerViewBack.setScaleX(1f);
+            containerViewBack.setScaleY(1f);
+            containerViewBack.setTranslationY(0f);
         }
         if (animationRunnable != null) {
             AndroidUtilities.cancelRunOnUIThread(animationRunnable);
@@ -1906,6 +2181,14 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 swipeProgress = open ? 1f : 0f;
                 invalidateActionBars();
             }
+            if (oeM3Motion() && !preview && !predictiveBackInProgress) {
+                // openExtera: фон нижележащего фрагмента, чтобы за уменьшенной карточкой
+                // не зияла щель в цвет окна (exteraGram: springRouteBackgroundDrawable)
+                springRouteYRatio = 0f;
+                springRouteBackgroundDrawable =
+                        app.exteraless.utils.PredictiveBackAnimationHelper.getTransitionBackground(
+                                fragmentsStack, getLastFragment());
+            }
             FloatValueHolder valueHolder = new FloatValueHolder(0);
             currentSpringAnimation = new SpringAnimation(valueHolder)
                     .setSpring(new SpringForce(SPRING_MULTIPLIER)
@@ -1957,6 +2240,12 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerView.setTranslationX((1.0f - interpolated) * widthNoPaddings);
                         containerViewBack.setTranslationX(-interpolated * 0.35f * widthNoPaddings);
                         setInnerTranslationX((1.0f - interpolated) * widthNoPaddings);
+                        if (oeM3Motion()) {
+                            // openExtera: открывающийся экран разжимается карточкой (exteraGram)
+                            final float m3s = AndroidUtilities.lerp(0.85f, 1.0f, interpolated);
+                            containerView.setScaleX(m3s);
+                            containerView.setScaleY(m3s);
+                        }
                     }
                 } else {
                     float clampedReverseInterpolated = MathUtils.clamp(1f - interpolated, 0, 1);
@@ -1978,10 +2267,21 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerViewBack.setTranslationX(interpolated * widthNoPaddings);
                         containerView.setTranslationX(-(1f - interpolated) * 0.35f * widthNoPaddings);
                         setInnerTranslationX(interpolated * widthNoPaddings);
+                        if (oeM3Motion()) {
+                            // openExtera: закрывающийся экран сжимается карточкой (exteraGram)
+                            final float m3s = AndroidUtilities.lerp(1.0f, 0.85f, interpolated);
+                            containerViewBack.setScaleX(m3s);
+                            containerViewBack.setScaleY(m3s);
+                        }
                     }
                 }
             });
             currentSpringAnimation.addEndListener((animation, canceled, value, velocity) -> {
+                springRouteBackgroundDrawable = null;
+                containerView.setScaleX(1f);
+                containerView.setScaleY(1f);
+                containerViewBack.setScaleX(1f);
+                containerViewBack.setScaleY(1f);
                 onAnimationEndCheck(false);
                 setInnerTranslationX(0);
             });
@@ -3851,7 +4151,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     public static final int BACK_ANIMATION_PREDICTIVE = 2;
     private static final boolean USE_SPRING_ANIMATION = NaConfig.INSTANCE.getBackAnimationStyle().Int() == BACK_ANIMATION_SPRING;
     private static final boolean USE_ACTIONBAR_CROSSFADE = USE_SPRING_ANIMATION && NaConfig.INSTANCE.getSpringAnimationCrossfade().Bool();
-    private static final float SPRING_STIFFNESS = 700f;
+    private static final float SPRING_STIFFNESS = 900f;
     private static final float SPRING_STIFFNESS_PREVIEW = 650f;
     private static final float SPRING_STIFFNESS_PREVIEW_OUT = 800f;
     private static final float SPRING_STIFFNESS_PREVIEW_EXPAND = 750f;

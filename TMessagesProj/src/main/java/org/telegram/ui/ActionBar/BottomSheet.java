@@ -15,6 +15,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -289,6 +290,35 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         private Rect rect = new Rect();
         private Paint backgroundPaint = new Paint();
         private boolean keyboardChanged;
+
+        /**
+         * Сброс состояния перетаскивания. Нужен predictive back'у: жест «назад» приходит
+         * поверх уже начатого касания, и без сброса шторка после отмены жеста остаётся
+         * в режиме drag. exteraGram: BottomSheet.java:1082.
+         */
+        public void resetTouch() {
+            startedTracking = false;
+            maybeStartTracking = false;
+            startedTrackingPointerId = -1;
+            if (velocityTracker != null) {
+                velocityTracker.recycle();
+                velocityTracker = null;
+            }
+        }
+
+        public void setCurrentAnimation(AnimatorSet set) {
+            currentAnimation = set;
+            if (set != null) {
+                set.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (currentAnimation == set) {
+                            currentAnimation = null;
+                        }
+                    }
+                });
+            }
+        }
 
         public ContainerView(Context context) {
             super(context);
@@ -605,6 +635,11 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 keyboardChanged = true;
             }
             keyboardVisible = keyboardHeight > dp(20);
+            if (Build.VERSION.SDK_INT >= 34) {
+                // С открытой клавиатурой колбэк снимается, иначе жест «назад» закрывал бы
+                // шторку вместо клавиатуры. exteraGram: BottomSheet.java:1816.
+                updateBackCallbackState();
+            }
             if (lastInsets != null) {
                 bottomInset = lastInsets.getSystemWindowInsetBottom();
                 leftInset = lastInsets.getSystemWindowInsetLeft();
@@ -1223,6 +1258,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             @Override
             protected void onAttachedToWindow() {
                 super.onAttachedToWindow();
+                if (Build.VERSION.SDK_INT >= 34) {
+                    registerBackCallback();
+                }
                 Bulletin.addDelegate(this, new Bulletin.Delegate() {
                     @Override
                     public int getTopOffset(int tag) {
@@ -1234,6 +1272,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             @Override
             protected void onDetachedFromWindow() {
                 super.onDetachedFromWindow();
+                if (Build.VERSION.SDK_INT >= 34) {
+                    unregisterBackCallback();
+                }
                 Bulletin.removeDelegate(this);
             }
         };
@@ -1963,6 +2004,131 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     protected void appendOpenAnimator(boolean opening, ArrayList<Animator> animators) {
 
+    }
+
+    // ---- Predictive back для шторки ----
+    // Перенос из exteraGram 12.9.0, BottomSheet.java:1579-1670, :1224/:1235, :1816.
+    // У нас BottomSheet вообще не знал про OnBackAnimationCallback: шторки закрывались
+    // мгновенно, без следования за жестом.
+
+    private Object backAnimationCallback;
+    private android.window.OnBackInvokedDispatcher onBackInvokedDispatcher;
+    private boolean isBackCallbackRegistered;
+    protected boolean predictiveBackAnimationInProgress;
+
+    /** Приоритет колбэка: выше системного, чтобы шторка перехватывала жест первой. */
+    private static final int BACK_CALLBACK_PRIORITY = 1_000_000;
+
+    @android.annotation.TargetApi(34)
+    private void registerBackCallback() {
+        if (backAnimationCallback != null || !app.exteraless.utils.UtilsConfig.predictiveBack()) {
+            return;
+        }
+        if (container != null && container.isAttachedToWindow()) {
+            onBackInvokedDispatcher = container.findOnBackInvokedDispatcher();
+        }
+        if (onBackInvokedDispatcher == null && getWindow() != null) {
+            onBackInvokedDispatcher = getWindow().getOnBackInvokedDispatcher();
+        }
+        if (onBackInvokedDispatcher == null && getContext() instanceof Activity) {
+            onBackInvokedDispatcher = ((Activity) getContext()).getOnBackInvokedDispatcher();
+        }
+        if (onBackInvokedDispatcher == null) {
+            // Диспетчера ещё нет — повторить после следующего прохода лэйаута.
+            if (container != null) {
+                container.post(this::registerBackCallback);
+            }
+            return;
+        }
+
+        final android.window.OnBackAnimationCallback callback = new android.window.OnBackAnimationCallback() {
+            @Override
+            public void onBackStarted(android.window.BackEvent event) {
+                predictiveBackAnimationInProgress = true;
+                if (container != null) {
+                    container.resetTouch();
+                }
+            }
+
+            @Override
+            public void onBackProgressed(android.window.BackEvent event) {
+                if (dismissed || container == null || containerView == null) {
+                    return;
+                }
+                final float progress = event.getProgress();
+                containerView.setTranslationY(containerView.getMeasuredHeight() * 0.15f * progress);
+                if (backDrawable != null) {
+                    backDrawable.setAlpha((int) (dimBehindAlpha * (1.0f - progress)));
+                }
+            }
+
+            @Override
+            public void onBackCancelled() {
+                predictiveBackAnimationInProgress = false;
+                if (container == null || containerView == null) {
+                    return;
+                }
+                container.resetTouch();
+                container.cancelCurrentAnimation();
+                final AnimatorSet set = new AnimatorSet();
+                set.playTogether(ObjectAnimator.ofFloat(containerView, View.TRANSLATION_Y, 0.0f));
+                if (backDrawable != null) {
+                    set.playTogether(ObjectAnimator.ofInt(backDrawable,
+                            AnimationProperties.COLOR_DRAWABLE_ALPHA, dimBehind ? dimBehindAlpha : 0));
+                }
+                set.setDuration(250L);
+                set.setInterpolator(CubicBezierInterpolator.DEFAULT);
+                container.setCurrentAnimation(set);
+                set.start();
+            }
+
+            @Override
+            public void onBackInvoked() {
+                if (delegate != null && !delegate.canDismiss()) {
+                    onBackCancelled();
+                    return;
+                }
+                predictiveBackAnimationInProgress = false;
+                if (container != null) {
+                    container.resetTouch();
+                }
+                dismiss();
+            }
+        };
+
+        backAnimationCallback = callback;
+        if (keyboardVisible) {
+            return;
+        }
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(BACK_CALLBACK_PRIORITY, callback);
+        isBackCallbackRegistered = true;
+    }
+
+    @android.annotation.TargetApi(34)
+    private void unregisterBackCallback() {
+        if (onBackInvokedDispatcher != null && backAnimationCallback != null && isBackCallbackRegistered) {
+            onBackInvokedDispatcher.unregisterOnBackInvokedCallback(
+                    (android.window.OnBackInvokedCallback) backAnimationCallback);
+        }
+        isBackCallbackRegistered = false;
+        backAnimationCallback = null;
+        onBackInvokedDispatcher = null;
+    }
+
+    @android.annotation.TargetApi(34)
+    private void updateBackCallbackState() {
+        if (onBackInvokedDispatcher == null || backAnimationCallback == null) {
+            return;
+        }
+        if (keyboardVisible && isBackCallbackRegistered) {
+            onBackInvokedDispatcher.unregisterOnBackInvokedCallback(
+                    (android.window.OnBackInvokedCallback) backAnimationCallback);
+            isBackCallbackRegistered = false;
+        } else if (!keyboardVisible && !isBackCallbackRegistered) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(BACK_CALLBACK_PRIORITY,
+                    (android.window.OnBackInvokedCallback) backAnimationCallback);
+            isBackCallbackRegistered = true;
+        }
     }
 
     @Override

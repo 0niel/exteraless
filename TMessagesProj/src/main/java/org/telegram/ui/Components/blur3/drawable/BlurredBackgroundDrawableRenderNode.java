@@ -30,6 +30,8 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
     private final Paint paintShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paintStrokeTop = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paintStrokeBottom = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // Сплошной контур заливкой
+    private final Paint paintStrokeFull = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private boolean renderNodeInvalidated;
 
@@ -44,6 +46,7 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
         this.paintShadow.setColor(0);
         this.paintStrokeTop.setStyle(Paint.Style.STROKE);
         this.paintStrokeBottom.setStyle(Paint.Style.STROKE);
+        this.paintStrokeFull.setStyle(Paint.Style.FILL);
     }
 
     @Override
@@ -69,8 +72,12 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
     protected void onBoundPropsChanged() {
         super.onBoundPropsChanged();
 
-        paintStrokeTop.setStrokeWidth(boundProps.strokeWidthTop);
-        paintStrokeBottom.setStrokeWidth(boundProps.strokeWidthBottom);
+        if (boundProps.useFullStroke) {
+            paintStrokeTop.setStrokeWidth(boundProps.strokeWidthFull);
+        } else {
+            paintStrokeTop.setStrokeWidth(boundProps.strokeWidthTop);
+            paintStrokeBottom.setStrokeWidth(boundProps.strokeWidthBottom);
+        }
 
         outlineRect.set(0, 0,
             boundProps.boundsWithPadding.width(),
@@ -140,15 +147,22 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
                 c.drawColor(backgroundColor);
             }
         }
-        if (strokeColorTop != 0) {
-            drawStroke(c, 0, 0, boundProps.boundsWithPadding.width(),
-                    boundProps.boundsWithPadding.height(), boundProps.radii,
-                    boundProps.strokeWidthTop, true, paintStrokeTop);
-        }
-        if (strokeColorBottom != 0) {
-            drawStroke(c, 0, 0, boundProps.boundsWithPadding.width(),
-                    boundProps.boundsWithPadding.height(), boundProps.radii,
-                    boundProps.strokeWidthBottom, false, paintStrokeBottom);
+        if (!boundProps.useFullStroke) {
+            if (strokeColorTop != 0) {
+                drawStroke(c, 0, 0, boundProps.boundsWithPadding.width(),
+                        boundProps.boundsWithPadding.height(), boundProps.radii,
+                        boundProps.strokeWidthTop, true, paintStrokeTop);
+            }
+            if (strokeColorBottom != 0) {
+                drawStroke(c, 0, 0, boundProps.boundsWithPadding.width(),
+                        boundProps.boundsWithPadding.height(), boundProps.radii,
+                        boundProps.strokeWidthBottom, false, paintStrokeBottom);
+            }
+        } else if (Color.alpha(strokeColorFull) != 0) {
+            c.save();
+            c.translate(-boundProps.boundsWithPadding.left, -boundProps.boundsWithPadding.top);
+            c.drawPath(boundProps.strokePathTop, paintStrokeFull);
+            c.restore();
         }
         renderNode.endRecording();
     }
@@ -158,8 +172,12 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
         super.updateColors();
 
         paintShadow.setShadowLayer(shadowLayerRadius, shadowLayerDx, shadowLayerDy, shadowColor);
-        paintStrokeTop.setColor(strokeColorTop);
-        paintStrokeBottom.setColor(strokeColorBottom);
+        if (boundProps.useFullStroke) {
+            paintStrokeFull.setColor(strokeColorFull);
+        } else {
+            paintStrokeTop.setColor(strokeColorTop);
+            paintStrokeBottom.setColor(strokeColorBottom);
+        }
 
         renderNodeInvalidated = true;
     }

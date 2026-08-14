@@ -8,6 +8,13 @@
 
 package org.telegram.ui;
 
+import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.drawer.DrawerContainer;
+import app.exteraless.drawer.MainMenuHelper;
+import app.exteraless.drawer.MainMenuItem;
+import app.exteraless.drawer.MainMenuLayout;
+import app.exteraless.utils.AppUtils;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
@@ -518,6 +525,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private boolean downloadsItemVisible;
     public ActionBarMenuItem searchItem;
     private ActionBarMenuItem optionsItem;
+    /** Бургер вместо стрелки «назад», когда включена своя шторка. */
+    private MenuDrawable menuDrawable;
     private ActionBarMenuItem speedItem;
     public static boolean switchingTheme;
     private ActionBarMenuItem doneItem;
@@ -1367,6 +1376,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                             filterTabsView != null && !filterTabsView.isEditing() &&
                             !searching &&
                             !rightSlidingDialogContainer.hasFragment() &&
+                            // при открытой шторке вкладки не листаются.
+                            (drawerContainer() == null || !drawerContainer().isDrawerOpen()) &&
                             !parentLayout.checkTransitionAnimation() && !parentLayout.isInPreviewMode() && !parentLayout.isPreviewOpenAnimationInProgress() &&
                             (
                                     ev == null ||
@@ -1478,7 +1489,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         velX = velocityTracker.getXVelocity();
                         velY = velocityTracker.getYVelocity();
                         if (!startedTracking) {
-                            if (Math.abs(velX) >= 3000 && Math.abs(velX) > Math.abs(velY)) {
+                            if (Math.abs(velX) >= AppUtils.getSwipeVelocity() && Math.abs(velX) > Math.abs(velY)) {
                                 prepareForMoving(ev, velX < 0);
                             }
                         }
@@ -1503,7 +1514,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                     }
                                 }
                             } else {
-                                backAnimation = Math.abs(x) < viewPages[0].getMeasuredWidth() / 3.0f && (Math.abs(velX) < 3500 || Math.abs(velX) < Math.abs(velY));
+                                backAnimation = Math.abs(x) < viewPages[0].getMeasuredWidth() / 3.0f && (Math.abs(velX) < AppUtils.getSwipeVelocity() || Math.abs(velX) < Math.abs(velY));
                             }
                         }
                         float dx;
@@ -2723,7 +2734,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         public float getSwipeEscapeVelocity(float defaultValue) {
-            return 3500;
+            return AppUtils.getSwipeVelocity();
         }
 
         @Override
@@ -3375,6 +3386,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 return super.dispatchTouchEvent(ev);
             }
         };
+        // openExtera: полоса пилюль в строке поиска, вся логика — в PillStackController
+        app.exteraless.pillstack.PillStackController.attach(fragmentSearchField, fragmentSearchField.editText);
         fragmentSearchField.setPadding(dp(4), dp(4), dp(4), dp(4));
         fragmentSearchField.setPivotX(0);
         fragmentSearchField.setPivotY(0);
@@ -4009,6 +4022,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     return;
                 }
                 if (id == -1) {
+                    // левая кнопка переключает свою шторку.
+                    if (AppearanceConfig.navigationDrawer() && drawerContainer() != null && canOpenDrawer()) {
+                        drawerContainer().toggleDrawer();
+                        return;
+                    }
                     if (rightSlidingDialogContainer != null && rightSlidingDialogContainer.hasFragment()) {
                         if (actionBar.isActionModeShowed()) {
                             if (searchViewPager != null && searchViewPager.getVisibility() == View.VISIBLE && searchViewPager.actionModeShowing()) {
@@ -5480,7 +5498,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         };
         dialogStoriesCell.setActionBar(actionBar);
-        dialogStoriesCell.setMenuItemsOffset(isArchive() ? dp(68) : dpf2(16.66f));
+        // бургер занимает место архива.
+        dialogStoriesCell.setMenuItemsOffset(getDialogStoriesMenuItemsOffset());
         dialogStoriesCell.allowGlobalUpdates = false;
         dialogStoriesCell.setVisibility(View.GONE);
         animateToHasStories = false;
@@ -5803,6 +5822,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_mainTabsVisible();
         checkUi_forwardCommentFieldVisible();
         checkUi_searchFieldStyle();
+        // иначе до первого уведомления кнопки слева не будет.
+        updateDrawerButton();
 
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
         return fragmentView;
@@ -6884,7 +6905,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // actionMode.setBackgroundColor(Color.TRANSPARENT);
         // actionMode.drawBlur = false;
 
-        if (hasMainTabs) {
+        // при своей шторке слева уже есть бургер/стрелка.
+        if (hasMainTabs && !AppearanceConfig.navigationDrawer()) {
             actionModeCloseView = new ImageView(getContext());
             actionModeCloseView.setScaleType(ImageView.ScaleType.CENTER);
             actionModeCloseView.setImageDrawable(new BackDrawable(true));
@@ -7449,6 +7471,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public boolean onBackPressed(boolean invoked) {
+        // сначала закрывается шторка.
+        if (drawerContainer() != null && drawerContainer().isDrawerOpen()) {
+            if (invoked) {
+                drawerContainer().closeDrawer(true);
+            }
+            return false;
+        }
         if (hasShownSheet()) {
             if (invoked) closeSheet();
             return false;
@@ -9224,6 +9253,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         selectedDialogs.clear();
         if (backDrawable != null) {
             backDrawable.setRotation(0, true);
+        }
+        // после режима выделения возвращаем бургер.
+        if (menuDrawable != null && actionBar.getBackButton() != null
+                && !(actionBar.getBackButton().getDrawable() instanceof MenuDrawable)) {
+            actionBar.setBackButtonDrawable(menuDrawable);
         }
         if (filterTabsView != null) {
             filterTabsView.animateColorsTo(Theme.key_actionBarTabLine, Theme.key_actionBarTabActiveText, Theme.key_actionBarTabUnactiveText, Theme.key_actionBarTabSelector, Theme.key_windowBackgroundWhite);
@@ -11033,6 +11067,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             updateStoriesPosting();
         } else if (id == NotificationCenter.mainUserInfoChanged) {
             updateStatus(UserConfig.getInstance(account).getCurrentUser(), true);
+            updateDrawerButton();
         } else if (id == NotificationCenter.onDatabaseReset) {
             dialogsLoaded[currentAccount] = false;
             loadDialogs(getAccountInstance());
@@ -13978,6 +14013,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         });
                     });
             io.addGap();
+            // Пользователь настроил свой порядок пунктов (dialogs-03) — берём его вместо
+            // захардкоженного списка. Пока OEAppearanceMainMenuLayout пуст, меню в точности
+            // такое же, как было. BOTS и SETTINGS пропускаем: они уже есть ниже по коду.
+            if (MainMenuLayout.isCustomized()) {
+                MainMenuHelper.addConfiguredItemOptions(io,
+                        MainMenuHelper.createMenuContext(currentAccount, this),
+                        itemId -> itemId == MainMenuItem.BOTS.getId() || itemId == MainMenuItem.SETTINGS.getId());
+                if (hideBottomNavigationBar) {
+                    io.add(R.drawable.menu_recent, getString(R.string.RecentChats), () -> {
+                        io.dismiss();
+                        BackButtonMenuRecent.show(currentAccount, this, optionsItem);
+                    });
+                }
+            } else {
             if (hideBottomNavigationBar) {
                 io.add(R.drawable.left_status_profile, getString(R.string.MyProfile), () -> {
                     Bundle args = new Bundle();
@@ -14027,6 +14076,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
                 presentFragment(new ChatActivity(args));
             });
+            }
             if (hideBottomNavigationBar && NaConfig.INSTANCE.getShowAddToBookmark().Bool()) {
                 io.add(R.drawable.msg_fave, getString(R.string.BookmarksManager), () -> presentFragment(new BookmarkManagerActivity()));
             }
@@ -14385,6 +14435,90 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemSearchVisibility();
     }
 
+    /** exteraGram: {@code DialogsActivity.drawerContainer()} :4901. */
+    private DrawerContainer drawerContainer() {
+        if (getParentActivity() instanceof LaunchActivity) {
+            return ((LaunchActivity) getParentActivity()).drawerLayoutContainer.getDrawerContainer();
+        }
+        return null;
+    }
+
+    /** exteraGram: {@code DialogsActivity.shouldUseDrawerActionBarLayout()} :8201. */
+    private boolean shouldUseDrawerActionBarLayout() {
+        // communityId в exteraGram нет: у сообщества свой заголовок со стрелкой «назад», бургер там нельзя.
+        return AppearanceConfig.navigationDrawer() && !onlySelect && initialDialogsType == DIALOGS_TYPE_DEFAULT
+                && folderId == 0 && communityId == 0 && searchString == null;
+    }
+
+    /** exteraGram: {@code DialogsActivity.getDialogStoriesMenuItemsOffset()} :4966. */
+    private float getDialogStoriesMenuItemsOffset() {
+        return (isArchive() || shouldUseDrawerActionBarLayout()) ? dp(68) : dpf2(16.66f);
+    }
+
+    /**
+     * шторку нельзя дёргать во время
+     * поиска, выделения, перетаскивания вкладок и превью справа.
+     */
+    public boolean canOpenDrawer() {
+        if (!AppearanceConfig.navigationDrawer() || onlySelect || folderId != 0 || communityId != 0
+                || initialDialogsType != DIALOGS_TYPE_DEFAULT || searching
+                || (actionBar != null && actionBar.isActionModeShowed())
+                || animatorSearchVisible.getValue() || searchAnimator != null
+                || (rightSlidingDialogContainer != null
+                        && (rightSlidingDialogContainer.hasFragment() || rightFragmentTransitionInProgress))
+                || tabsAnimationInProgress || startedTracking || maybeStartTracking) {
+            return false;
+        }
+        return filterTabsView == null || (!filterTabsView.isEditing() && !filterTabsView.isAnimatingIndicator());
+    }
+
+    /**
+     * свайп не ловится
+     * в полосе нижних вкладок и не конфликтует со свайпом папок.
+     */
+    public boolean canOpenDrawerBySwipe(MotionEvent ev) {
+        final boolean bottomBarVisible = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
+        if (ev != null && bottomBarVisible && fragmentView != null) {
+            final Rect bounds = AndroidUtilities.rectTmp2;
+            if (fragmentView.getGlobalVisibleRect(bounds)) {
+                final int y = ((int) ev.getRawY()) - bounds.top;
+                final int bottom = fragmentView.getMeasuredHeight() - navigationBarHeight;
+                if (y >= bottom - dp(MainTabsHelper.getMainTabsHeightWithMargins()) && y <= bottom) {
+                    return false;
+                }
+            }
+        }
+        return canOpenDrawer() && (filterTabsView == null || filterTabsView.getVisibility() != View.VISIBLE
+                || SharedConfig.getChatSwipeAction(currentAccount) != SwipeGestureSettingsView.SWIPE_GESTURE_FOLDERS
+                || filterTabsView.getCurrentTabId() == filterTabsView.getFirstTabId());
+    }
+
+    /** exteraGram: {@code DialogsActivity.updateDrawerButton()} :8790 — бургер вместо «⋮». */
+    private void updateDrawerButton() {
+        if (dialogStoriesCell != null) {
+            dialogStoriesCell.setMenuItemsOffset(getDialogStoriesMenuItemsOffset());
+        }
+        if (actionBar == null || onlySelect || initialDialogsType != DIALOGS_TYPE_DEFAULT
+                || folderId != 0 || communityId != 0 || searchString != null) {
+            return;
+        }
+        if (AppearanceConfig.navigationDrawer()) {
+            if (menuDrawable == null) {
+                menuDrawable = new MenuDrawable();
+                menuDrawable.setRotateToBack(false);
+            }
+            actionBar.setBackButtonDrawable(menuDrawable);
+            actionBar.setBackButtonContentDescription(getString(R.string.AccDescrOpenMenu));
+        } else {
+            if (actionBar.getBackButton() != null && actionBar.getBackButton().getDrawable() instanceof MenuDrawable) {
+                actionBar.setBackButtonDrawable(null);
+            }
+            menuDrawable = null;
+        }
+        checkUi_itemOptionsVisibility();
+        checkUi_itemBackButtonVisibility();
+    }
+
     private void checkUi_itemBackButtonVisibility() {
         if (actionBar == null) {
             return;
@@ -14401,7 +14535,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor1 = 1f - animatorSearchVisible.getFloatValue();
         final float factor2 = 1f - getRightSlidingProgress();
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
-        final float factor = factor1 * factor2 * factor3;
+        // со своей шторкой пункты уезжают в неё, «⋮» не нужен.
+        final float factor4 = AppearanceConfig.navigationDrawer() ? 0f : 1f;
+        final float factor = factor1 * factor2 * factor3 * factor4;
         FragmentFloatingButton.setAnimatedVisibility(optionsItem, factor);
     }
 

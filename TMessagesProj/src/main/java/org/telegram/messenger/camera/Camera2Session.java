@@ -490,8 +490,24 @@ public class Camera2Session {
             captureRequestBuilder.set(CaptureRequest.FLASH_MODE, flashing ? (recordingVideo ? CaptureRequest.FLASH_MODE_TORCH : CaptureRequest.FLASH_MODE_SINGLE) : CaptureRequest.FLASH_MODE_OFF);
 
             if (recordingVideo) {
-                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 60));
-                captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
+                // exteraGram 12.9.0, Camera2Session.java:545-560. У апстрима здесь просто
+                // просят диапазон 30-60 (драйвер почти всегда выбирает 30) и не трогают AE.
+                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
+                recordingFrameRate = 30;
+                Range<Integer> extendedFps;
+                if (app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool()
+                        && (extendedFps = selectExtendedFpsRange()) != null) {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, extendedFps);
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
+                    recordingFrameRate = 60;
+                } else {
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 60));
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
+                }
+                if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()) {
+                    chooseStabilizationMode(captureRequestBuilder);
+                }
+                chooseFocusMode(captureRequestBuilder);   // без настройки, как в exteraGram
             }
 
             if (sensorSize != null && Math.abs(currentZoom - 1f) >= 0.01f) {
@@ -511,8 +527,86 @@ public class Camera2Session {
             captureRequestBuilder.addTarget(surface);
             captureSession.setRepeatingRequest(captureRequestBuilder.build(), null, handler);
         } catch (Exception e) {
+            recordingFrameRate = 30;
             FileLog.e("Camera2Sessions setRepeatingRequest error in updateCaptureRequest", e);
         }
+    }
+
+    // ---- Перенос из exteraGram 12.9.0, Camera2Session.java:336-357, 513-530, 617, 715 ----
+
+    private volatile int recordingFrameRate = 30;
+
+    /** Реальная частота кадров текущей записи: 60 только если драйвер её подтвердил. */
+    public int getRecordingFrameRate() {
+        return recordingFrameRate;
+    }
+
+    public Range<Integer>[] getAvailableFpsRanges() {
+        if (cameraCharacteristics == null) return null;
+        return cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+    }
+
+    /**
+     * Ищет диапазон с верхней границей 60. Точный (60,60) выигрывает сразу; иначе берётся
+     * тот, у кого нижняя граница выше — чем уже диапазон, тем меньше шанс, что драйвер
+     * просядет до 30 при плохом свете.
+     */
+    private Range<Integer> selectExtendedFpsRange() {
+        final Range<Integer>[] ranges = getAvailableFpsRanges();
+        if (ranges == null) return null;
+        Range<Integer> best = null;
+        for (Range<Integer> r : ranges) {
+            if (r == null || r.getUpper() != 60 || r.getLower() > 60) continue;
+            if (r.getLower() == 60) return r;
+            if (best == null
+                    || r.getLower() > best.getLower()
+                    || (r.getLower().equals(best.getLower()) && r.getUpper() < best.getUpper())) {
+                best = r;
+            }
+        }
+        return best;
+    }
+
+    /** Оптическая стабилизация в приоритете над электронной, они взаимоисключающие. */
+    private void chooseStabilizationMode(CaptureRequest.Builder builder) {
+        final int[] ois = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION);
+        if (ois != null) {
+            for (int mode : ois) {
+                if (mode == CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_ON) {
+                    builder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_ON);
+                    builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_OFF);
+                    FileLog.d("Camera2Session: using optical stabilization");
+                    return;
+                }
+            }
+        }
+        final int[] eis = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES);
+        if (eis != null) {
+            for (int mode : eis) {
+                if (mode == CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON) {
+                    builder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON);
+                    builder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_OFF);
+                    FileLog.d("Camera2Session: using video stabilization");
+                    return;
+                }
+            }
+        }
+        FileLog.d("Camera2Session: stabilization not available");
+    }
+
+    /** Непрерывный автофокус на время записи. У exteraGram без настройки. */
+    private void chooseFocusMode(CaptureRequest.Builder builder) {
+        final int[] modes = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
+        if (modes != null) {
+            for (int mode : modes) {
+                if (mode == CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO) {
+                    builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+                    FileLog.d("Camera2Session: using continuous video auto-focus");
+                    return;
+                }
+            }
+        }
+        FileLog.d("Camera2Session: continuous auto-focus is not available");
     }
 
     public boolean takePicture(final File file, Utilities.Callback<Integer> whenDone) {

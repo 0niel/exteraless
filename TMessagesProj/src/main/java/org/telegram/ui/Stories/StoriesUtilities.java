@@ -673,11 +673,23 @@ public class StoriesUtilities {
 
     private static final RectF forumRect = new RectF();
 
+    /**
+     * Радиус кольца сторис. exteraGram рисует кольцо по форме аватарки, а не всегда кругом
+     * (StoriesUtilities.java:805-819). Форумы с дефолтным слайдером сохраняют прежний dp(18).
+     */
+    private static float storyRingCorners(float size, boolean isForum) {
+        if (isForum && app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
+            return dp(18);
+        }
+        return app.exteraless.appearance.AppearanceConfig.getAvatarCorners(size);
+    }
+
     private static void drawCircleInternal(Canvas canvas, View view, AvatarStoryParams params, Paint paint, boolean isForum) {
-        if (isForum) {
+        if (isForum || !app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
             forumRect.set(rectTmp);
             forumRect.inset(dp(0.5f), dp(0.5f));
-            canvas.drawRoundRect(forumRect, dp(18), dp(18), paint);
+            final float r = storyRingCorners(forumRect.width(), isForum);
+            canvas.drawRoundRect(forumRect, r, r, paint);
             return;
         }
         if (params.progressToArc == 0) {
@@ -693,8 +705,11 @@ public class StoriesUtilities {
     private static final Path forumSegmentPath = new Path();
 
     private static void drawSegment(Canvas canvas, RectF rectTmp, Paint paint, float startAngle, float endAngle, AvatarStoryParams params, boolean isForum) {
-        if (isForum) {
-            float r = rectTmp.height() * 0.32f;
+        if (isForum || !app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
+            // Сегментированное кольцо тоже идёт по форме аватарки.
+            float r = isForum && app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()
+                    ? rectTmp.height() * 0.32f
+                    : storyRingCorners(rectTmp.height(), isForum);
             float rotateAngle = (((int)(startAngle)) / 90) * 90 + 90;
             float pathAngleStart = -199 + rotateAngle;
             float percentFrom = (startAngle - pathAngleStart) / 360;

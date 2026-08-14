@@ -1567,6 +1567,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
         int top = Integer.MAX_VALUE;
         int bottom = Integer.MIN_VALUE;
+        boolean roundSection = false;
 
         for (int i = 0; i < getChildCount(); ++i) {
             View child = getChildAt(i);
@@ -1578,6 +1579,9 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             if (position >= fromAdapterPosition && position <= toAdapterPosition) {
                 top = Math.min(y, top);
                 bottom = Math.max((int) (y + child.getHeight() * child.getAlpha()), bottom);
+                if (position == fromAdapterPosition && position == toAdapterPosition) {
+                    roundSection = isRoundSectionView(child);
+                }
             }
         }
 
@@ -1586,7 +1590,14 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             }
             backgroundPaint.setColor(color);
-            canvas.drawRect(0, top - topMargin, getWidth(), bottom + bottomMargin, backgroundPaint);
+            // повторять её форму, иначе цвет вылезает прямоугольником за скруглённый фон.
+            if (fromAdapterPosition != toAdapterPosition || !roundSection) {
+                canvas.drawRect(0, top - topMargin, getWidth(), bottom + bottomMargin, backgroundPaint);
+                return;
+            }
+            AndroidUtilities.rectTmp.set(0, top - topMargin, getWidth(), bottom + bottomMargin);
+            final float radius = getSingleSectionRadius(AndroidUtilities.rectTmp);
+            canvas.drawRoundRect(AndroidUtilities.rectTmp, radius, radius, backgroundPaint);
         }
     }
 
@@ -3265,6 +3276,36 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
     public static final int TAG_NOT_SECTION = -33024;
 
+    /**
+     * Ключ keyed-тега «секция-таблетка»: секция, состоящая ровно из одной такой строки,
+     * рисуется не радиусом sectionRadius, а полной таблеткой height/2 — так у экстеры
+     * выглядят мастер-тумблеры на «Автозагрузке медиа», «Прокси» и universal-экранах.
+     * там ключом служит R.id.round_section_tag;
+     * ресурсный id нам здесь заводить нечем, поэтому ключ — константа рядом с TAG_NOT_SECTION:
+     * View.setTag(int, Object) требует лишь (key >>> 24) >= 2, отрицательное значение это
+     * условие выполняет и с настоящими R.id (0x7f……) не пересекается.
+     */
+    public static final int TAG_ROUND_SECTION = -33025;
+
+    /**. */
+    public static boolean isRoundSectionView(View view) {
+        return view != null && Boolean.TRUE.equals(view.getTag(TAG_ROUND_SECTION));
+    }
+
+    /**
+     * Помечает строку как «таблетку». У exteraGram тег ставится прямо в
+     * чтобы ключ тега знал только этот файл.
+     */
+    public static void setRoundSectionView(View view, boolean round) {
+        if (view == null) return;
+        view.setTag(TAG_ROUND_SECTION, round ? Boolean.TRUE : null);
+    }
+
+    /**. Дешёвый вызов, потому и годится в onDraw. */
+    private float getSingleSectionRadius(RectF rect) {
+        return rect.height() / 2.0f;
+    }
+
     public void disableSections() {
         setSelectorDrawableColor(getThemedColor(Theme.key_listSelector));
         this.isViewTypeSection = null;
@@ -3278,11 +3319,16 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
     }
 
+    /**
+     * Радиус карточек-секций берётся из настроек внешнего вида openExtera, чтобы слайдер
+     * «Радиус секций» действовал на всех экранах, а не только на наших. Значение по
+     * умолчанию (20 dp) повторяет exteraGram, 0 даёт стоковые острые углы.
+     */
     public void setSections() {
-        setSections(dp(12), dp(16), false);
+        setSections(dp(12), dp(app.exteraless.appearance.AppearanceConfig.sectionRadius()), false);
     }
     public void setSections(boolean topPadding) {
-        setSections(dp(12), dp(16), topPadding);
+        setSections(dp(12), dp(app.exteraless.appearance.AppearanceConfig.sectionRadius()), topPadding);
     }
     public void setSections(int padding, float roundRadius, boolean topPadding) {
         setSections(
@@ -3441,7 +3487,11 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             Math.min(getHeight() - (applyPaddingToSections ? getPaddingBottom() : -sectionRadius), bottom(to) + (hasBelow ? sectionRadius : 0) - bottomMargin)
         );
         if (AndroidUtilities.rectTmp.bottom < AndroidUtilities.rectTmp.top) return;
-        drawSectionBackground.run(canvas, AndroidUtilities.rectTmp, sectionRadius, sectionRadius, from.getAlpha());
+        // полукруглые торцы,
+        // во всех остальных случаях обычный радиус секции.
+        final float radius = (from != to || hasAbove || hasBelow || !isRoundSectionView(from))
+            ? sectionRadius : getSingleSectionRadius(AndroidUtilities.rectTmp);
+        drawSectionBackground.run(canvas, AndroidUtilities.rectTmp, radius, radius, from.getAlpha());
     }
 
     private boolean hasAbove(View view, int index) {
@@ -3644,7 +3694,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
         if (!prev && !next) {
             clipPath.rewind();
-            clipPath.addRoundRect(AndroidUtilities.rectTmp, sectionRadius, sectionRadius, Path.Direction.CW);
+            final float radius = isRoundSectionView(child) ? getSingleSectionRadius(AndroidUtilities.rectTmp) : sectionRadius;
+            clipPath.addRoundRect(AndroidUtilities.rectTmp, radius, radius, Path.Direction.CW);
             canvas.clipPath(clipPath);
         } else if (!prev) {
             clipPath.rewind();
@@ -3706,7 +3757,9 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         final Path clipPath = new Path();
         if (!prev && !next || forceRound) {
             clipPath.rewind();
-            clipPath.addRoundRect(rect, sectionRadius, sectionRadius, Path.Direction.CW);
+            // та же таблетка, что и в clipChild.
+            final float radius = isRoundSectionView(child) ? getSingleSectionRadius(rect) : sectionRadius;
+            clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW);
         } else if (!prev) {
             clipPath.rewind();
             clipPath.addRoundRect(rect, sectionRadiusTop, Path.Direction.CW);

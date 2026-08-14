@@ -431,6 +431,11 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
             parentObject = object;
         }
         setUseRoundForThumbDrawable(true);
+        if (!oeIsAvatar) {
+            // openExtera: это аватарка — пересчитываем радиус под настройку закругления.
+            oeIsAvatar = true;
+            applyRoundRadiusInternal();
+        }
         BitmapDrawable strippedBitmap = null;
         boolean hasStripped = false;
         ImageLocation videoLocation = null;
@@ -2540,7 +2545,57 @@ public class ImageReceiver implements NotificationCenter.NotificationCenterDeleg
         setRoundRadius(new int[]{tl, tr, br, bl});
     }
 
+    // openExtera: закругление аватарок. Храним запрошенный радиус, чтобы пересчитать его,
+    // когда ресивер уже после setRoundRadius узнает, что рисует аватарку.
+    private final int[] oeRequestedRoundRadius = new int[4];
+    private boolean oeIsAvatar;
+    // openExtera: радиус посчитан вызывающим через AppearanceConfig.getAvatarCorners(сторона) —
+    // масштабировать его второй раз нельзя. См. setAvatarCornersApplied.
+    private boolean oeAvatarCornersApplied;
+
     public void setRoundRadius(int[] value) {
+        System.arraycopy(value, 0, oeRequestedRoundRadius, 0, Math.min(4, value.length));
+        applyRoundRadiusInternal();
+    }
+
+    /**
+     * openExtera: отключает глобальное масштабирование радиуса для этого ресивера.
+     * <p>
+     * Хук ниже умножает <b>запрошенный</b> радиус на corners/28 и совпадает с exteraGram только
+     * там, где сток просит ровно половину стороны. Где сток просит больше (радиус во всю сторону
+     * ради гарантированного круга), масштабирование даёт круг и на середине слайдера — exteraGram
+     * в таких местах зовёт {@code ExteraConfig.getAvatarCorners(сторона)} напрямую
+     *. Вызывающий, сделавший так же,
+     * обязан взвести этот флаг.
+     */
+    public void setAvatarCornersApplied(boolean applied) {
+        if (oeAvatarCornersApplied != applied) {
+            oeAvatarCornersApplied = applied;
+            applyRoundRadiusInternal();
+        }
+    }
+
+    /**
+     * openExtera: радиус для аватарки со стороной {@code sizePx} пикселей — ровно контракт exteraGram
+     * {@code ExteraConfig.getAvatarCorners(f, true)}. Порядок вызовов не важен: флаг взводится до
+     * записи радиуса.
+     */
+    public void setRoundRadiusForAvatar(float sizePx) {
+        oeAvatarCornersApplied = true;
+        setRoundRadius(app.exteraless.appearance.AppearanceConfig.getAvatarCorners(sizePx));
+    }
+
+    private void applyRoundRadiusInternal() {
+        int[] value = oeRequestedRoundRadius;
+        if (oeIsAvatar && !oeAvatarCornersApplied && !app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
+            int corners = app.exteraless.appearance.AppearanceConfig.avatarCorners();
+            int max = app.exteraless.appearance.AppearanceConfig.AVATAR_CORNERS_MAX;
+            int[] scaled = new int[4];
+            for (int a = 0; a < 4; a++) {
+                scaled[a] = (int) Math.ceil(value[a] * corners / (float) max);
+            }
+            value = scaled;
+        }
         boolean changed = false;
         int firstValue = value[0];
         isRoundRect = true;

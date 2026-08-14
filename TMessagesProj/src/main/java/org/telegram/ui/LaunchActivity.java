@@ -574,6 +574,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         setupActionBarLayout();
         drawerLayoutContainer.setParentActionBarLayout(actionBarLayout);
         actionBarLayout.setDrawerLayoutContainer(drawerLayoutContainer);
+        syncDrawerContainerEnabled();
         actionBarLayout.setFragmentStack(mainFragmentsStack);
         actionBarLayout.setFragmentStackChangedListener(() -> {
             checkSystemBarColors(true, false);
@@ -777,6 +778,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     private boolean started = false;
                     private boolean invoked = false;
 
+                    /** exteraGram: LaunchActivity.java:6873-6890 — шторка перехватывает жест «назад». */
+                    private boolean drawerPredictiveBackStarted = false;
+
                     @Override
                     public void onBackInvoked() {
                         invoked = true;
@@ -791,6 +795,11 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         }
                         if (!onBackPressed(true))
                             return;
+                        if (drawerPredictiveBackStarted && drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null) {
+                            drawerLayoutContainer.getDrawerContainer().commitPredictiveBack();
+                            drawerPredictiveBackStarted = false;
+                            return;
+                        }
                         if (actionBarLayout != null) {
                             actionBarLayout.onBackInvoked();
                         } else {
@@ -803,11 +812,17 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         started = true;
                         invoked = false;
                         predictiveBackStarted = false;
+                        drawerPredictiveBackStarted = false;
                     }
 
                     private void onBackStartedInternal(BackEvent backEvent) {
                         if (AndroidUtilities.isTablet()) return;
                         if (!onBackPressed(false)) return;
+                        if (drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null
+                                && drawerLayoutContainer.getDrawerContainer().startPredictiveBack()) {
+                            drawerPredictiveBackStarted = true;
+                            return;
+                        }
                         if (actionBarLayout != null) {
                             boolean started = actionBarLayout.onBackStarted(backEvent.getTouchX(), backEvent.getTouchY());
                             if (started && !locked) {
@@ -834,8 +849,12 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         final float fixedProgress = Math.max(0, progress - LAZY_START) / (1 - LAZY_START);
 
                         if (AndroidUtilities.isTablet()) return;
+                        if (drawerPredictiveBackStarted && drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null) {
+                            drawerLayoutContainer.getDrawerContainer().updatePredictiveBackProgress(fixedProgress);
+                            return;
+                        }
                         if (actionBarLayout != null) {
-                            actionBarLayout.onBackProgress(fixedProgress);
+                            actionBarLayout.onBackProgress(fixedProgress, backEvent.getTouchY());
                         }
                     }
 
@@ -849,6 +868,11 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         }
 
                         if (AndroidUtilities.isTablet()) return;
+                        if (drawerPredictiveBackStarted && drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null) {
+                            drawerLayoutContainer.getDrawerContainer().cancelPredictiveBack();
+                            drawerPredictiveBackStarted = false;
+                            return;
+                        }
                         if (actionBarLayout != null) {
                             actionBarLayout.onBackCancelled();
                         }
@@ -1270,7 +1294,28 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         }
         updateCurrentConnectionState(currentAccount);
 
+        // шторка перечитывает шапку, аккаунты и пункты меню.
+        if (drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null) {
+            drawerLayoutContainer.getDrawerContainer().onAccountChanged();
+        }
+
         switchingAccount = false;
+    }
+
+    /**
+     * Пока настройка выключена, шторка вообще не создаётся — UI остаётся стоковым.
+     */
+    public void syncDrawerContainerEnabled() {
+        if (drawerLayoutContainer == null) {
+            return;
+        }
+        if (app.exteraless.appearance.AppearanceConfig.navigationDrawer()) {
+            if (drawerLayoutContainer.getDrawerContainer() == null) {
+                drawerLayoutContainer.setDrawerContainer(new app.exteraless.drawer.DrawerContainer(this));
+            }
+        } else if (drawerLayoutContainer.getDrawerContainer() != null) {
+            drawerLayoutContainer.setDrawerContainer(null);
+        }
     }
 
     private void switchToAvailableAccountOrLogout() {
@@ -6964,6 +7009,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     @Override
     protected void onDestroy() {
+        app.exteraless.icons.picker.IconPickerController.onDestroy();
         isActive = false;
         activeInstanceCount--;
         unregisterReceiver(batteryReceiver);
@@ -8448,6 +8494,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     public boolean onBackPressed(boolean invoked) {
+        if (app.exteraless.icons.picker.IconPickerController.onBackPressed(invoked)) {
+            return false;
+        }
         if (FloatingDebugController.onBackPressed(invoked)) {
             return false;
         }

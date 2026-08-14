@@ -521,7 +521,8 @@ public class MediaController implements AudioManager.OnAudioFocusChangeListener,
         public Boolean highQuality;
         public boolean isHighQuality() {
             if (highQuality == null)
-                return SharedConfig.photoHighQualityDefault;
+                // exteraGram 12.9.0, MediaController.java:1269
+                return app.exteraless.chats.ChatsConfig.alwaysSendInHD.Bool() || SharedConfig.photoHighQualityDefault;
             return highQuality;
         }
 

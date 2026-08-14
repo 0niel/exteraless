@@ -726,6 +726,34 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         emojiStatus = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(emojiStatusView, dp(22));
         botVerification = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(this, dp(17));
         avatarImage.setAllowLoadingOnAttachedOnly(true);
+        // openExtera: мини-аватарка отправителя в превью сообщения (AppearanceConfig.senderMiniAvatars)
+        messageAvatarSpan = new AvatarSpan(this, currentAccount, 18.0f);
+        messageAvatarSpan.needDrawShadow = false;
+    }
+
+    /** openExtera: спан мини-аватарки отправителя, см. {@link #addSenderAvatar}. */
+    private final AvatarSpan messageAvatarSpan;
+
+    /**
+     * openExtera: подставляет перед именем отправителя его мини-аватарку.
+     * Перенесено из exteraGram 12.9.0 (DialogCell.addSenderAvatar).
+     */
+    private CharSequence addSenderAvatar(CharSequence name, MessageObject messageObject) {
+        if (!app.exteraless.appearance.AppearanceConfig.senderMiniAvatars() || messageObject == null || TextUtils.isEmpty(name)) {
+            return name;
+        }
+        long fromId = messageObject.getFromChatId();
+        if (fromId == UserConfig.getInstance(currentAccount).getClientUserId()) {
+            return name;
+        }
+        messageAvatarSpan.setDialogId(fromId);
+        SpannableStringBuilder builder = new SpannableStringBuilder("A ");
+        builder.setSpan(messageAvatarSpan, 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        int start = builder.length();
+        builder.append(" ");
+        builder.setSpan(new FixedWidthSpan(dp(1)), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.append(name);
+        return builder;
     }
 
     @Override
@@ -1573,7 +1601,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 draftVoice = false;
                 needEmoji = true;
                 updateMessageThumbs();
-                messageNameString = ChatObject.isMonoForum(chat) ? null : AndroidUtilities.escape(getMessageNameString());
+                messageNameString = ChatObject.isMonoForum(chat) ? null : addSenderAvatar(AndroidUtilities.escape(getMessageNameString()), message);
                 if (ChatObject.isMonoForum(chat)) {
                     messageNameString = null;
                     if (messageFormatType == 1) {
@@ -1829,6 +1857,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                                 }
                                 messageNameString = MessageHelper.zalgoFilter(messageNameString);
                                 messageNameString = AndroidUtil.sanitizeString(messageNameString);
+                                messageNameString = addSenderAvatar(messageNameString, message);
                                 checkMessage = false;
                                 SpannableStringBuilder stringBuilder = getMessageStringFormatted(messageFormatType, restrictionReason, messageNameString, false);
 

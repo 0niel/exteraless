@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="OEChatsHideTimeOnStickers">Скрывать время на стикерах</string>
+
+    <string name="OEChatsReplies">Ответы</string>
+    <string name="OEChatsReplyColors">Цветной фон</string>
+    <string name="OEChatsReplyEmoji">Эмодзи</string>
+    <string name="OEChatsReplyBackground">Подложка</string>
+
+    <string name="OEChatsStickerShape">Форма стикеров</string>
+    <string name="OEChatsStickerShapeRounded">Скруглённая</string>
+    <string name="OEChatsStickerShapeMessage">Как сообщение</string>
+
+    <string name="OEChatsDoubleTapInfo">Некоторые действия требуют прав администратора в чате или канале.</string>
+
+    <string name="OEChatsBottomButton">Нижняя кнопка</string>
+    <string name="OEChatsBottomButtonDiscuss">Обсудить</string>
+
+    <string name="OEChatsGlassMessageMenu">Стеклянное меню сообщения</string>
+    <string name="OEChatsGlassMessageMenuInfo">Группировка переносит основные действия вниз меню сообщения.</string>
+
+    <string name="OEChatsCameraType">Тип камеры</string>
+    <string name="OEChatsCameraTypeCamera2">Camera2</string>
+    <string name="OEChatsCameraStabilization">Стабилизация</string>
+    <string name="OEChatsCameraMirrorMode">Зеркалирование</string>
+    <string name="OEChatsExtendedFps">Расширенный диапазон FPS</string>
+    <string name="OEChatsWideAngleCamera">Начинать с широкоугольной</string>
+    <string name="OEChatsStaticZoom">Статичный зум</string>
+    <string name="OEChatsStaticZoomInfo">При записи видеосообщений уровень зума не сбрасывается, когда вы убираете пальцы.</string>
+
+    <string name="OEChatsPhoto">Фото</string>
+    <string name="OEChatsAlwaysSendInHD">Всегда отправлять в HD</string>
+    <string name="OEChatsHideCameraTile">Скрыть плитку камеры</string>
+    <string name="OEChatsHideCameraTileInfo">Плитка камеры в меню вложений будет скрыта.</string>
+
+    <string name="OEChatsPlayback">Воспроизведение</string>
+    <string name="OEChatsDoubleTapSeekDuration">Перемотка двойным тапом</string>
+    <string name="OEChatsPauseOnMinimize">Автопауза</string>
+    <string name="OEChatsPauseOnMinimizeInfo">Ставит воспроизведение на паузу при блокировке экрана или сворачивании приложения.</string>
+    <string name="OEChatsSwipeToPip">Свайп в «картинку в картинке»</string>
+    <string name="OEChatsUnmuteWithVolumeButtons">Включать звук видео кнопками громкости</string>
+    <string name="OEChatsStickersAndEmoji">Стикеры и эмодзи</string>
+    <string name="OEChatsDoubleTap">Двойной тап</string>
+    <string name="OEChatsMessages">Сообщения</string>
+    <string name="OEChatsVideos">Видео</string>
+    <string name="OEChatsUnlimitedRecentStickers">Безлимит недавних стикеров</string>
+    <string name="OEChatsAdminShortcuts">Быстрые действия администратора</string>
+    <string name="OEChatsDisableGreetingSticker">Отключить приветственный стикер</string>
+    <string name="OEChatsHideSendAsPeer">Скрыть кнопку «Отправить как…»</string>
+    <string name="OEChatsHideSendAsPeerInfo">Меню «Отправить как…» остаётся доступным по долгому нажатию на кнопку эмодзи/стикеров/GIF.</string>
+    <string name="OEChatsRemoveMessageTail">Убрать «хвостик» пузыря</string>
+    <string name="OEChatsReplaceEditedWithIcon">Заменять «изменено» иконкой</string>
+    <string name="OEChatsShowOnlineStatus">Показывать индикатор онлайна</string>
+    <string name="OEChatsHideShareButton">Скрыть боковую кнопку «Поделиться»</string>
+    <string name="OEChatsShowResultsBeforeVoting">Показывать результаты до голосования</string>
+    <string name="OEChatsHideReactions">Скрывать реакции</string>
+    <string name="OEChatsHideReactionsChannels">Каналы</string>
+    <string name="OEChatsHideReactionsGroups">Группы</string>
+    <string name="OEChatsHideReactionsPrivate">Личные чаты</string>
+    <string name="OEChatsHideReactionsInfo">Реакции будут скрыты из интерфейса в выбранных типах чатов.</string>
+    <string name="OEChatsQuickTransitions">Быстрый свайп-переход</string>
+    <string name="OEChatsQuickTransitionChannels">Каналы</string>
+    <string name="OEChatsQuickTransitionTopics">Темы</string>
+    <string name="OEChatsMenuCopyPhoto">Копировать фото</string>
+    <string name="OEChatsMenuSave">Сохранить</string>
+    <string name="OEChatsMenuRepeat">Повторить</string>
+    <string name="OEChatsMenuClear">Очистить из кэша</string>
+    <string name="OEChatsMenuHistory">История сообщения</string>
+    <string name="OEChatsMenuReport">Пожаловаться</string>
+    <string name="OEChatsMenuDetails">Подробности</string>
+    <string name="OEChatsSeamlessSwitching">Бесшовное переключение</string>
+    <string name="OEChatsExtendedSettings">Расширенные настройки</string>
+    <string name="OEChatsRememberLastUsedCamera">Запоминать последнюю камеру</string>
+    <string name="OEChatsPreferOriginalQuality">Предпочитать оригинальное качество</string>
+    <string name="OEChatsPauseVideo">Видео</string>
+    <string name="OEChatsPauseVoice">Голос</string>
+    <string name="OEChatsPauseRound">Кружки</string>
+    <string name="OEChatsAiChat">ИИ-чат</string>
+    <string name="OEChatsAiChatInfo">Настройка сервисов, ролей и истории</string>
+    <string name="OEChatsChatSettings">Настройки чатов</string>
+    <string name="OEChatsChatSettingsInfo">Настройки медиа, значок приложения и другое</string>
+    <string name="OEStickerSizeSmall">Маленький</string>
+    <string name="OEStickerSizeLarge">Большой</string>
+    <string name="OESectionRadiusMax">Макс.</string>
+</resources>

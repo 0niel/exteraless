@@ -44,6 +44,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -232,6 +233,10 @@ public class ActionBarMenuItem extends FrameLayout {
 
     private boolean fixBackground;
     private boolean forceHidden;
+    /**
+     * Учитывать ли пункт в раскладке центрированного заголовка, пока его альфа между 0 и 1.
+     */
+    private boolean centerTitleVisibleForPartialAlpha = true;
 
     public ActionBarMenuItem(Context context, ActionBarMenu menu, int backgroundColor, int iconColor) {
         this(context, menu, backgroundColor, iconColor, false);
@@ -1237,6 +1242,60 @@ public class ActionBarMenuItem extends FrameLayout {
 
     public boolean isSubMenuShowing() {
         return popupWindow != null && popupWindow.isShowing();
+    }
+
+    /**
+     * Занимает ли пункт место при центрированном заголовке.
+     * Наполовину прозрачный пункт считается видимым, только если он проявляется,
+     * а не гаснет — иначе заголовок прыгает туда-обратно за время анимации.
+     */
+    public boolean isVisibleForCenterTitle() {
+        if (getVisibility() != View.VISIBLE) {
+            return false;
+        }
+        final float alpha = getAlpha();
+        if (alpha >= 1.0f) {
+            return true;
+        }
+        if (alpha <= 0.0f) {
+            return false;
+        }
+        return centerTitleVisibleForPartialAlpha;
+    }
+
+    /**
+     * Центрирование заголовка включается либо нашим ключом (порт exteraGram), либо
+     * флагом NagramX, который читает ActionBar.isCentered(). Проверка нужна только чтобы
+     * не дёргать лишний requestLayout при выключенной фиче.
+     * (там ключ один — ExteraConfig.getCenterTitle()).
+     */
+    private static boolean isCenterTitleEnabled() {
+        return app.exteraless.appearance.AppearanceConfig.centerTitle()
+                || xyz.nextalone.nagram.NaConfig.INSTANCE.getCenterActionBarTitle().Bool();
+    }
+
+    @Override
+    public void setAlpha(float alpha) {
+        final boolean wasVisibleForCenterTitle = isVisibleForCenterTitle();
+        final float oldAlpha = getAlpha();
+        super.setAlpha(alpha);
+        // Направление изменения альфы решает, считать ли полупрозрачный пункт видимым.
+        if (alpha > oldAlpha) {
+            centerTitleVisibleForPartialAlpha = true;
+        } else if (alpha < oldAlpha) {
+            centerTitleVisibleForPartialAlpha = false;
+        }
+        if (!isCenterTitleEnabled() || wasVisibleForCenterTitle == isVisibleForCenterTitle()) {
+            return;
+        }
+        // Состав меню для раскладки изменился — пусть ActionBar пересчитает центр заголовка.
+        final ViewParent parent = getParent();
+        if (parent instanceof ActionBarMenu) {
+            final ViewParent grandParent = parent.getParent();
+            if (grandParent instanceof View) {
+                ((View) grandParent).requestLayout();
+            }
+        }
     }
 
     public void closeSubMenu() {

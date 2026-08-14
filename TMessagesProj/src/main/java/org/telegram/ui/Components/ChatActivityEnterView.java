@@ -69,6 +69,7 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.ImageSpan;
 import android.text.style.RelativeSizeSpan;
+import android.util.Pair;
 import android.util.Property;
 import android.util.TypedValue;
 import android.view.ActionMode;
@@ -107,12 +108,10 @@ import androidx.collection.LongSparseArray;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.math.MathUtils;
-import androidx.core.os.BuildCompat;
+import androidx.core.view.ContentInfoCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
-import androidx.core.view.inputmethod.InputConnectionCompat;
-import androidx.core.view.inputmethod.InputContentInfoCompat;
 import androidx.customview.widget.ExploreByTouchHelper;
 import androidx.dynamicanimation.animation.DynamicAnimation;
 import androidx.dynamicanimation.animation.SpringAnimation;
@@ -5855,70 +5854,6 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
         }
 
-        private void send(InputContentInfoCompat inputContentInfo, boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
-            if (delegate != null) {
-                delegate.beforeMessageSend(null, true, scheduleDate, 0);
-            }
-            if (messageSendPreview != null) {
-                messageSendPreview.dismiss(true);
-                messageSendPreview = null;
-            }
-            if (replyingQuote != null && parentFragment != null && replyingQuote.outdated) {
-                parentFragment.showQuoteMessageUpdate();
-                return;
-            }
-            ClipDescription description = inputContentInfo.getDescription();
-            if (description.hasMimeType("image/gif")) {
-                SendMessagesHelper.prepareSendingDocument(accountInstance, null, null, inputContentInfo.getContentUri(), null, "image/gif", dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, null, notify, 0, inputContentInfo, parentFragment != null ? parentFragment.quickReplyShortcut : null, parentFragment != null ? parentFragment.getQuickReplyId() : 0, false);
-            } else {
-                SendMessagesHelper.prepareSendingPhoto(accountInstance, null, inputContentInfo.getContentUri(), dialog_id, replyingMessageObject, getThreadMessage(), replyingQuote, null, null, null, inputContentInfo, 0, null, notify, 0, parentFragment == null ? 0 : parentFragment.getChatMode(), parentFragment != null ? parentFragment.quickReplyShortcut : null, parentFragment != null ? parentFragment.getQuickReplyId() : 0);
-            }
-            if (delegate != null) {
-                delegate.onMessageSend(null, true, scheduleDate, scheduleRepeatPeriod, 0);
-            }
-        }
-
-        @Override
-        public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
-            final InputConnection ic = super.onCreateInputConnection(editorInfo);
-            if (ic == null) {
-                return null;
-            }
-            try {
-                if (isEditingBusinessLink() || isLiveComment) {
-                    EditorInfoCompat.setContentMimeTypes(editorInfo, null);
-                } else {
-                    EditorInfoCompat.setContentMimeTypes(editorInfo, new String[]{"image/gif", "image/*", "image/jpg", "image/png", "image/webp"});
-                }
-                final InputConnectionCompat.OnCommitContentListener callback = (inputContentInfo, flags, opts) -> {
-                    if (isLiveComment) {
-                        return true;
-                    }
-                    if (BuildCompat.isAtLeastNMR1() && (flags & InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION) != 0) {
-                        try {
-                            inputContentInfo.requestPermission();
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    }
-                    if (inputContentInfo.getDescription().hasMimeType("image/gif") || SendMessagesHelper.shouldSendWebPAsSticker(null, inputContentInfo.getContentUri())) {
-                        if (isInScheduleMode()) {
-                            AlertsCreator.createScheduleDatePickerDialog(parentActivity, parentFragment.getDialogId(), (notify, scheduleDate, scheduleRepeatPeriod) -> send(inputContentInfo, notify, scheduleDate, scheduleRepeatPeriod), resourcesProvider);
-                        } else {
-                            send(inputContentInfo, true, 0, 0);
-                        }
-                    } else {
-                        editPhoto(inputContentInfo.getContentUri(), inputContentInfo.getDescription().getMimeType(0));
-                    }
-                    return true;
-                };
-                return InputConnectionCompat.createWrapper(ic, editorInfo, callback);
-            } catch (Throwable e) {
-                FileLog.e(e);
-            }
-            return ic;
-        }
-
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             if (stickersDragging || stickersExpansionAnim != null) {
@@ -6045,15 +5980,9 @@ public class ChatActivityEnterView extends FrameLayout implements
         public boolean onTextContextMenuItem(int id) {
             if (id == android.R.id.paste) {
                 isPaste = true;
-
-                ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clipData = clipboard.getPrimaryClip();
-                if (clipData != null) {
-                    if (clipData.getItemCount() == 1 && clipData.getDescription().hasMimeType("image/*") && !isEditingBusinessLink()) {
-                        editPhoto(clipData.getItemAt(0).getUri(), clipData.getDescription().getMimeType(0));
-                    }
-                }
             }
+            // Картинку из буфера дальше разбирает
+            // ReceiveContentEditText: он отдаёт приёмнику весь ClipData, а не только первый элемент
             return super.onTextContextMenuItem(id);
         }
 
@@ -6218,6 +6147,73 @@ public class ChatActivityEnterView extends FrameLayout implements
         return keyboardName == null || !keyboardName.startsWith("com.samsung");
     }
 
+    // Типы, которые поле ввода готово принять
+    private static final String[] RECEIVE_CONTENT_MIME_TYPES = new String[]{"image/gif", "image/*", "image/jpg", "image/png", "image/webp"};
+
+    /**
+     * Один вход для трёх источников сразу: клавиатуры, «Вставить» и drag&drop. Возвращаем то,
+     * что не разобрали (обычный текст), — его доклеит штатное поведение TextView.
+     */
+    private ContentInfoCompat onReceiveMediaContent(ContentInfoCompat payload) {
+        final Pair<ContentInfoCompat, ContentInfoCompat> split = payload.partition(item -> item.getUri() != null);
+        final ContentInfoCompat withUri = split.first;
+        final ContentInfoCompat rest = split.second;
+        // isEditingBusinessLink()/isLiveComment выставляются уже ПОСЛЕ createMessageEditText(),
+        // так что условие exteraGram при регистрации всегда истинно — реальный отсев здесь.
+        // Возвращаем rest: текст вставится, а медиа-элементы просто выбрасываем
+        if (withUri == null || parentFragment == null || isEditingBusinessLink() || isLiveComment) {
+            return rest;
+        }
+        final ClipData clip = withUri.getClip();
+        final ClipDescription clipDescription = clip.getDescription();
+        final ArrayList<SendMessagesHelper.SendingMediaInfo> photos = new ArrayList<>();
+        for (int i = 0; i < clip.getItemCount(); ++i) {
+            final Uri uri = clip.getItemAt(i).getUri();
+            // у ClipData типов может быть меньше, чем элементов, — тогда берём общий
+            final int mimeCount = clipDescription == null ? 0 : clipDescription.getMimeTypeCount();
+            final String mime = mimeCount == 0 ? null : clipDescription.getMimeType(Math.min(i, mimeCount - 1));
+            // одиночный gif/webp-стикер прямо из клавиатуры уходит в чат без редактора
+            final boolean sendAsIs = payload.getSource() == ContentInfoCompat.SOURCE_INPUT_METHOD && clip.getItemCount() == 1
+                    && ((mime != null && mime.equalsIgnoreCase("image/gif")) || SendMessagesHelper.shouldSendWebPAsSticker(null, uri));
+            if (!sendAsIs) {
+                final SendMessagesHelper.SendingMediaInfo info = new SendMessagesHelper.SendingMediaInfo();
+                info.uri = uri;
+                photos.add(info);
+            } else if (isInScheduleMode()) {
+                AlertsCreator.createScheduleDatePickerDialog(parentActivity, parentFragment.getDialogId(), (notify, scheduleDate, scheduleRepeatPeriod) -> sendReceivedMedia(mime, uri, notify, scheduleDate, scheduleRepeatPeriod), resourcesProvider);
+            } else {
+                sendReceivedMedia(mime, uri, true, 0, 0);
+            }
+        }
+        if (!photos.isEmpty()) {
+            parentFragment.openPhotosEditor(photos, getFieldText());
+        }
+        return rest;
+    }
+
+    /** Бывший ChatActivityEditTextCaption.send(). */
+    private void sendReceivedMedia(String mime, Uri uri, boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
+        if (delegate != null) {
+            delegate.beforeMessageSend(null, true, scheduleDate, 0);
+        }
+        if (messageSendPreview != null) {
+            messageSendPreview.dismiss(true);
+            messageSendPreview = null;
+        }
+        if (replyingQuote != null && parentFragment != null && replyingQuote.outdated) {
+            parentFragment.showQuoteMessageUpdate();
+            return;
+        }
+        if (mime != null && mime.equalsIgnoreCase("image/gif")) {
+            SendMessagesHelper.prepareSendingDocument(accountInstance, null, null, uri, null, "image/gif", dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, null, notify, 0, null, parentFragment != null ? parentFragment.quickReplyShortcut : null, parentFragment != null ? parentFragment.getQuickReplyId() : 0, false);
+        } else {
+            SendMessagesHelper.prepareSendingPhoto(accountInstance, null, uri, dialog_id, replyingMessageObject, getThreadMessage(), replyingQuote, null, null, null, null, 0, null, notify, 0, parentFragment == null ? 0 : parentFragment.getChatMode(), parentFragment != null ? parentFragment.quickReplyShortcut : null, parentFragment != null ? parentFragment.getQuickReplyId() : 0);
+        }
+        if (delegate != null) {
+            delegate.onMessageSend(null, true, scheduleDate, scheduleRepeatPeriod, 0);
+        }
+    }
+
     private void createMessageEditText() {
         if (messageEditText != null) {
             return;
@@ -6312,6 +6308,11 @@ public class ChatActivityEnterView extends FrameLayout implements
                 }
             }
         };
+        // Вместо голого InputConnectionCompat поле получает
+        // полноценный приёмник контента: клавиатура, «Вставить» и drag&drop идут одной дорогой
+        if (parentFragment != null && !isEditingBusinessLink() && !isLiveComment) {
+            ViewCompat.setOnReceiveContentListener(messageEditText, RECEIVE_CONTENT_MIME_TYPES, (view, payload) -> onReceiveMediaContent(payload));
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             messageEditText.setFallbackLineSpacing(false);
         }

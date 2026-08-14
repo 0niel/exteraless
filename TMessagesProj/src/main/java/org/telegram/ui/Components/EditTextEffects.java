@@ -16,7 +16,8 @@ import android.text.Spannable;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
-import android.widget.EditText;
+
+import app.exteraless.components.ReceiveContentEditText;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
@@ -29,7 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
-public class EditTextEffects extends EditText {
+// Экстера подменила предка на
+// ReceiveContentEditText, чтобы вставка и drag&drop картинок работали во всех полях ввода
+public class EditTextEffects extends ReceiveContentEditText {
     private final static int SPOILER_TIMEOUT = 10000;
 
     private List<SpoilerEffect> spoilers = new ArrayList<>();

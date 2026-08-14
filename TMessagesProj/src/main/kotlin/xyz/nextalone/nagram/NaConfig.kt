@@ -1252,13 +1252,13 @@ object NaConfig {
         addConfig(
             "SwitchStyle",
             ConfigItem.configTypeInt,
-            0 // 0: default; 1: Modern; 2: MD3
+            2 // 0: default; 1: Modern; 2: MD3 — openExtera: MD3 по умолчанию, как в exteraGram
         )
     val sliderStyle =
         addConfig(
             "SliderStyle",
             ConfigItem.configTypeInt,
-            0 // 0: default; 1: Modern; 2: MD3
+            2 // 0: default; 1: Modern; 2: MD3 — openExtera: MD3 по умолчанию
         )
     val ignoreUnreadCount =
         addConfig(

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строки фич, перенесённых из exteraGram. -->
+<resources>
+    <string name="OpenExtera" translatable="false">exteraless</string>
+    <string name="OpenExteraInfo">Features ported from exteraGram</string>
+
+    <string name="OpenExteraFormatting">Formatting</string>
+    <string name="RelativeLastSeen">Relative Last Seen</string>
+    <string name="RelativeLastSeenInfo">Shows \"5 minutes ago\" instead of the exact time for users seen within the last 24 hours.</string>
+
+    <string name="OpenExteraChats">Chats</string>
+    <string name="AddCommaAfterMention">Add Comma after Mention</string>
+    <string name="OpenExteraChatsInfo">A comma is not added when mentioning bots.</string>
+
+    <string name="OpenExteraSections">Sections</string>
+
+    <string name="OpenExteraCategories">Categories</string>
+    <string name="OpenExteraGeneral">General</string>
+    <string name="OpenExteraGeneralInfo">Translation, formatting, storage, profile</string>
+    <string name="OpenExteraAppearance">Appearance</string>
+    <string name="OpenExteraAppearanceInfo">Avatars, chat list, folders, blur</string>
+    <string name="OpenExteraChatsCategoryInfo">Stickers, actions, camera, playback</string>
+    <string name="OpenExteraOther">Other</string>
+    <string name="OpenExteraOtherInfo">Analytics, backup, reset</string>
+
+    <string name="OpenExteraLinks">Links</string>
+    <string name="OpenExteraSource">Source Code</string>
+</resources>

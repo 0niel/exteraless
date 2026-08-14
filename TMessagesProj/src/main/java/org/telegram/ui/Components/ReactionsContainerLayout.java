@@ -70,10 +70,15 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_stories;
+import app.exteraless.appearance.GlassMenuHelper;
+
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.ListView.AdapterWithDiffUtils;
+import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
+import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
 import org.telegram.ui.Components.Premium.PremiumFeatureBottomSheet;
 import org.telegram.ui.Components.Premium.PremiumLockIconView;
 import org.telegram.ui.Components.Reactions.CustomEmojiReactionsWindow;
@@ -151,6 +156,10 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
     }
 
     private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // openExtera: матовое стекло под панелью реакций
+    private BlurredBackgroundDrawable glassBackground;
+    private BlurredBackgroundProvider glassBackgroundColorProvider;
+    private BlurredBackgroundDrawableViewFactory glassBackgroundFactory;
     private final Paint leftShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG),
             rightShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float leftAlpha, rightAlpha;
@@ -708,6 +717,11 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
             }
             if (type == TYPE_STORY || delegate.drawBackground()) {
                 delegate.drawRoundRect(canvas, rect, radius, getX(), getY(), 255, false);
+            } else if (glassBackground != null) {
+                // openExtera: стеклянная плашка вместо заливки bgPaint.
+                // Ветка восстановлена по поведению:
+                // по аналогии с drawBubbles.
+                GlassMenuHelper.draw(glassBackground, canvas, rect, radius, 255);
             } else {
                 canvas.drawRoundRect(rect, radius, radius, bgPaint);
             }
@@ -893,6 +907,9 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
         if (delegate.drawBackground()) {
             rectF.set(cx - br, cy - br, cx + br, cy + br);
             delegate.drawRoundRect(canvas, rectF, br, getX(), getY(), alpha, false);
+        } else if (glassBackground != null) {
+            rectF.set(cx - br, cy - br, cx + br, cy + br);
+            GlassMenuHelper.draw(glassBackground, canvas, rectF, br, alpha);
         } else {
             canvas.drawCircle(cx, cy, br, bgPaint);
         }
@@ -907,6 +924,9 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
         if (delegate.drawBackground()) {
             rectF.set(cx - sr, cy - sr, cx + sr, cy + sr);
             delegate.drawRoundRect(canvas, rectF, sr, getX(), getY(), alpha, false);
+        } else if (glassBackground != null) {
+            rectF.set(cx - sr, cy - sr, cx + sr, cy + sr);
+            GlassMenuHelper.draw(glassBackground, canvas, rectF, sr, alpha);
         } else {
             canvas.drawCircle(cx, cy, sr, bgPaint);
         }
@@ -1684,6 +1704,26 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
 
     public void setCurrentAccount(int currentAccount) {
         this.currentAccount = currentAccount;
+    }
+
+    /**
+     * openExtera:
+     * Вызывается из GlassMenuHelper.applyToReactions, когда стеклянное меню включено.
+     */
+    public void setGlassBackground(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundProvider provider) {
+        glassBackgroundFactory = factory;
+        glassBackgroundColorProvider = provider;
+        glassBackground = factory.create(this, true).setColorProvider(provider);
+        invalidate();
+    }
+
+    /** Фабрика и провайдер нужны, чтобы применить то же стекло к CustomEmojiReactionsWindow. */
+    public BlurredBackgroundDrawableViewFactory getGlassBackgroundFactory() {
+        return glassBackgroundFactory;
+    }
+
+    public BlurredBackgroundProvider getGlassBackgroundColorProvider() {
+        return glassBackgroundColorProvider;
     }
 
     public void setFragment(BaseFragment lastFragment) {

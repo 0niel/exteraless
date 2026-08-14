@@ -8,6 +8,8 @@
 
 package org.telegram.messenger;
 
+import app.exteraless.OpenExteraConfig;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -275,6 +277,13 @@ public class ApplicationLoader extends Application {
         SharedConfig.loadConfig();
         NekoConfig.init();
         NaConfig.init();
+        OpenExteraConfig.init();
+        app.exteraless.icons.IconPacksConfig.init();
+        app.exteraless.pillstack.PillStackConfig.init();
+        app.exteraless.appearance.AppearanceConfig.init();
+        app.exteraless.chats.ChatsConfig.init();
+        app.exteraless.general.GeneralConfig.init();
+        app.exteraless.utils.UtilsConfig.init();
         SharedPrefsHelper.init(applicationContext);
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account

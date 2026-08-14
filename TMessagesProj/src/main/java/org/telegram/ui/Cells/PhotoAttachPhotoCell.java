@@ -335,14 +335,21 @@ public class PhotoAttachPhotoCell extends FrameLayout {
                     videoPlayImageView.setVisibility(VISIBLE);
                     ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(13);
                     videoTextView.setText(AndroidUtilities.formatShortDuration(photoEntry.duration));
-                } else if (photoEntry.isHighQuality()) {
+                } else if (photoEntry.isHighQuality() && !app.exteraless.chats.ChatsConfig.alwaysSendInHD.Bool()) {
                     videoInfoContainer.setVisibility(VISIBLE);
                     videoPlayImageView.setVisibility(GONE);
                     ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(0);
                     videoTextView.setText(getString(R.string.ShortHighQuality));
-                } else {
+                } else if (photoEntry.isHighQuality() || !app.exteraless.chats.ChatsConfig.alwaysSendInHD.Bool()) {
                     videoPlayImageView.setVisibility(GONE);
                     videoInfoContainer.setVisibility(INVISIBLE);
+                } else {
+                    // Бейдж инвертирован: HD включён по умолчанию, поэтому помечаем
+                    // те кадры, которые уйдут в обычном качестве.
+                    videoInfoContainer.setVisibility(VISIBLE);
+                    videoPlayImageView.setVisibility(GONE);
+                    ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(0);
+                    videoTextView.setText(getString(R.string.ShortStandardQuality));
                 }
             }
         }
@@ -521,14 +528,19 @@ public class PhotoAttachPhotoCell extends FrameLayout {
             videoPlayImageView.setVisibility(VISIBLE);
             ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(13);
             videoTextView.setText(AndroidUtilities.formatShortDuration(photoEntry.duration));
-        } else if (photoEntry.isHighQuality() && isChecked()) {
+        } else if (photoEntry.isHighQuality() && isChecked() && !app.exteraless.chats.ChatsConfig.alwaysSendInHD.Bool()) {
             videoInfoContainer.setVisibility(VISIBLE);
             videoPlayImageView.setVisibility(GONE);
             ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(0);
             videoTextView.setText(getString(R.string.ShortHighQuality));
-        } else {
+        } else if (photoEntry.isHighQuality() || !isChecked() || !app.exteraless.chats.ChatsConfig.alwaysSendInHD.Bool()) {
             videoPlayImageView.setVisibility(GONE);
             videoInfoContainer.setVisibility(INVISIBLE);
+        } else {
+            videoInfoContainer.setVisibility(VISIBLE);
+            videoPlayImageView.setVisibility(GONE);
+            ((LayoutParams) videoTextView.getLayoutParams()).leftMargin = dp(0);
+            videoTextView.setText(getString(R.string.ShortStandardQuality));
         }
         if (photoEntry.coverPath != null) {
             imageView.setImage(photoEntry.coverPath, null, Theme.chat_attachEmptyDrawable);

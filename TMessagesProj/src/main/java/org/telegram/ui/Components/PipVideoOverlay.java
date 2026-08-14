@@ -61,6 +61,8 @@ import org.telegram.ui.PhotoViewer;
 import java.util.ArrayList;
 import java.util.List;
 
+import tw.nekomimi.nekogram.NekoConfig;
+
 public class PipVideoOverlay implements IPipSourceDelegate {
     public final static boolean IS_TRANSITION_ANIMATION_SUPPORTED = true;
     public final static float ROUNDED_CORNERS_DP = 10;
@@ -330,6 +332,10 @@ public class PipVideoOverlay implements IPipSourceDelegate {
         if (instance.parentSheet != null) {
             instance.parentSheet.destroy();
         } else if (instance.photoViewer != null) {
+            // Закрыли PiP — фокус чужому плееру.
+            if (NekoConfig.autoPauseVideo.Bool()) {
+                instance.photoViewer.requestAudioFocus(false);
+            }
             instance.photoViewer.destroyPhotoViewer();
             MediaController.getInstance().tryResumePausedAudio();
         }
@@ -504,6 +510,12 @@ public class PipVideoOverlay implements IPipSourceDelegate {
     public static void setPhotoViewer(PhotoViewer photoViewer) {
         instance.photoViewer = photoViewer;
         final VideoPlayer videoPlayer = photoViewer.getVideoPlayer();
+
+        // С выключенной паузой-при-сворачивании просмотрщик фокус не держит,
+        // звук в PiP отдаём системе.
+        if (!NekoConfig.autoPauseVideo.Bool()) {
+            photoViewer.requestAudioFocus(false);
+        }
 
         if (instance.pipSource != null) {
             instance.pipSource.destroy();
@@ -1117,10 +1129,15 @@ public class PipVideoOverlay implements IPipSourceDelegate {
                 if (videoPlayer == null) {
                     return;
                 }
-                if (videoPlayer.isPlaying()) {
+                boolean wasPlaying = videoPlayer.isPlaying();
+                if (wasPlaying) {
                     videoPlayer.pause();
                 } else {
                     videoPlayer.play();
+                }
+                // Пауза в PiP тоже отпускает фокус.
+                if (NekoConfig.autoPauseVideo.Bool()) {
+                    photoViewer.requestAudioFocus(!wasPlaying);
                 }
             }
             updatePlayButton();

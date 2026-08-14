@@ -835,11 +835,12 @@ public class Theme {
             if (rad > heightHalf) {
                 rad = heightHalf;
             }
+            final boolean oeNoTail = oeRemoveMessageTail();
             if (isOut) {
                 // LEFT-BOTTOM <- RIGHT-BOTTOM
                 if (drawFullBubble || currentType == TYPE_PREVIEW || customPaint || drawFullBottom) {
                     int radToUse = botButtonsBottom ? nearRad : rad;
-                    if (currentType == TYPE_MEDIA) {
+                    if (currentType == TYPE_MEDIA || oeNoTail) {
                         path.moveTo(bounds.right - dp(8) - radToUse, bounds.bottom - padding);
                     } else {
                         path.moveTo(bounds.right - dp(2.6f), bounds.bottom - padding);
@@ -891,9 +892,16 @@ public class Theme {
                     }
                 } else {
                     if (drawFullBubble || currentType == TYPE_PREVIEW || customPaint || drawFullBottom) {
+                        if (oeNoTail) {
+                            int radToUse = isBottomNear || botButtonsBottom ? nearRad : rad;
+                            path.lineTo(bounds.right - dp(8), bounds.bottom - padding - radToUse);
+                            rect.set(bounds.right - dp(8) - radToUse * 2, bounds.bottom - padding - radToUse * 2, bounds.right - dp(8), bounds.bottom - padding);
+                            path.arcTo(rect, 0, 90, false);
+                        } else {
                         path.lineTo(bounds.right - dp(8), bounds.bottom - padding - smallRad - dp(3));
                         rect.set(bounds.right - dp(8), bounds.bottom - padding - smallRad * 2 - dp(9), bounds.right - dp(7) + smallRad * 2, bounds.bottom - padding - dp(1));
                         path.arcTo(rect, 180, -83, false);
+                        }
                     } else {
                         path.lineTo(bounds.right - dp(8), top - topY + currentBackgroundHeight);
                     }
@@ -902,7 +910,7 @@ public class Theme {
                 if (drawFullBubble || currentType == TYPE_PREVIEW || customPaint || drawFullBottom) {
                     int radToUse = botButtonsBottom ? nearRad : rad;
 
-                    if (currentType == TYPE_MEDIA) {
+                    if (currentType == TYPE_MEDIA || oeNoTail) {
                         path.moveTo(bounds.left + dp(8) + radToUse, bounds.bottom - padding);
                     } else {
                         path.moveTo(bounds.left + dp(2.6f), bounds.bottom - padding);
@@ -948,9 +956,16 @@ public class Theme {
                     }
                 } else {
                     if (drawFullBubble || currentType == TYPE_PREVIEW || customPaint || drawFullBottom) {
+                        if (oeNoTail) {
+                            int radToUse = isBottomNear || botButtonsBottom ? nearRad : rad;
+                            path.lineTo(bounds.left + dp(8), bounds.bottom - padding - radToUse);
+                            rect.set(bounds.left + dp(8), bounds.bottom - padding - radToUse * 2, bounds.left + dp(8) + radToUse * 2, bounds.bottom - padding);
+                            path.arcTo(rect, 180, -90, false);
+                        } else {
                         path.lineTo(bounds.left + dp(8), bounds.bottom - padding - smallRad - dp(3));
                         rect.set(bounds.left + dp(7) - smallRad * 2, bounds.bottom - padding - smallRad * 2 - dp(9), bounds.left + dp(8), bounds.bottom - padding - dp(1));
                         path.arcTo(rect, 0, 83, false);
+                        }
                     } else {
                         path.lineTo(bounds.left + dp(8), top - topY + currentBackgroundHeight);
                     }
@@ -1015,14 +1030,28 @@ public class Theme {
             this.resourcesProvider = resourcesProvider;
         }
 
+        /** openExtera: убрать «хвостик» пузыря сообщения (ChatsConfig.removeMessageTail). */
+        private static boolean oeRemoveMessageTail() {
+            try {
+                app.exteraless.chats.ChatsConfig.ensureLoaded();
+                return app.exteraless.chats.ChatsConfig.removeMessageTail.Bool();
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
         public static class PathDrawParams {
             Path path = new Path();
             Rect lastRect = new Rect();
             boolean lastDrawFullTop;
             boolean lastDrawFullBottom;
+            /** openExtera: чтобы кэш пути сбрасывался при переключении «убрать хвостик». */
+            boolean lastNoTail = oeRemoveMessageTail();
 
             public boolean invalidatePath(Rect bounds, boolean drawFullBottom, boolean drawFullTop) {
-                boolean invalidate = lastRect.isEmpty() || lastRect.top != bounds.top || lastRect.bottom != bounds.bottom || lastRect.right != bounds.right || lastRect.left != bounds.left || lastDrawFullTop != drawFullTop || lastDrawFullBottom != drawFullBottom || !drawFullTop || !drawFullBottom;
+                boolean oeNoTail = oeRemoveMessageTail();
+                boolean invalidate = lastNoTail != oeNoTail || lastRect.isEmpty() || lastRect.top != bounds.top || lastRect.bottom != bounds.bottom || lastRect.right != bounds.right || lastRect.left != bounds.left || lastDrawFullTop != drawFullTop || lastDrawFullBottom != drawFullBottom || !drawFullTop || !drawFullBottom;
+                lastNoTail = oeNoTail;
                 lastDrawFullTop = drawFullTop;
                 lastDrawFullBottom = drawFullBottom;
                 lastRect.set(bounds);
@@ -3116,6 +3145,13 @@ public class Theme {
     private static boolean isPatternWallpaper;
 
     public static Paint dividerPaint;
+    /**
+     * Кисть подшапочной линии. exteraGram рисует ей ровно 1 px вместо градиентной тени
+     * (12.9.0: Theme.java:425, 6476-6481, ActionBarLayout.java:2603-2615).
+     * Цвет берётся из {@link #getDividerColor}, поэтому линия не гаснет в режиме «сегменты»,
+     * но исчезает вместе со всеми разделителями в режиме «скрыт».
+     */
+    public static Paint forcedDividerPaint;
     public static Paint dividerExtraPaint;
     public static Paint linkSelectionPaint;
     public static Paint checkboxSquare_eraserPaint;
@@ -8320,6 +8356,9 @@ public class Theme {
             dividerPaint = new Paint();
             dividerPaint.setStrokeWidth(1);
 
+            forcedDividerPaint = new Paint();
+            forcedDividerPaint.setStrokeWidth(1);
+
             dividerExtraPaint = new Paint();
             dividerExtraPaint.setStrokeWidth(1);
 
@@ -8410,6 +8449,9 @@ public class Theme {
             return;
         }
         dividerPaint.setColor(getColor(key_divider));
+        if (forcedDividerPaint != null) {
+            forcedDividerPaint.setColor(getDividerColor(null));
+        }
         linkSelectionPaint.setColor(getColor(key_windowBackgroundWhiteLinkSelection));
 
         for (int a = 0; a < avatarDrawables.length; a++) {
@@ -9654,7 +9696,45 @@ public class Theme {
         return getColor(key, null, true);
     }
 
+    /**
+     * Снимает подмену {@code key_divider} внутри {@link #getDividerColor}: иначе он вернул бы
+     * прозрачный сам себе.
+     */
+    private static boolean resolvingDividerColor;
+
+    /**
+     * Настоящий цвет разделителя. Нужен там, где линию надо нарисовать несмотря на то,
+     * что общий {@code key_divider} погашен — сегментный режим и форсированный
+     * разделитель под ActionBar.
+     */
+    public static int getDividerColor(ResourcesProvider provider) {
+        if (app.exteraless.appearance.AppearanceConfig.dividerStyle()
+                == app.exteraless.appearance.AppearanceConfig.DIVIDER_HIDDEN) {
+            return 0x00ffffff;
+        }
+        resolvingDividerColor = true;
+        try {
+            if (provider != null) {
+                return provider.getColor(key_divider);
+            }
+            final boolean ignoreAnimation = app.exteraless.appearance.AppearanceConfig.dividerStyle()
+                    != app.exteraless.appearance.AppearanceConfig.DIVIDER_LINE;
+            return getColor(key_divider, null, ignoreAnimation);
+        } finally {
+            resolvingDividerColor = false;
+        }
+    }
+
+    public static int getDividerColor() {
+        return getDividerColor(null);
+    }
+
     public static int getColor(int key, ResourcesProvider provider) {
+        // Скрытие разделителей должно работать и при непустом ResourcesProvider
+        // (чат-темы, боттом-шиты, профиль): иначе линии остаются там, где цвет берёт провайдер.
+        if (key_divider == key && !resolvingDividerColor && app.exteraless.appearance.AppearanceConfig.dividerHidden()) {
+            return 0x00ffffff;
+        }
         if (provider != null) {
             return provider.getColor(key);
         }
@@ -9676,7 +9756,7 @@ public class Theme {
                 return animatingColors.valueAt(index);
             }
         }
-        if (NaConfig.INSTANCE.getHideDividers().Bool() && key_divider == key) {
+        if (key_divider == key && !resolvingDividerColor && app.exteraless.appearance.AppearanceConfig.dividerHidden()) {
             return 0x00ffffff;
         }
         if (serviceBitmapShader != null && (key_chat_serviceText == key || key_chat_serviceLink == key || key_chat_serviceIcon == key
@@ -9750,6 +9830,11 @@ public class Theme {
             currentColors.delete(key);
         } else {
             currentColors.put(key, color);
+        }
+
+        // Подшапочная кисть переезжает вслед за темой.
+        if (key == key_divider && forcedDividerPaint != null) {
+            forcedDividerPaint.setColor(getDividerColor(null));
         }
 
         if (key == key_chat_selectedBackground) {

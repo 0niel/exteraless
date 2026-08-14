@@ -35,6 +35,9 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.annotation.Keep;
 import androidx.core.content.ContextCompat;
+import androidx.dynamicanimation.animation.FloatPropertyCompat;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.R;
@@ -62,7 +65,22 @@ public class Switch extends View {
     private RectF rectF;
 
     private float progress;
+    private static final FloatPropertyCompat<Switch> PROGRESS_PROPERTY = new FloatPropertyCompat<Switch>("progress") {
+        @Override
+        public float getValue(Switch object) {
+            return object.getProgress();
+        }
+
+        @Override
+        public void setValue(Switch object, float value) {
+            object.setProgress(value);
+        }
+    };
+
     private ObjectAnimator checkAnimator;
+    private SpringAnimation checkSpringAnimator;
+    /** Альфа при новом стиле пишется сюда, а не во View (иначе ломаются overlay-битмапы). */
+    private float overrideAlpha = 1.0f;
     private ObjectAnimator iconAnimator;
 
     private boolean attachedToWindow;
@@ -166,6 +184,23 @@ public class Switch extends View {
             checkAnimator.cancel();
             checkAnimator = null;
         }
+        if (checkSpringAnimator != null) {
+            checkSpringAnimator.cancel();
+            checkSpringAnimator = null;
+        }
+    }
+
+    /** Новый (exteraGram) стиль тумблера — тот же слот, что рисует {@code drawExteraSwitch}. */
+    private static boolean isExteraSwitchStyle() {
+        return NaConfig.INSTANCE.getSwitchStyle().Int() == SWITCH_STYLE_MD3;
+    }
+
+    /**
+     * Запас вокруг тумблера для overlay-битмапов: капсула нового стиля вылезает
+     * за measuredWidth/Height (exteraGram: {@code Switch.getOverlayPadding()} = dp(5)).
+     */
+    private int getOverlayPadding() {
+        return isExteraSwitchStyle() ? dp(5) : 0;
     }
 
     private void cancelIconAnimator() {
@@ -259,8 +294,21 @@ public class Switch extends View {
     }
 
     private void animateToCheckedState(boolean newCheckedState) {
+        cancelCheckAnimator();
+        if (isExteraSwitchStyle()) {
+            // exteraGram: SpringForce(target).setDampingRatio(0.9f).setStiffness(1400f), minimumVisibleChange 0.001f
+            checkSpringAnimator = new SpringAnimation(this, PROGRESS_PROPERTY)
+                    .setSpring(new SpringForce(newCheckedState ? 1f : 0f)
+                            .setDampingRatio(0.9f)
+                            .setStiffness(1400f))
+                    .setMinimumVisibleChange(0.001f)
+                    .setStartValue(progress);
+            checkSpringAnimator.start();
+            return;
+        }
         checkAnimator = ObjectAnimator.ofFloat(this, "progress", newCheckedState ? 1 : 0);
         checkAnimator.setDuration(200);
+        checkAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
         checkAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
@@ -296,6 +344,19 @@ public class Switch extends View {
 
     public void setOnCheckedChangeListener(OnCheckedChangeListener listener) {
         onCheckedChangeListener = listener;
+    }
+
+    @Override
+    public void setAlpha(float alpha) {
+        // exteraGram: при новом стиле альфа не уходит во View, иначе гаснут overlay-битмапы
+        if (!isExteraSwitchStyle()) {
+            overrideAlpha = 1.0f;
+            super.setAlpha(alpha);
+        } else {
+            overrideAlpha = alpha;
+            super.setAlpha(1.0f);
+            invalidate();
+        }
     }
 
     public void setChecked(boolean checked, boolean animated) {
@@ -362,11 +423,13 @@ public class Switch extends View {
             try {
                 overlayBitmap = new Bitmap[2];
                 overlayCanvas = new Canvas[2];
+                final int overlayW = getMeasuredWidth() + getOverlayPadding() * 4;
+                final int overlayH = getMeasuredHeight() + getOverlayPadding() * 4;
                 for (int a = 0; a < 2; a++) {
-                    overlayBitmap[a] = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+                    overlayBitmap[a] = Bitmap.createBitmap(overlayW, overlayH, Bitmap.Config.ARGB_8888);
                     overlayCanvas[a] = new Canvas(overlayBitmap[a]);
                 }
-                overlayMaskBitmap = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+                overlayMaskBitmap = Bitmap.createBitmap(overlayW, overlayH, Bitmap.Config.ARGB_8888);
                 overlayMaskCanvas = new Canvas(overlayMaskBitmap);
 
                 overlayEraserPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -602,6 +665,13 @@ public class Switch extends View {
     }
 
     private void drawCustomSwitch(Canvas canvas, int switchStyle) {
+        // exteraGram "new switch" look reversed from exteraGram 12.9.0 onDraw (exteraSwitch.smali).
+        // We reuse the MD3 slot (SWITCH_STYLE_MD3 == 2, the current default) to render it 1:1:
+        // a fully-filled capsule track (no border, no icon) with a solid round thumb.
+        if (switchStyle == SWITCH_STYLE_MD3) {
+            drawExteraSwitch(canvas);
+            return;
+        }
         int width = dp(36);
         int x = (getMeasuredWidth() - width) / 2;
         float y = (getMeasuredHeight() - dpf2(14)) / 2;
@@ -765,6 +835,89 @@ public class Switch extends View {
         }
         if (overrideColorProgress != 0) {
             canvas.drawBitmap(overlayBitmap[1], 0, 0, null);
+        }
+    }
+
+    /**
+     * exteraGram "new switch" style, reversed from exteraGram 12.9.0 Switch.onDraw
+     * (tools/exteraSwitch.smali, method onDraw, ExteraConfig.getNewSwitchStyle()==true branch).
+     *
+     * All const/high16 float values below were decoded as Float.intBitsToFloat(N << 16):
+     *   16888->31  16848->26  16736->14  16640->8  16768->16  16608->7  16448->3
+     *   16656->9   16672->10  16784->18
+     *
+     * Geometry (smali line refs):
+     *   trackW  dp(31)      [591]  used only to center the thumb travel
+     *   trackH  dp(26)      [595]  full capsule height
+     *   trackTop = H/2 - trackH/2  [611-613]
+     *   radius  dpf2(14)    [602/665 -> 959]  capsule corner radius
+     *   track rect: left = -dp(2) [903], right = W + dp(3) [909], top = trackTop, bottom = H/2 + trackH/2 [913-919]
+     *   thumb cx = (W-dp31)/2 + dp(8) + dp(16)*progress  [641-655]
+     *   thumb cy = H/2  [657-659]
+     *   thumb radius: dp(7) off -> dp(9) on  [1252 v17=7, 1255 v4=9, interp 1280-1285]
+     *   thumb horizontal stretch during transition: dpf2(3) * (1 - |2p-1|)  [1307-1316]
+     *   ripple radius dp(18)  [1013]
+     * Colors: track lerp(trackColorKey -> trackCheckedColorKey), thumb lerp(thumbColorKey -> thumbCheckedColorKey).
+     * No googleBorderPaint stroke and no drawIconType lines are emitted here (screenshot shows a plain toggle).
+     */
+    private void drawExteraSwitch(Canvas canvas) {
+        final int measuredWidth = getMeasuredWidth();
+        final int measuredHeight = getMeasuredHeight();
+
+        // overrideAlpha: при новом стиле View-альфа не используется (см. setAlpha)
+        final int alphaSave;
+        if (overrideAlpha < 1f) {
+            final int pad = dp(8);
+            alphaSave = canvas.saveLayerAlpha(-pad, -pad, measuredWidth + pad, measuredHeight + pad,
+                    (int) (255 * Utilities.clamp01(overrideAlpha)));
+        } else {
+            alphaSave = -1;
+        }
+
+        // smali 633-638: position uses clamp01(progress); color uses raw progress.
+        final float pp = Utilities.clamp01(progress);
+        final float colorProgress = progress;
+
+        // Track capsule (smali 903-964).
+        final int trackH = dp(26);                                   // smali 595 (v4)
+        final float trackTop = measuredHeight / 2f - trackH / 2f;    // smali 611-613 (v9)
+        final float trackBottom = measuredHeight / 2f + trackH / 2f; // smali 913-919
+        final float trackLeft = -dp(2);                              // smali 903-906 (v5=0, minus dp(2))
+        final float trackRight = measuredWidth + dp(3);              // smali 907-912
+        final float trackRadius = dpf2(14);                          // smali 959 (dpf2 of v19=14)
+
+        int trackOff = processColor(Theme.getColor(trackColorKey, resourcesProvider));         // smali 778-783
+        int trackOn = processColor(Theme.getColor(trackCheckedColorKey, resourcesProvider));   // smali 785-790
+        paint.setColor(lerpColor(trackOff, trackOn, colorProgress));                           // smali 819-891
+        rectF.set(trackLeft, trackTop, trackRight, trackBottom);
+        canvas.drawRoundRect(rectF, trackRadius, trackRadius, paint);                          // smali 964
+
+        // Thumb centre (smali 641-659).
+        final int cx = (measuredWidth - dp(31)) / 2 + dp(8) + (int) (dp(16) * pp);
+        final int cy = measuredHeight / 2;
+
+        // Ripple (touch feedback) drawn under/around the thumb (smali 1009-1030).
+        if (rippleDrawable != null) {
+            rippleDrawable.setBounds(cx - dp(18), cy - dp(18), cx + dp(18), cy + dp(18));
+            rippleDrawable.draw(canvas);
+        }
+
+        // Thumb colour (smali 1130-1246): lerp(thumbColorKey -> thumbCheckedColorKey).
+        int thumbOff = processColor(Theme.getColor(thumbColorKey, resourcesProvider));
+        int thumbOn = processColor(Theme.getColor(thumbCheckedColorKey, resourcesProvider));
+        paint.setColor(lerpColor(thumbOff, thumbOn, colorProgress));
+
+        // Thumb radius dp(7)->dp(9) (smali 1252/1255, interp 1280-1285).
+        final float baseR = dp(7) + (dp(9) - dp(7)) * pp;
+        final float thumbR = baseR + (dp(9) - baseR) * pp;
+        // Squash/stretch: horizontal-only bulge, peaks at the mid-point of the animation (smali 1307-1316).
+        final float stretch = dpf2(3) * (1f - Math.abs(pp * 2f - 1f));
+
+        rectF.set(cx - thumbR - stretch, cy - thumbR, cx + thumbR + stretch, cy + thumbR); // smali 1318-1325
+        canvas.drawRoundRect(rectF, thumbR, thumbR, paint);                                // smali 1329
+
+        if (alphaSave != -1) {
+            canvas.restoreToCount(alphaSave);
         }
     }
 

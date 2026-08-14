@@ -128,7 +128,9 @@ public class AvatarDrawable extends Drawable {
         super();
         this.resourcesProvider = resourcesProvider;
         namePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        namePaint.setTypeface(AndroidUtilities.bold());
+        // exteraGram 12.9.0, AvatarDrawable.java:96-107 — инициалы рисуются Nunito ExtraBold,
+        // а не системным жирным. Единственное место, где этот шрифт используется.
+        namePaint.setTypeface(AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_NUNITO_EXTRABOLD));
         namePaint.setTextSize(dp(18));
     }
 
@@ -591,6 +593,11 @@ public class AvatarDrawable extends Drawable {
             if (roundRadius > 0) {
                 AndroidUtilities.rectTmp.set(0, 0, size, size);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, roundRadius, roundRadius, backgroundPaint);
+            } else if (!app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
+                // openExtera: закругление аватарок из настроек Appearance.
+                int oeRadius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(size);
+                AndroidUtilities.rectTmp.set(0, 0, size, size);
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, oeRadius, oeRadius, backgroundPaint);
             } else {
                 canvas.drawCircle(size / 2.0f, size / 2.0f, size / 2.0f, backgroundPaint);
             }

@@ -8,6 +8,8 @@
 
 package org.telegram.messenger;
 
+import app.exteraless.OpenExteraConfig;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.formatWholeNumber;
 
@@ -1444,7 +1446,23 @@ public class LocaleController {
         return getStringInternal(key, null, 0, res);
     }
 
+    /** Имя форка. */
+    public static String getAppName() {
+        try {
+            return ApplicationLoader.applicationContext.getString(R.string.OpenExtera);
+        } catch (Exception ignore) {
+            return "exteraless";
+        }
+    }
+
     private String getStringInternal(String key, String fallback, int fallbackRes, int res) {
+        // exteraGram 12.9.0, LocaleController.java:2301 — перехват ДО обращения к localeValues.
+        // Иначе на любом облачном языке (русский — облачный) ключ AppName подтягивается
+        // из языкового пакета телеграма и форк снова называется «Telegram» во всех диалогах,
+        // где заголовок берут как getString(R.string.AppName).
+        if (key != null && key.contains("AppName")) {
+            return getAppName();
+        }
         String value = BuildVars.USE_CLOUD_STRINGS ? localeValues.get(key) : null;
         if (value == null) {
             if (BuildVars.USE_CLOUD_STRINGS && fallback != null) {
@@ -2723,6 +2741,15 @@ public class LocaleController {
 
     public static String formatDateOnline(long date, boolean[] madeShorter) {
         try {
+            if (OpenExteraConfig.relativeLastSeen()) {
+                long diff = System.currentTimeMillis() / 1000 - date;
+                if (diff < 0) {
+                    diff = 0;
+                }
+                if (diff < 24 * 60 * 60) {
+                    return formatString(R.string.LastSeenDateFormatted, formatRelativeDate(diff));
+                }
+            }
             date *= 1000;
             Calendar rightNow = Calendar.getInstance();
             int day = rightNow.get(Calendar.DAY_OF_YEAR);

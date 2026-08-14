@@ -14,6 +14,8 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import app.exteraless.appearance.AppearanceConfig;
+
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MessagesController;
 import org.telegram.tgnet.TLObject;
@@ -51,7 +53,10 @@ public class AvatarSpan extends ReplacementSpan {
     public boolean needDrawShadow = true;
 
     public void setSize(float sz) {
-        imageReceiver.setRoundRadius(dp(sz));
+        // openExtera: сток просил радиус во всю сторону, из-за чего глобальное масштабирование
+        // в ImageReceiver держало спан круглым до середины слайдера. exteraGram считает радиус от
+        // стороны: org/telegram/ui/AvatarSpan.java:143 — setRoundRadius(getAvatarCorners(f)).
+        imageReceiver.setRoundRadiusForAvatar(dp(sz));
         this.sz = sz;
     }
 
@@ -142,7 +147,17 @@ public class AvatarSpan extends ReplacementSpan {
                 shadowPaint.setAlpha(shadowPaintAlpha = paint.getAlpha());
                 shadowPaint.setShadowLayer(dp(1), 0, dp(.66f), Theme.multAlpha(0x33000000, shadowPaintAlpha / 255f));
             }
-            canvas.drawCircle(translateX + x + dp(sz) / 2f, translateY + (top + bottom) / 2f, dp(sz) / 2f, shadowPaint);
+            // openExtera: тень должна повторять форму аватарки, иначе под квадратным спаном
+            // остаётся круглый ореол, поэтому рисуем drawRoundRect с getAvatarCorners(sz).
+            // Круг оставлен быстрым путём для дефолтной настройки.
+            final float size = dp(sz);
+            if (AppearanceConfig.avatarCornersDefault()) {
+                canvas.drawCircle(translateX + x + size / 2f, translateY + (top + bottom) / 2f, size / 2f, shadowPaint);
+            } else {
+                final float cy = translateY + (top + bottom) / 2f;
+                final float radius = AppearanceConfig.getAvatarCorners(size);
+                canvas.drawRoundRect(translateX + x, cy - size / 2f, translateX + x + size, cy + size / 2f, radius, radius, shadowPaint);
+            }
         }
         imageReceiver.setImageCoords(translateX + x, translateY + (top + bottom) / 2f - dp(sz) / 2f, dp(sz), dp(sz));
         imageReceiver.setAlpha(usePaintAlpha ? paint.getAlpha() / 255f : 1.0f);

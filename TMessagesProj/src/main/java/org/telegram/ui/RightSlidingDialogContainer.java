@@ -1,5 +1,7 @@
 package org.telegram.ui;
 
+import app.exteraless.utils.AppUtils;
+
 import static org.telegram.ui.ActionBar.ActionBarLayout.findScrollingChild;
 
 import android.animation.Animator;
@@ -357,7 +359,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                 int dx = Math.max(0, (int) (ev.getX() - startedTrackingX));
                 int dy = Math.abs((int) ev.getY() - startedTrackingY);
                 velocityTracker.addMovement(ev);
-                if (maybeStartTracking && !startedTracking && dx >= AndroidUtilities.getPixelsInCM(0.4f, true) && Math.abs(dx) / 3 > dy) {
+                if (maybeStartTracking && !startedTracking && dx >= AndroidUtilities.getPixelsInCM(0.15f, true) && Math.abs(dx) / 3 > dy) {
 //                    BaseFragment currentFragment = fragmentsStack.get(fragmentsStack.size() - 1);
                     if (findScrollingChild(this, ev.getX(), ev.getY()) == null) {
                         prepareForMoving(ev);
@@ -389,7 +391,7 @@ public abstract class RightSlidingDialogContainer extends FrameLayout {
                     float x = swipeBackX;
                     float velX = velocityTracker.getXVelocity();
                     float velY = velocityTracker.getYVelocity();
-                    final boolean backAnimation = x < getMeasuredWidth() / 3.0f && (velX < 3500 || velX < velY);
+                    final boolean backAnimation = x < getMeasuredWidth() / 3.0f && (velX < AppUtils.getSwipeVelocity() || velX < velY);
 
                     if (!backAnimation) {
                         finishPreviewInernal();

@@ -6273,20 +6273,33 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void updateGooey() {
-        float v = Math.min(pullUpProgress, 0.25f) / 0.25f;
-        if (isTopic) {
-            avatarGooey.setAlpha(1f - v);
+        // Перенос из exteraGram 12.9.0, ProfileActivity.java:13215-13236.
+        // Было три расхождения: настройка gooeyAvatarAnimation не проверялась вовсе
+        // (эффект работал всегда), кривая затухания была линейной за первые 25 %
+        // вместо pow(progress, 1.5), и giftsView не гас при отключённом эффекте.
+        final float progress = pullUpProgress;
+        final float fade = (float) Math.pow(progress, 1.5d);
+        final boolean animateStory = storyView != null && playProfileAnimation != 2;
+
+        if (isTopic || !app.exteraless.appearance.AppearanceConfig.gooeyAvatarAnimation()) {
+            avatarGooey.setAlpha(1f - fade);
+            if (giftsView != null) {
+                giftsView.setAlpha(1f - (float) Math.pow(Math.min(progress, 0.6f) / 0.6f, 1.5d));
+            }
             avatarGooey.setBlurIntensity(0f);
             avatarGooey.setGooeyEnabled(false);
+            if (animateStory) {
+                storyView.setAlpha(1f - fade);
+            }
         } else {
-            avatarGooey.setPullProgress(pullUpProgress);
-            avatarGooey.setBlurIntensity(Math.min((MathUtils.clamp(pullUpProgress, 0.2f, 0.7f) - 0.2f) / 0.5f, 0.75f));
-            avatarGooey.setGooeyEnabled(pullUpProgress > 0 && pullUpProgress < 1);
+            avatarGooey.setPullProgress(progress);
+            avatarGooey.setBlurIntensity(Math.min((MathUtils.clamp(progress, 0.2f, 0.7f) - 0.2f) / 0.5f, 0.75f));
+            avatarGooey.setGooeyEnabled(progress > 0 && progress < 1);
+            if (animateStory) {
+                storyView.setAlpha(progress > 0 ? lerp(1.0f, 0.0f, ilerp(progress, 0, 0.5f)) : 1.0f);
+            }
         }
-        if (storyView != null && playProfileAnimation != 2) {
-            storyView.setAlpha(pullUpProgress > 0 ? lerp(1.0f, 0.0f, ilerp(pullUpProgress, 0, 0.5f)) : 1.0f);
-        }
-        avatarGooey.setVisibility(pullUpProgress >= 1.0f ? View.GONE : View.VISIBLE);
+        avatarGooey.setVisibility(progress >= 1.0f ? View.GONE : View.VISIBLE);
     }
 
     private int getHeaderOnlyExtraHeight() {

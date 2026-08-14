@@ -26,6 +26,19 @@ import tw.nekomimi.nekogram.ui.icons.IconsResources;
 import xyz.nextalone.nagram.NaConfig;
 
 public class TimeStringHelper {
+    /**
+     * openExtera: «изменено» иконкой вместо слова.
+     * Тумблер exteraGram (ChatsConfig.replaceEditedWithIcon) дублирует NagramX-овский
+     * NaConfig.useEditedIcon, поэтому читаем оба: включённый любой из них даёт иконку.
+     */
+    public static boolean useEditedIcon() {
+        if (NaConfig.INSTANCE.getUseEditedIcon().Bool()) {
+            return true;
+        }
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        return app.exteraless.chats.ChatsConfig.replaceEditedWithIcon.Bool();
+    }
+
     public static SpannableStringBuilder deletedSpan;
     public static Drawable deletedDrawable;
     public static SpannableStringBuilder editedSpan;
@@ -76,7 +89,7 @@ public class TimeStringHelper {
         if (isEdited) {
             spannableStringBuilder
                     .append("  ")
-                    .append(primaryEditedDate ? LocaleController.formatPmEditedDate(editDate) : (NaConfig.INSTANCE.getUseEditedIcon().Bool() ? editedSpan : editedStrFin));
+                    .append(primaryEditedDate ? LocaleController.formatPmEditedDate(editDate) : (useEditedIcon() ? editedSpan : editedStrFin));
         }
         if (isTranslated) {
             spannableStringBuilder
@@ -113,7 +126,7 @@ public class TimeStringHelper {
 
         spannableStringBuilder
                 .append(messageObject.messageOwner.post_author != null ? " " : "")
-                .append(primaryEditedDate ? LocaleController.formatPmEditedDate(editDate) : (NaConfig.INSTANCE.getUseEditedIcon().Bool() ? editedSpan : editedStrFin));
+                .append(primaryEditedDate ? LocaleController.formatPmEditedDate(editDate) : (useEditedIcon() ? editedSpan : editedStrFin));
         if (isTranslated) {
             spannableStringBuilder
                     .append("  ")
