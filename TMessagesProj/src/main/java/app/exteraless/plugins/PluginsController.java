@@ -193,12 +193,35 @@ public class PluginsController {
         preferences.edit().putBoolean(PluginsConstants.KEY_COMPATIBILITY_MODE, value).apply();
     }
 
+    /**
+     * Закреплённые плагины идут в списке первыми.
+     *
+     * Ключ на плагин, а не общий список: плагины удаляются и ставятся заново, и
+     * общий список пришлось бы чистить от исчезнувших id вручную.
+     */
+    public boolean isPluginPinned(String id) {
+        return id != null && preferences != null
+                && preferences.getBoolean("plugin_pinned_" + id, false);
+    }
+
+    public void setPluginPinned(String id, boolean pinned) {
+        if (id == null || preferences == null) {
+            return;
+        }
+        if (pinned) {
+            preferences.edit().putBoolean("plugin_pinned_" + id, true).apply();
+        } else {
+            preferences.edit().remove("plugin_pinned_" + id).apply();
+        }
+    }
+
     public synchronized List<Plugin> getPlugins() {
         return new ArrayList<>(plugins.values());
     }
 
     /**
      * Живая карта id → плагин. Имя и тип совпадают с полем {@code plugins}
+     * внешнего контроллера: опубликованные плагины ходят в неё через шим
      * {@code com.exteragram.messenger.plugins.PluginsController.plugins}.
      */
     public Map<String, Plugin> getPluginsMap() {
@@ -647,6 +670,8 @@ public class PluginsController {
         // Иначе переустановка того же id молча унаследует старое согласие.
         PluginPermissions.clear(id);
         PluginTrustLevel.clear(id);
+        PluginCapabilityScan.clear(id);
+        setPluginPinned(id, false);
         PythonPluginsEngine.getInstance().forgetAudit(id);
         File f = new File(p.path);
         // SharedPreferences plugin_settings_<id> — отдельный файл, удаляем напрямую.

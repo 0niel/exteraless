@@ -769,7 +769,16 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         BackupAgent.requestBackup();
 
         RestrictedLanguagesSelectActivity.checkRestrictedLanguages(false);
-        if (Build.VERSION.SDK_INT >= 34 && NaConfig.INSTANCE.getBackAnimationStyle().Int() == ActionBarLayout.BACK_ANIMATION_PREDICTIVE) {
+        // Жест «назад» системы (Android 14+) обязан двигать экран на любом фрагменте.
+        // Раньше эта регистрация висела только на NaConfig.backAnimationStyle ==
+        // PREDICTIVE, а мы по умолчанию ставим SPRING (без него не видно пружинных
+        // переходов NagramX) — и системный жест не анимировал ничего вообще:
+        // SystemUI рисовал свою стрелку, приложение стояло на месте. Свой флаг
+        // OEPredictiveBack отвязан от стиля переходов и включает M3-карточку
+        // независимо от него.
+        if (Build.VERSION.SDK_INT >= 34
+                && (app.exteraless.utils.UtilsConfig.predictiveBack()
+                    || NaConfig.INSTANCE.getBackAnimationStyle().Int() == ActionBarLayout.BACK_ANIMATION_PREDICTIVE)) {
             if (onBackAnimationCallback == null) {
                 onBackAnimationCallback =  new OnBackAnimationCallback() {
                     private AnimationNotificationsLocker locker = new AnimationNotificationsLocker();

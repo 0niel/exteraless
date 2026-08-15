@@ -1,114 +1,309 @@
 package app.exteraless.plugins.ui;
 
 import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Switch;
 
 import app.exteraless.plugins.Plugin;
+import app.exteraless.plugins.PluginsController;
 
 /**
- * Ячейка плагина: название, подпись («v1.0 • автор», красной при loadError)
- * и переключатель включения справа. Клик по телу ячейки обрабатывает список
- * (onItemClick активити), переключатель живёт сам через OnPluginToggleListener.
+ * Карточка плагина: иконка, имя, версия с автором, описание и ряд действий.
+ *
+ * Перенос {@code plugins/ui/components/PluginCell}. До этого плагин занимал
+ * обычную строку списка с тумблером: описание не помещалось, иконки не было
+ * вовсе, а всё, кроме включения, пряталось в меню по долгому нажатию — то есть
+ * было невидимо. exteraGram показывает карточку, где действия лежат прямо под
+ * описанием, и это единственное место, где их вообще видно.
+ *
+ * Компактный режим ({@link PluginsController#isCompactView()}) сжимает карточку
+ * до строки с иконкой слева, как у exteraGram.
  */
 public class PluginCell extends FrameLayout {
 
-    public interface OnPluginToggleListener {
-        void onPluginToggle(Plugin plugin, boolean enabled);
+    public interface Delegate {
+        void onToggle(Plugin plugin);
+
+        void onShare(Plugin plugin);
+
+        void onPin(Plugin plugin);
+
+        void onSettings(Plugin plugin);
+
+        void onPermissions(Plugin plugin);
+
+        void onDelete(Plugin plugin);
     }
 
-    private final TextView nameTextView;
-    private final TextView subtitleTextView;
+    private final View card;
+    private final BackupImageView imageView;
+    private final LinearLayout headerLayout;
+    private final LinearLayout textsLayout;
+    private final TextView nameView;
+    private final TextView subtitleView;
+    private final TextView descriptionView;
+    private final View divider;
+    private final ImageView shareButton;
+    private final ImageView pinButton;
+    private final ImageView settingsButton;
+    private final ImageView permissionsButton;
+    private final ImageView deleteButton;
     private final Switch switchView;
-    private final Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private Plugin plugin;
-    private boolean needDivider;
-    private OnPluginToggleListener toggleListener;
+    private Delegate delegate;
+    private boolean compact;
 
     public PluginCell(Context context) {
         super(context);
+        setClipChildren(false);
+        setClipToPadding(false);
+        // Фон рисуем сами: секция списка округляет плашку по своей высоте, и
+        // высокая карточка превращалась в «таблетку» с полукруглыми боками.
+        card = new View(context);
+        addView(card, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT,
+                Gravity.FILL, 8, 0, 8, 8));
 
-        setMinimumHeight(AndroidUtilities.dp(64));
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        addView(root, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                Gravity.TOP | Gravity.FILL_HORIZONTAL, 24, 16, 24, 16));
 
-        LinearLayout textContainer = new LinearLayout(context);
-        textContainer.setOrientation(LinearLayout.VERTICAL);
-        addView(textContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
-                (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL,
-                16, 0, 76, 0));
+        headerLayout = new LinearLayout(context);
+        headerLayout.setOrientation(LinearLayout.VERTICAL);
+        root.addView(headerLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
 
-        nameTextView = new TextView(context);
-        nameTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        nameTextView.setSingleLine();
-        nameTextView.setEllipsize(TextUtils.TruncateAt.END);
-        textContainer.addView(nameTextView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        imageView = new BackupImageView(context);
+        imageView.setVisibility(GONE);
+        imageView.setRoundRadius(AndroidUtilities.dp(12));
+        headerLayout.addView(imageView, LayoutHelper.createLinear(56, 56, Gravity.LEFT,
+                0, 0, 0, 12));
 
-        subtitleTextView = new TextView(context);
-        subtitleTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        subtitleTextView.setSingleLine();
-        subtitleTextView.setEllipsize(TextUtils.TruncateAt.END);
-        textContainer.addView(subtitleTextView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        textsLayout = new LinearLayout(context);
+        textsLayout.setOrientation(LinearLayout.VERTICAL);
+        headerLayout.addView(textsLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
+
+        nameView = new TextView(context);
+        nameView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        nameView.setTypeface(AndroidUtilities.bold());
+        nameView.setEllipsize(TextUtils.TruncateAt.END);
+        nameView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        textsLayout.addView(nameView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
+
+        subtitleView = new TextView(context);
+        subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        subtitleView.setEllipsize(TextUtils.TruncateAt.END);
+        subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
+        textsLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
+
+        descriptionView = new TextView(context);
+        descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        descriptionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        root.addView(descriptionView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
+
+        divider = new View(context);
+        divider.setBackgroundColor(Theme.getColor(Theme.key_divider));
+        root.addView(divider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1,
+                0, 12, 0, 8));
+
+        LinearLayout actions = new LinearLayout(context);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        shareButton = createButton(context, R.drawable.msg_share, false,
+                v -> callDelegate(Action.SHARE));
+        actions.addView(shareButton, LayoutHelper.createLinear(40, 40, Gravity.LEFT, 0, 0, 8, 0));
+        pinButton = createButton(context, R.drawable.msg_pin, false,
+                v -> callDelegate(Action.PIN));
+        actions.addView(pinButton, LayoutHelper.createLinear(40, 40, Gravity.LEFT, 0, 0, 8, 0));
+        permissionsButton = createButton(context, R.drawable.msg_permissions, false,
+                v -> callDelegate(Action.PERMISSIONS));
+        actions.addView(permissionsButton, LayoutHelper.createLinear(40, 40, Gravity.LEFT, 0, 0, 8, 0));
+        settingsButton = createButton(context, R.drawable.msg_settings, false,
+                v -> callDelegate(Action.SETTINGS));
+        settingsButton.setVisibility(GONE);
+        actions.addView(settingsButton, LayoutHelper.createLinear(40, 40, Gravity.LEFT, 0, 0, 8, 0));
+        root.addView(actions, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40));
+
+        // Удаление стоит у правого края отдельно от остальных: соседство с ними
+        // означало бы промах пальцем ценой удалённого плагина.
+        deleteButton = createButton(context, R.drawable.msg_delete, true,
+                v -> callDelegate(Action.DELETE));
+        addView(deleteButton, LayoutHelper.createFrame(40, 40, Gravity.BOTTOM | Gravity.RIGHT,
+                0, 0, 24, 16));
 
         switchView = new Switch(context);
-        switchView.setOnClickListener(v -> switchView.setChecked(!switchView.isChecked(), true));
-        addView(switchView, LayoutHelper.createFrame(38, 22,
-                (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL,
-                14, 0, 14, 0));
-
-        updateColors();
+        switchView.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked,
+                Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
+        switchView.setFocusable(false);
+        switchView.setOnClickListener(v -> callDelegate(Action.TOGGLE));
+        addView(switchView, LayoutHelper.createFrame(37, 40, Gravity.TOP | Gravity.RIGHT,
+                0, 16, 24, 0));
+        updateCardBackground();
     }
 
-    private void updateColors() {
-        nameTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        dividerPaint.setColor(Theme.getColor(Theme.key_divider));
-        dividerPaint.setStrokeWidth(1);
+    /** Радиус карточки — общий для приложения (настройка «скругление секций»). */
+    private void updateCardBackground() {
+        card.setBackground(Theme.createRoundRectDrawable(
+                AndroidUtilities.dp(app.exteraless.appearance.AppearanceConfig.sectionRadius()),
+                Theme.getColor(Theme.key_windowBackgroundWhite)));
     }
 
-    public void setOnPluginToggleListener(OnPluginToggleListener listener) {
-        toggleListener = listener;
-    }
+    private enum Action { TOGGLE, SHARE, PIN, SETTINGS, PERMISSIONS, DELETE }
 
-    public void setPlugin(Plugin p, boolean divider) {
-        plugin = p;
-        needDivider = divider;
-        nameTextView.setText(p.getDisplayName());
-        subtitleTextView.setText(p.getSubtitle());
-        if (p.loadError != null) {
-            subtitleTextView.setTextColor(Theme.getColor(Theme.key_text_RedRegular));
-        } else {
-            subtitleTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+    private void callDelegate(Action action) {
+        if (delegate == null || plugin == null) {
+            return;
         }
-        // setChecked дёргает listener при смене состояния — на время бинда отключаем.
-        switchView.setOnCheckedChangeListener(null);
-        switchView.setChecked(p.enabled, false);
-        switchView.setOnCheckedChangeListener((view, isChecked) -> {
-            if (toggleListener != null && plugin != null) {
-                toggleListener.onPluginToggle(plugin, isChecked);
-            }
-        });
-        setWillNotDraw(!needDivider);
+        switch (action) {
+            case TOGGLE: delegate.onToggle(plugin); break;
+            case SHARE: delegate.onShare(plugin); break;
+            case PIN: delegate.onPin(plugin); break;
+            case SETTINGS: delegate.onSettings(plugin); break;
+            case PERMISSIONS: delegate.onPermissions(plugin); break;
+            case DELETE: delegate.onDelete(plugin); break;
+        }
+    }
+
+    /** Кнопка действия: круглый селектор и «пружинка» на нажатие, как у exteraGram. */
+    private ImageView createButton(Context context, int iconRes, boolean red,
+                                   OnClickListener listener) {
+        ImageView button = new ImageView(context);
+        button.setScaleType(ImageView.ScaleType.CENTER);
+        button.setImageResource(iconRes);
+        button.setColorFilter(new PorterDuffColorFilter(Theme.getColor(red
+                ? Theme.key_text_RedRegular
+                : Theme.key_windowBackgroundWhiteGrayIcon), PorterDuff.Mode.MULTIPLY));
+        button.setBackground(Theme.createSelectorDrawable(red
+                        ? Theme.multAlpha(Theme.getColor(Theme.key_text_RedRegular), 0.12f)
+                        : Theme.getColor(Theme.key_dialogButtonSelector),
+                1, AndroidUtilities.dp(20)));
+        button.setOnClickListener(listener);
+        button.setOnTouchListener(PluginCell::animateTouch);
+        return button;
+    }
+
+    private static boolean animateTouch(View view, MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                view.setPressed(true);
+                view.animate().scaleX(0.85f).scaleY(0.85f).setDuration(80).start();
+                return true;
+            case MotionEvent.ACTION_UP:
+                view.setPressed(false);
+                if (event.getX() >= 0 && event.getX() <= view.getWidth()
+                        && event.getY() >= 0 && event.getY() <= view.getHeight()) {
+                    view.performClick();
+                }
+                view.animate().scaleX(1f).scaleY(1f).setDuration(350)
+                        .setInterpolator(new OvershootInterpolator(1.5f)).start();
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                view.setPressed(false);
+                view.animate().scaleX(1f).scaleY(1f).setDuration(350)
+                        .setInterpolator(new OvershootInterpolator(1.5f)).start();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public void setDelegate(Delegate delegate) {
+        this.delegate = delegate;
+    }
+
+    public void setPlugin(Plugin plugin, boolean compact) {
+        this.plugin = plugin;
+        this.compact = compact;
+        if (plugin == null) {
+            return;
+        }
+        PluginsController controller = PluginsController.getInstance();
+
+        imageView.setVisibility(GONE);
+        PluginIcons.apply(imageView, plugin, this::requestLayout);
+
+        nameView.setText(plugin.getDisplayName());
+        subtitleView.setText(plugin.getSubtitle());
+
+        if (plugin.loadError != null) {
+            // Ошибка вытесняет описание: если плагин не поднялся, всё остальное
+            // про него сейчас неважно.
+            descriptionView.setText(plugin.loadError);
+            descriptionView.setTextColor(Theme.getColor(Theme.key_text_RedRegular));
+            descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+            descriptionView.setTypeface(AndroidUtilities.getTypeface("fonts/rmono.ttf"));
+            descriptionView.setVisibility(VISIBLE);
+        } else if (!TextUtils.isEmpty(plugin.description)) {
+            descriptionView.setText(plugin.description);
+            descriptionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            descriptionView.setTypeface(android.graphics.Typeface.DEFAULT);
+            descriptionView.setVisibility(VISIBLE);
+        } else {
+            descriptionView.setVisibility(GONE);
+        }
+
+        pinButton.setImageResource(controller.isPluginPinned(plugin.id)
+                ? R.drawable.msg_unpin : R.drawable.msg_pin);
+        settingsButton.setVisibility(plugin.enabled && plugin.hasSettings ? VISIBLE : GONE);
+        switchView.setChecked(plugin.enabled, false);
+
+        updateLayout();
+    }
+
+    /**
+     * Компактный режим: иконка уезжает влево, тексты — в одну строку.
+     */
+    private void updateLayout() {
+        headerLayout.setOrientation(compact ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams iconParams = (LinearLayout.LayoutParams) imageView.getLayoutParams();
+        iconParams.width = iconParams.height = AndroidUtilities.dp(compact ? 49 : 56);
+        iconParams.rightMargin = compact ? AndroidUtilities.dp(16) : 0;
+        iconParams.bottomMargin = compact ? 0 : AndroidUtilities.dp(12);
+        LinearLayout.LayoutParams textParams = (LinearLayout.LayoutParams) textsLayout.getLayoutParams();
+        textParams.gravity = compact ? Gravity.CENTER_VERTICAL : Gravity.LEFT;
+        nameView.setSingleLine(compact);
+        subtitleView.setSingleLine(compact);
+        descriptionView.setVisibility(compact ? GONE : descriptionView.getVisibility());
+        divider.setVisibility(compact ? GONE : VISIBLE);
+        // Имя не должно заезжать под тумблер.
+        nameView.setPadding(0, 0, AndroidUtilities.dp(52), 0);
+        requestLayout();
+    }
+
+    public void setChecked(boolean checked) {
+        switchView.setChecked(checked, true);
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        if (needDivider) {
-            int inset = AndroidUtilities.dp(16);
-            canvas.drawLine(LocaleController.isRTL ? 0 : inset, getMeasuredHeight() - 1,
-                    LocaleController.isRTL ? getMeasuredWidth() - inset : getMeasuredWidth(),
-                    getMeasuredHeight() - 1, dividerPaint);
-        }
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec),
+                MeasureSpec.EXACTLY), heightMeasureSpec);
+    }
+
+    @Override
+    public boolean hasOverlappingRendering() {
+        return false;
     }
 }

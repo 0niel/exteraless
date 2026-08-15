@@ -4179,6 +4179,13 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (!USE_ACTIONBAR_CROSSFADE) {
             return false;
         }
+        // Во время M3-жеста заголовок обязан ехать вместе с карточкой.
+        // Кроссфейд NagramX рисует общий ActionBar поверх всего в draw(), а сами
+        // фрагменты свой при этом не рисуют — и получалось, что экран уменьшался,
+        // а шапка оставалась висеть на месте во всю ширину.
+        if (m3BackTransition()) {
+            return false;
+        }
         boolean crossfadeNoFragments = SharedConfig.animationsEnabled() && !isInPreviewMode() && (isSwipeInProgress() || isTransitionAnimationInProgress()) && currentAnimation == null;
         BaseFragment foregroundFragment = getLastFragment();
         BaseFragment backgroundFragment = getBackgroundFragment();

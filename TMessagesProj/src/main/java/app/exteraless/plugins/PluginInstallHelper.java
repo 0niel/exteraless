@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
-import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -16,7 +15,6 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
-import org.telegram.ui.ActionBar.Theme;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,16 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import app.exteraless.plugins.ui.PluginInstallSheet;
 import app.exteraless.plugins.ui.PluginPermissionsActivity;
-import android.util.TypedValue;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.telegram.ui.Cells.CheckBoxCell;
-import org.telegram.ui.Components.LayoutHelper;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -105,31 +95,6 @@ public final class PluginInstallHelper {
      *
      * @return true, если сообщение содержит плагин и показан диалог установки.
      */
-    /**
-     * Каналы, которые считаем известным источником плагинов.
-     *
-     * У exteraGram этот список приезжает с сервера (BadgesController:109,
-     * CachedRemoteSet "trusted_plugins" со значением по умолчанию 2562664432 —
-     * @exteraPlugins). Сервера у нас нет, поэтому остаётся то же значение по
-     * умолчанию, зашитое в код. Флаг ничего не разрешает: он лишь пишет в
-     * диалоге, откуда файл — устанавливается плагин всё равно в изоляции.
-     */
-    private static final long[] KNOWN_PLUGIN_CHANNELS = {2562664432L};
-
-    private static boolean isKnownSource(MessageObject message) {
-        if (message == null) {
-            return false;
-        }
-        long dialogId = message.getDialogId();
-        long channelId = dialogId < 0 ? -dialogId : dialogId;
-        for (long known : KNOWN_PLUGIN_CHANNELS) {
-            if (channelId == known) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static boolean handleMessageTap(Activity activity, MessageObject message) {
         if (activity == null || message == null) {
             return false;
@@ -155,8 +120,7 @@ public final class PluginInstallHelper {
             // Ещё не скачан — пусть отработает штатная загрузка.
             return false;
         }
-        final boolean known = isKnownSource(message);
-        AndroidUtilities.runOnUIThread(() -> confirmAndInstall(activity, file, known));
+        AndroidUtilities.runOnUIThread(() -> confirmAndInstall(activity, file));
         return true;
     }
 
@@ -239,14 +203,6 @@ public final class PluginInstallHelper {
      * разрешений без ведома пользователя.
      */
     public static void confirmAndInstall(Activity activity, File file) {
-        confirmAndInstall(activity, file, false);
-    }
-
-    /**
-     * @param knownSource файл пришёл из известного канала плагинов. Показывается
-     *                    в диалоге и ни на что больше не влияет.
-     */
-    public static void confirmAndInstall(Activity activity, File file, boolean knownSource) {
         PluginsController controller = PluginsController.getInstance();
         if (!controller.isEngineEnabled()) {
             // Не отказываем молча: движок выключен по умолчанию, и пользователю
@@ -257,7 +213,7 @@ public final class PluginInstallHelper {
                     .setPositiveButton(LocaleController.getString(R.string.PluginsEngineEnableAndInstall),
                             (dialog, which) -> {
                                 controller.setEngineEnabled(true);
-                                confirmAndInstall(activity, file, knownSource);
+                                confirmAndInstall(activity, file);
                             })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                     .show();
@@ -265,167 +221,40 @@ public final class PluginInstallHelper {
         }
         controller.readMetadataAsync(file, plugin -> {
             // Разбор исходника — на фоновом потоке: это чтение файла и AST.
-            final Map<String, List<String>> capabilities = scanCapabilities(file);
+            final Map<String, List<String>> capabilities = PluginCapabilityScan.scan(file);
             AndroidUtilities.runOnUIThread(() -> {
                 if (activity.isFinishing()) {
                     return;
                 }
-                showConsentDialog(activity, file, plugin, knownSource, capabilities);
+                showConsentSheet(activity, file, plugin, capabilities);
             });
         });
     }
 
     /**
-     * Диалог установки с галочками.
+     * Лист установки: карточка плагина и галочки найденного.
      *
-     * Раньше он перечислял `__permissions__`, но их объявляет меньшинство: из
-     * 512 плагинов двух каталогов большинство молчит, и человек видел либо
-     * пустой список, либо «получит всё». Теперь показывается то, что нашлось в
-     * исходнике, — и каждая находка это галочка, которую можно снять.
+     * Разбор перечисляет не `__permissions__` (их объявляет меньшинство из 512
+     * плагинов двух каталогов), а то, что нашлось в исходнике; каждая находка —
+     * галочка, и у каждой раскрывашка с именами, по которым она нашлась.
      *
      * Галочки по умолчанию сняты. Плагин ставится ровно с тем, что отметили:
      * ничего не отметили — уровень «Изоляция», отметили что-то — «Ограниченный»,
      * отметили переписывание кода — «Доверенный».
      */
-    private static void showConsentDialog(Activity activity, File file, Plugin plugin,
-                                          boolean knownSource, Map<String, List<String>> capabilities) {
-        final List<String> permissions = orderedPermissions(capabilities);
-        final List<CheckBoxCell> cells = new ArrayList<>();
-
-        LinearLayout content = new LinearLayout(activity);
-        content.setOrientation(LinearLayout.VERTICAL);
-
-        TextView summary = new TextView(activity);
-        summary.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        summary.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        summary.setText(buildConfirmMessage(plugin, knownSource, permissions.isEmpty()));
-        summary.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), AndroidUtilities.dp(4));
-        content.addView(summary);
-
-        for (String permission : permissions) {
-            CheckBoxCell cell = new CheckBoxCell(activity, CheckBoxCell.TYPE_CHECK_BOX_ROUND, 21, null);
-            // Улики — то, по чему разбор так решил: человеку видно основание,
-            // а не только вывод.
-            cell.setText(PluginPermissionsActivity.titleOf(permission),
-                    evidenceOf(capabilities, permission), false, false);
-            cell.setOnClickListener(v -> cell.setChecked(!cell.isChecked(), true));
-            cell.setTag(permission);
-            cells.add(cell);
-            content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 50));
-        }
-
-        ScrollView scroll = new ScrollView(activity);
-        scroll.addView(content);
-
-        new AlertDialog.Builder(activity)
-                .setTitle(LocaleController.getString(R.string.PluginsInstallTitle))
-                .setView(scroll)
-                .setPositiveButton(LocaleController.getString(R.string.PluginsInstallAction),
-                        (dialog, which) -> {
-                            List<String> granted = new ArrayList<>();
-                            for (CheckBoxCell cell : cells) {
-                                if (cell.isChecked() && cell.getTag() instanceof String) {
-                                    granted.add((String) cell.getTag());
-                                }
-                            }
-                            grantOnConsent(plugin, granted);
-                            install(activity, file, plugin != null ? plugin.id : null);
-                        })
-                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                .show();
-    }
-
-    /** Разрешения в порядке экрана плагина, чтобы список читался одинаково везде. */
-    private static List<String> orderedPermissions(Map<String, List<String>> capabilities) {
-        List<String> out = new ArrayList<>();
-        if (capabilities == null) {
-            return out;
-        }
-        for (String permission : PluginPermissions.REQUESTABLE) {
-            if (capabilities.containsKey(permission)) {
-                out.add(permission);
-            }
-        }
-        return out;
-    }
-
-    private static String evidenceOf(Map<String, List<String>> capabilities, String permission) {
-        List<String> evidence = capabilities == null ? null : capabilities.get(permission);
-        if (evidence == null || evidence.isEmpty()) {
-            return "";
-        }
-        // Двух признаков хватает: строка не должна вытеснять сам заголовок.
-        return evidence.size() <= 2
-                ? TextUtils.join(", ", evidence)
-                : TextUtils.join(", ", evidence.subList(0, 2)) + "…";
-    }
-
-    /** Статический разбор исходника; пустая карта, если движок молчит. */
-    private static Map<String, List<String>> scanCapabilities(File file) {
-        Map<String, List<String>> result = new LinkedHashMap<>();
-        try {
-            String json = PythonPluginsEngine.getInstance().scanCapabilitiesJson(file.getAbsolutePath());
-            if (TextUtils.isEmpty(json)) {
-                return result;
-            }
-            JSONObject parsed = new JSONObject(json);
-            for (java.util.Iterator<String> keys = parsed.keys(); keys.hasNext(); ) {
-                String key = keys.next();
-                if (!PluginPermissions.isKnown(key)) {
-                    continue;  // "error" и всё незнакомое
-                }
-                JSONArray array = parsed.optJSONArray(key);
-                List<String> evidence = new ArrayList<>();
-                for (int i = 0; array != null && i < array.length(); i++) {
-                    String item = JsonUtils.optStringOrNull(array, i);
-                    if (item != null) {
-                        evidence.add(item);
+    private static void showConsentSheet(Activity activity, File file, Plugin plugin,
+                                         Map<String, List<String>> capabilities) {
+        new PluginInstallSheet(activity, file, plugin, capabilities,
+                (granted, enableAfterInstall) -> {
+                    grantOnConsent(plugin, granted);
+                    if (plugin != null && plugin.id != null) {
+                        // Разбор нужен и потом — на экране разрешений, где
+                        // спрашивают «почему приложение решило, что плагину
+                        // нужна сеть». Перечитывать файл ради этого нельзя.
+                        PluginCapabilityScan.store(plugin.id, capabilities);
                     }
-                }
-                result.put(key, evidence);
-            }
-        } catch (Throwable t) {
-            FileLog.e("PluginInstallHelper: capability scan failed", t);
-        }
-        return result;
-    }
-
-    /**
-     * Текст согласия: кто ставится и что сможет делать.
-     *
-     * Ключи разрешений человеку ничего не говорят, поэтому перечисляем
-     * последствия ({@link PluginPermissionsActivity#titleOf}); строка про hooks
-     * идёт отдельным абзацем и красным — обладая ей, плагин может всё
-     * перечисленное выше независимо от остальных ключей.
-     */
-    /**
-     * Шапка диалога: откуда файл, кто автор, и что означают галочки ниже.
-     *
-     * Перечисление разрешений отсюда ушло в сами галочки: список, который
-     * нельзя тронуть, человек пролистывает, а отметку — принимает или снимает.
-     */
-    private static CharSequence buildConfirmMessage(Plugin plugin, boolean knownSource,
-                                                    boolean nothingFound) {
-        SpannableStringBuilder sb = new SpannableStringBuilder();
-        // Откуда файл — первым делом: это то, на что человек реально опирается,
-        // решая ставить или нет.
-        sb.append(LocaleController.getString(knownSource
-                ? R.string.PluginsSourceKnown
-                : R.string.PluginsSourceUnknown)).append("\n\n");
-        if (plugin == null || TextUtils.isEmpty(plugin.id)) {
-            // Метаданные не прочитались (файл битый или движок не поднялся):
-            // обещать что-либо про его поведение нечестно.
-            sb.append(LocaleController.getString(R.string.PluginsInstallUnknownConfirm));
-            return sb;
-        }
-        sb.append(LocaleController.formatString(R.string.PluginsInstallConfirm,
-                plugin.getDisplayName(),
-                plugin.version != null ? plugin.version : "1.0",
-                plugin.author != null ? plugin.author : "—"));
-        sb.append("\n\n").append(LocaleController.getString(nothingFound
-                ? R.string.PluginsInstallNothingFound
-                : R.string.PluginsInstallScanned));
-        return sb;
+                    install(activity, file, plugin != null ? plugin.id : null, enableAfterInstall);
+                }).show();
     }
 
     /**
@@ -452,7 +281,13 @@ public final class PluginInstallHelper {
         PluginTrustLevel.setLevel(plugin.id, level);
     }
 
-    private static void install(Activity activity, File file, String consentedId) {
+    /**
+     * @param enableAfterInstall галочка «включить после установки» из листа:
+     *                           плагин без включения молчит, и без неё после
+     *                           установки надо идти его искать и включать.
+     */
+    private static void install(Activity activity, File file, String consentedId,
+                                boolean enableAfterInstall) {
         AlertDialog progress = new AlertDialog(activity, AlertDialog.ALERT_TYPE_SPINNER);
         progress.setMessage(LocaleController.getString(R.string.PluginsInstalling));
         progress.setCanCancel(false);
@@ -477,12 +312,10 @@ public final class PluginInstallHelper {
                         showError(activity, humanError(error, consentedId));
                         return;
                     }
-                    new AlertDialog.Builder(activity)
-                            .setTitle(LocaleController.getString(R.string.PluginsInstallTitle))
-                            .setMessage(LocaleController.formatString(R.string.PluginsInstalled,
-                                    plugin != null ? plugin.getDisplayName() : ""))
-                            .setPositiveButton(LocaleController.getString(R.string.OK), null)
-                            .show();
+                    if (enableAfterInstall && plugin != null && plugin.id != null) {
+                        PluginsController.getInstance().setPluginEnabled(plugin.id, true);
+                    }
+                    showInstalled(plugin);
                 }));
     }
 
@@ -518,6 +351,23 @@ public final class PluginInstallHelper {
         }
         return LocaleController.formatString(R.string.PluginsInstallDenied,
                 PluginPermissionsActivity.titleOf(permission));
+    }
+
+    /**
+     * Итог установки — плашкой, а не диалогом: лист уже закрылся, и ещё одно
+     * окно поверх списка человек закрывает не читая.
+     */
+    private static void showInstalled(Plugin plugin) {
+        org.telegram.ui.ActionBar.BaseFragment fragment =
+                org.telegram.ui.LaunchActivity.getSafeLastFragment();
+        CharSequence text = LocaleController.formatString(R.string.PluginsInstalled,
+                plugin != null ? plugin.getDisplayName() : "");
+        if (fragment == null || fragment.getParentActivity() == null) {
+            return;
+        }
+        org.telegram.ui.Components.BulletinFactory.of(fragment)
+                .createSimpleBulletin(R.raw.contact_check, text)
+                .show();
     }
 
     private static void showError(Activity activity, CharSequence message) {

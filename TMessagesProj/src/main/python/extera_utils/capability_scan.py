@@ -4,6 +4,10 @@
 каталогов большинство не объявляет ничего, и диалог установки показывал либо
 пусто, либо «получит всё». Ни то ни другое не даёт человеку решить.
 
+Улики называются техническими именами (`requests`, `SendMessagesHelper`,
+`sqlite3`): они одинаково читаются при любом языке интерфейса и указывают
+прямо на строку в исходнике, которую можно проверить.
+
 Разбор идёт AST-парсером и поиском по тексту, код не исполняется. Это
 догадка по исходнику, а не гарантия: обфускация и вычисляемые имена его
 обходят. Поэтому итог называется «что плагин может делать», а не «что он
@@ -41,50 +45,50 @@ _MARKERS = (
     ("OkHttpClient", PERM_NETWORK, "okhttp"),
     ("WebView", PERM_NETWORK, "WebView"),
     ("DownloadManager", PERM_NETWORK, "DownloadManager"),
-    ("loadHttpFile", PERM_NETWORK, "загрузка по ссылке"),
-    ("setDataSource", PERM_NETWORK, "проигрывание по ссылке"),
+    ("loadHttpFile", PERM_NETWORK, "loadHttpFile"),
+    ("setDataSource", PERM_NETWORK, "setDataSource"),
     # ---- чтение переписки ----
-    ("MessagesStorage", PERM_MESSAGES_READ, "база сообщений"),
-    ("SQLiteDatabase", PERM_MESSAGES_READ, "база сообщений"),
-    ("queryFinalized", PERM_MESSAGES_READ, "запрос к базе"),
-    ("on_update", PERM_MESSAGES_READ, "перехват апдейтов"),
-    ("add_request_hook", PERM_MESSAGES_READ, "перехват запросов"),
-    ("get_messages", PERM_MESSAGES_READ, "чтение сообщений"),
-    ("getMessages", PERM_MESSAGES_READ, "чтение сообщений"),
+    ("MessagesStorage", PERM_MESSAGES_READ, "MessagesStorage"),
+    ("SQLiteDatabase", PERM_MESSAGES_READ, "MessagesStorage"),
+    ("queryFinalized", PERM_MESSAGES_READ, "SQLite"),
+    ("on_update", PERM_MESSAGES_READ, "on_update"),
+    ("add_request_hook", PERM_MESSAGES_READ, "request hooks"),
+    ("get_messages", PERM_MESSAGES_READ, "getMessages"),
+    ("getMessages", PERM_MESSAGES_READ, "getMessages"),
     # ---- отправка ----
     ("SendMessagesHelper", PERM_MESSAGES_SEND, "SendMessagesHelper"),
     ("send_message(", PERM_MESSAGES_SEND, "send_message"),
     ("send_text(", PERM_MESSAGES_SEND, "send_text"),
-    ("on_send_message", PERM_MESSAGES_SEND, "перехват отправки"),
-    ("TL_messages_send", PERM_MESSAGES_SEND, "запрос отправки"),
-    ("TL_messages_edit", PERM_MESSAGES_SEND, "запрос правки"),
-    ("TL_messages_delete", PERM_MESSAGES_SEND, "запрос удаления"),
-    ("ConnectionsManager", PERM_MESSAGES_SEND, "прямые запросы к серверу"),
+    ("on_send_message", PERM_MESSAGES_SEND, "on_send_message"),
+    ("TL_messages_send", PERM_MESSAGES_SEND, "TL_messages_send"),
+    ("TL_messages_edit", PERM_MESSAGES_SEND, "TL_messages_edit"),
+    ("TL_messages_delete", PERM_MESSAGES_SEND, "TL_messages_delete"),
+    ("ConnectionsManager", PERM_MESSAGES_SEND, "ConnectionsManager"),
     # ---- файлы ----
     ("java.io.File", PERM_FILES, "java.io.File"),
-    ("FileOutputStream", PERM_FILES, "запись файла"),
-    ("ContentResolver", PERM_FILES, "доступ к файлам устройства"),
-    ("MediaStore", PERM_FILES, "галерея"),
+    ("FileOutputStream", PERM_FILES, "FileOutputStream"),
+    ("ContentResolver", PERM_FILES, "ContentResolver"),
+    ("MediaStore", PERM_FILES, "MediaStore"),
     ("import shutil", PERM_FILES, "shutil"),
-    ("os.remove", PERM_FILES, "удаление файлов"),
-    ("os.listdir", PERM_FILES, "просмотр каталогов"),
+    ("os.remove", PERM_FILES, "os.remove"),
+    ("os.listdir", PERM_FILES, "os.listdir"),
     ("sqlite3", PERM_FILES, "sqlite3"),
     # ---- интенты ----
-    ("startActivity", PERM_INTENTS, "запуск экранов"),
-    ("android.content.Intent", PERM_INTENTS, "интенты"),
-    ("register_intent_handler", PERM_INTENTS, "перехват интентов"),
+    ("startActivity", PERM_INTENTS, "startActivity"),
+    ("android.content.Intent", PERM_INTENTS, "Intent"),
+    ("register_intent_handler", PERM_INTENTS, "intent hooks"),
     # ---- настройки приложения ----
-    ("NekoConfig", PERM_SETTINGS, "настройки приложения"),
-    ("NaConfig", PERM_SETTINGS, "настройки приложения"),
-    ("ExteraConfig", PERM_SETTINGS, "настройки приложения"),
+    ("NekoConfig", PERM_SETTINGS, "app config"),
+    ("NaConfig", PERM_SETTINGS, "app config"),
+    ("ExteraConfig", PERM_SETTINGS, "app config"),
     # ---- хуки и код на ходу ----
-    ("MethodHook", PERM_HOOKS, "Xposed-хуки"),
-    ("hook_method", PERM_HOOKS, "Xposed-хуки"),
-    ("XposedBridge", PERM_HOOKS, "Xposed-хуки"),
-    ("InMemoryDexClassLoader", PERM_HOOKS, "загрузка своего кода"),
-    ("DexClassLoader", PERM_HOOKS, "загрузка своего кода"),
-    ("generate_proxy_class", PERM_HOOKS, "подмена классов"),
-    ("deoptimize", PERM_HOOKS, "деоптимизация методов"),
+    ("MethodHook", PERM_HOOKS, "Xposed"),
+    ("hook_method", PERM_HOOKS, "Xposed"),
+    ("XposedBridge", PERM_HOOKS, "Xposed"),
+    ("InMemoryDexClassLoader", PERM_HOOKS, "DexClassLoader"),
+    ("DexClassLoader", PERM_HOOKS, "DexClassLoader"),
+    ("generate_proxy_class", PERM_HOOKS, "class proxy"),
+    ("deoptimize", PERM_HOOKS, "deoptimize"),
 )
 
 #: Файл больше этого не разбираем: плагины такого размера не встречаются,
@@ -120,19 +124,19 @@ def scan(path: str) -> Dict[str, List[str]]:
 #: AndroidUtilities.dp() — по первому спрашивать разрешение нужно, по второму
 #: нет, иначе диалог будет требовать доступ к переписке у каждого плагина.
 _IMPORTED_NAMES = {
-    "MessagesController": (PERM_MESSAGES_READ, "список чатов и сообщения"),
-    "MessagesStorage": (PERM_MESSAGES_READ, "база сообщений"),
-    "MessageObject": (PERM_MESSAGES_READ, "содержимое сообщений"),
-    "NotificationCenter": (PERM_MESSAGES_READ, "события мессенджера"),
-    "SendMessagesHelper": (PERM_MESSAGES_SEND, "отправка сообщений"),
-    "ConnectionsManager": (PERM_MESSAGES_SEND, "прямые запросы к серверу"),
-    "ContentResolver": (PERM_FILES, "доступ к файлам устройства"),
-    "MediaStore": (PERM_FILES, "галерея"),
+    "MessagesController": (PERM_MESSAGES_READ, "MessagesController"),
+    "MessagesStorage": (PERM_MESSAGES_READ, "MessagesStorage"),
+    "MessageObject": (PERM_MESSAGES_READ, "MessageObject"),
+    "NotificationCenter": (PERM_MESSAGES_READ, "NotificationCenter"),
+    "SendMessagesHelper": (PERM_MESSAGES_SEND, "SendMessagesHelper"),
+    "ConnectionsManager": (PERM_MESSAGES_SEND, "ConnectionsManager"),
+    "ContentResolver": (PERM_FILES, "ContentResolver"),
+    "MediaStore": (PERM_FILES, "MediaStore"),
     "WebView": (PERM_NETWORK, "WebView"),
-    "InMemoryDexClassLoader": (PERM_HOOKS, "загрузка своего кода"),
-    "DexClassLoader": (PERM_HOOKS, "загрузка своего кода"),
-    "XposedBridge": (PERM_HOOKS, "Xposed-хуки"),
-    "XposedHelpers": (PERM_HOOKS, "Xposed-хуки"),
+    "InMemoryDexClassLoader": (PERM_HOOKS, "DexClassLoader"),
+    "DexClassLoader": (PERM_HOOKS, "DexClassLoader"),
+    "XposedBridge": (PERM_HOOKS, "Xposed"),
+    "XposedHelpers": (PERM_HOOKS, "Xposed"),
 }
 
 

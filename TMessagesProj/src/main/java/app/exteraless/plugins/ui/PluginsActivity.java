@@ -71,10 +71,15 @@ public class PluginsActivity extends BaseFragment {
 
     private UniversalRecyclerView listView;
     private final List<Plugin> plugins = new ArrayList<>();
+    /** Вьюхи карточек по id плагина: см. {@link #cellFor}. */
+    private final java.util.HashMap<String, PluginCell> cells = new java.util.HashMap<>();
     private String searchQuery;
 
     @Override
     public View createView(Context context) {
+        // Пересоздание вьюхи фрагмента бывает при смене темы: карточки забрали
+        // цвета при постройке, поэтому старые больше не годятся.
+        cells.clear();
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(getString(R.string.OpenExteraPlugins));
@@ -134,8 +139,16 @@ public class PluginsActivity extends BaseFragment {
         }
         plugins.clear();
         plugins.addAll(controller.getPlugins());
-        plugins.sort((a, b) -> String.CASE_INSENSITIVE_ORDER
-                .compare(a.getDisplayName(), b.getDisplayName()));
+        plugins.sort((a, b) -> {
+            // Закреплённые — наверх: список плагинов растёт, и нужные иначе
+            // тонут среди остальных по алфавиту.
+            boolean pinnedA = controller.isPluginPinned(a.id);
+            boolean pinnedB = controller.isPluginPinned(b.id);
+            if (pinnedA != pinnedB) {
+                return pinnedA ? -1 : 1;
+            }
+            return String.CASE_INSENSITIVE_ORDER.compare(a.getDisplayName(), b.getDisplayName());
+        });
     }
 
     private List<Plugin> visiblePlugins() {
@@ -168,26 +181,31 @@ public class PluginsActivity extends BaseFragment {
         }
         for (int i = 0; i < visible.size(); i++) {
             Plugin plugin = visible.get(i);
-            UItem item = UItem.asCheck(ID_PLUGIN_BASE + i, plugin.getDisplayName())
-                    .setChecked(plugin.enabled)
-                    .setEnabled(controller.isEngineEnabled());
-            if (!controller.isCompactView()) {
-                item.setValue(pluginSubtitle(plugin)).setMultiline(true);
-            }
-            items.add(item);
+            PluginCell cell = cellFor(plugin);
+            // Прозрачным: фон карточка рисует сама, иначе поверх неё ложится
+            // ещё и плашка секции — с другим скруглением.
+            items.add(UItem.asCustom(ID_PLUGIN_BASE + i, cell).setTransparent(true));
         }
-        items.add(UItem.asSpace(dp(4)));
     }
 
-    /** Подпись плагина: ошибка загрузки важнее описания и вытесняет его. */
-    private CharSequence pluginSubtitle(Plugin plugin) {
-        if (plugin.loadError != null) {
-            return plugin.loadError;
+    /**
+     * Одна и та же вьюха на плагин между пересборками списка.
+     *
+     * UItem считает элементы разными, если у них разные view (UItem.itemEquals:
+     * {@code view == item.view}), — на новую вьюху каждый раз DiffUtil отвечал
+     * «строку удалили и вставили другую», и RecyclerView проигрывал анимацию
+     * удаления с вставкой. Со стороны это выглядело как «карточка дёрнулась по
+     * высоте и вернулась» на каждое действие: вход на экран, включение плагина.
+     */
+    private PluginCell cellFor(Plugin plugin) {
+        PluginCell cell = cells.get(plugin.id);
+        if (cell == null) {
+            cell = new PluginCell(getContext());
+            cell.setDelegate(cellDelegate);
+            cells.put(plugin.id, cell);
         }
-        if (!TextUtils.isEmpty(plugin.description)) {
-            return plugin.description;
-        }
-        return plugin.getSubtitle();
+        cell.setPlugin(plugin, PluginsController.getInstance().isCompactView());
+        return cell;
     }
 
     private View createEmptyView() {
@@ -218,6 +236,7 @@ public class PluginsActivity extends BaseFragment {
 
     /**
      * Делает @username в подсказке кликабельной ссылкой на канал.
+     * exteraGram зовёт свой LocaleUtils.formatWithUsernames; у нас такого хелпера
      * нет, а тянуть его целиком ради одной строки незачем.
      */
     private CharSequence withUsernameLink(String text) {
@@ -239,6 +258,121 @@ public class PluginsActivity extends BaseFragment {
             }, matcher.start(), matcher.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return builder;
+    }
+
+
+    // ---------- действия карточки ----------
+
+    /**
+     * Кнопки под описанием плагина. Раньше всё это жило в меню по долгому
+     * нажатию: пункт, о существовании которого нельзя догадаться.
+     */
+    private final PluginCell.Delegate cellDelegate = new PluginCell.Delegate() {
+        @Override
+        public void onToggle(Plugin plugin) {
+            togglePlugin(plugin);
+        }
+
+        @Override
+        public void onShare(Plugin plugin) {
+            sharePlugin(plugin);
+        }
+
+        @Override
+        public void onPin(Plugin plugin) {
+            PluginsController controller = PluginsController.getInstance();
+            boolean pinned = !controller.isPluginPinned(plugin.id);
+            controller.setPluginPinned(plugin.id, pinned);
+            update();
+            if (getContext() != null) {
+                org.telegram.ui.Components.BulletinFactory.of(PluginsActivity.this)
+                        .createSimpleBulletin(pinned ? R.raw.ic_pin : R.raw.ic_unpin,
+                                getString(pinned ? R.string.PluginsPinned : R.string.PluginsUnpinned))
+                        .show();
+            }
+        }
+
+        @Override
+        public void onSettings(Plugin plugin) {
+            presentFragment(PluginSettingsActivity.newInstance(plugin.id));
+        }
+
+        @Override
+        public void onPermissions(Plugin plugin) {
+            presentFragment(new PluginPermissionsActivity(plugin.id));
+        }
+
+        @Override
+        public void onDelete(Plugin plugin) {
+            showDeleteDialog(plugin);
+        }
+    };
+
+    /**
+     * Отдать файл плагина наружу.
+     *
+     * Копируем в кэш, а не отдаём из filesDir/plugins: FileProvider наружу
+     * этот каталог не публикует, а расширять ему видимость ради «поделиться»
+     * значит открыть чужим приложениям всю папку плагинов.
+     */
+    private void sharePlugin(Plugin plugin) {
+        Activity activity = getParentActivity();
+        if (activity == null || plugin == null || plugin.path == null) {
+            return;
+        }
+        try {
+            File source = new File(plugin.path);
+            if (!source.exists()) {
+                return;
+            }
+            File dir = new File(activity.getCacheDir(), "share");
+            dir.mkdirs();
+            String ext = source.getName().contains(".")
+                    ? source.getName().substring(source.getName().lastIndexOf('.'))
+                    : ".plugin";
+            File copy = new File(dir, plugin.id + ext);
+            try (InputStream in = new java.io.FileInputStream(source);
+                 FileOutputStream out = new FileOutputStream(copy)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) > 0) {
+                    out.write(buffer, 0, read);
+                }
+            }
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(activity,
+                    org.telegram.messenger.ApplicationLoader.getApplicationId() + ".provider", copy);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            activity.startActivity(Intent.createChooser(intent,
+                    getString(R.string.PluginsShare)));
+        } catch (Exception e) {
+            FileLog.e("PluginsActivity: cannot share plugin", e);
+        }
+    }
+
+    /**
+     * Включить или выключить плагин.
+     *
+     * setPluginEnabled возвращает «получилось ли», а не новое состояние,
+     * поэтому спрашиваем сам плагин: при неудачной загрузке он останется
+     * выключенным, и тумблер должен показать именно это.
+     */
+    private void togglePlugin(Plugin plugin) {
+        PluginsController controller = PluginsController.getInstance();
+        if (!controller.isEngineEnabled()) {
+            return;
+        }
+        controller.setPluginEnabled(plugin.id, !plugin.enabled);
+        Plugin updated = controller.getPlugin(plugin.id);
+        boolean enabled = updated != null && updated.enabled;
+        update();
+        if (enabled && updated.loadError != null) {
+            // Плагин уже падал: покажем, на чём именно, иначе включение
+            // выглядит как «щёлкнул и ничего».
+            showPluginInfo(updated);
+        }
     }
 
     private void update() {
@@ -270,15 +404,10 @@ public class PluginsActivity extends BaseFragment {
             }
             return;
         }
-        Plugin plugin = pluginOf(item);
-        if (plugin == null) {
-            return;
-        }
-        if (plugin.hasSettings && plugin.loaded) {
-            presentFragment(PluginSettingsActivity.newInstance(plugin.id));
-        } else {
-            showPluginInfo(plugin);
-        }
+        // По карточке кликов не ждём: у неё свои кнопки и свой тумблер.
+        // Когда здесь стояло переключение, один тап по тумблеру доходил и до
+        // него, и до строки списка — плагин включался и тут же выключался
+        // обратно, а в prefs оставалось false при уже загруженном модуле.
     }
 
     private boolean onItemLongClick(UItem item, View view, int position, float x, float y) {
@@ -342,6 +471,8 @@ public class PluginsActivity extends BaseFragment {
         // хотят узнать после того, что он умеет настраивать.
         labels.add(getString(R.string.PluginPermissions));
         actions.add(4);
+        labels.add(getString(R.string.PluginsMenuInfo));
+        actions.add(5);
         labels.add(getString(R.string.PluginsMenuCopyId));
         actions.add(2);
         labels.add(getString(R.string.PluginsMenuDelete));
@@ -362,6 +493,8 @@ public class PluginsActivity extends BaseFragment {
                 showDeleteDialog(plugin);
             } else if (action == 4) {
                 presentFragment(new PluginPermissionsActivity(plugin.id));
+            } else if (action == 5) {
+                showPluginInfo(plugin);
             }
         });
         showDialog(builder.create());
@@ -378,6 +511,7 @@ public class PluginsActivity extends BaseFragment {
                 plugin.getDisplayName()));
         builder.setPositiveButton(getString(R.string.Delete), (dialog, which) -> {
             PluginsController.getInstance().uninstallPlugin(plugin.id);
+            cells.remove(plugin.id);
             update();
         });
         builder.setNegativeButton(getString(R.string.Cancel), null);

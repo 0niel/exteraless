@@ -29,8 +29,10 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import app.exteraless.plugins.Plugin;
+import app.exteraless.plugins.PluginCapabilityScan;
 import app.exteraless.plugins.PluginPermissions;
 import app.exteraless.plugins.PluginTrustLevel;
 import app.exteraless.plugins.PluginsController;
@@ -55,6 +57,10 @@ public class PluginPermissionsActivity extends BaseFragment {
     private final String pluginId;
 
     private UniversalRecyclerView listView;
+    /** Какие строки раскрыты — переживает пересборку списка. */
+    private final java.util.Set<String> expanded = new java.util.HashSet<>();
+    /** Вьюхи строк по разрешению: новая вьюха на каждую пересборку = анимация строки. */
+    private final java.util.HashMap<String, PluginPermissionCell> cells = new java.util.HashMap<>();
     private SlideChooseView slider;
     /** Разрешения с переключателями в порядке отрисовки — по ним ищем ключ по id строки. */
     private final List<String> switchable = new ArrayList<>();
@@ -82,6 +88,30 @@ public class PluginPermissionsActivity extends BaseFragment {
             // Неизвестный ключ до интерфейса не доходит (метапарсер бракует такие
             // метаданные), но пусть строка будет хоть какая-то, а не пустая.
             default: return PluginPermissions.describe(perm);
+        }
+    }
+
+    /**
+     * Короткая подпись для диалога установки.
+     *
+     * Полная («Send, edit and delete messages as you») в строке с уликой не
+     * помещается: обрезается и она, и улика, и человек не видит ни того ни
+     * другого. Здесь достаточно назвать область, подробности — на экране
+     * разрешений.
+     */
+    public static CharSequence shortTitleOf(String perm) {
+        if (perm == null) {
+            return "";
+        }
+        switch (perm) {
+            case PluginPermissions.MESSAGES_READ: return getString(R.string.PluginPermShortMessagesRead);
+            case PluginPermissions.MESSAGES_SEND: return getString(R.string.PluginPermShortMessagesSend);
+            case PluginPermissions.NETWORK: return getString(R.string.PluginPermShortNetwork);
+            case PluginPermissions.FILES: return getString(R.string.PluginPermShortFiles);
+            case PluginPermissions.INTENTS: return getString(R.string.PluginPermShortIntents);
+            case PluginPermissions.SETTINGS: return getString(R.string.PluginPermShortSettings);
+            case PluginPermissions.HOOKS: return getString(R.string.PluginPermShortHooks);
+            default: return titleOf(perm);
         }
     }
 
@@ -141,6 +171,7 @@ public class PluginPermissionsActivity extends BaseFragment {
 
     @Override
     public View createView(Context context) {
+        cells.clear();
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(getString(R.string.PluginPermissions));
@@ -179,6 +210,13 @@ public class PluginPermissionsActivity extends BaseFragment {
             items.add(UItem.asShadow(getString(R.string.PluginPermissionsGone)));
             return;
         }
+        // Плагин мог быть поставлен до того, как появился разбор исходника:
+        // тогда улик нет и раскрывать под строками нечего. Разберём сейчас.
+        PluginCapabilityScan.ensureScanned(plugin, () -> {
+            if (listView != null) {
+                listView.adapter.update(true);
+            }
+        });
         boolean legacy = !plugin.permissionsDeclared;
         List<String> requested = requestedFor(plugin);
         int level = PluginTrustLevel.getLevel(pluginId);
@@ -196,37 +234,70 @@ public class PluginPermissionsActivity extends BaseFragment {
 
         List<String> unenforced = new ArrayList<>();
         boolean hooks = false;
+        // Улики разбора: по ним видно, откуда разрешение вообще взялось.
+        // Читаются из записанного при установке, файл заново не разбирается.
+        final Map<String, List<String>> capabilities = PluginCapabilityScan.load(pluginId);
+        List<String> enforced = new ArrayList<>();
         for (String perm : requested) {
             if (!isEnforced(perm)) {
                 unenforced.add(perm);
                 continue;
             }
+            enforced.add(perm);
+        }
+        for (int i = 0; i < enforced.size(); i++) {
+            final String perm = enforced.get(i);
             hooks |= PluginPermissions.isDangerous(perm);
-            boolean allowed = PluginTrustLevel.allows(level, perm);
-            items.add(UItem.asCheck(ID_PERM_BASE + switchable.size(),
-                            titleOf(perm), infoOf(perm), true)
-                    .setChecked(allowed && PluginPermissions.has(pluginId, perm))
-                    .setEnabled(allowed));
+            final boolean allowed = PluginTrustLevel.allows(level, perm);
+            // Вьюха на разрешение переживает пересборку списка: с новой каждый
+            // раз DiffUtil считает строку удалённой и вставленной заново
+            // (UItem.itemEquals сравнивает view), и RecyclerView проигрывает
+            // анимацию — строка дёргается по высоте на каждое действие.
+            PluginPermissionCell cell = cells.get(perm);
+            if (cell == null) {
+                cell = new PluginPermissionCell(getContext(), PluginPermissionCell.TYPE_SWITCH);
+                cells.put(perm, cell);
+            }
+            final PluginPermissionCell row = cell;
+            cell.set(perm, titleOf(perm), infoOf(perm),
+                    PluginCapabilityScan.evidenceOf(capabilities, perm),
+                    i < enforced.size() - 1);
+            cell.setChecked(allowed && PluginPermissions.has(pluginId, perm), false);
+            cell.setEnabledState(allowed);
+            cell.setExpanded(expanded.contains(perm), false);
+            cell.setOnExpandChanged(() -> {
+                if (row.isExpanded()) {
+                    expanded.add(perm);
+                } else {
+                    expanded.remove(perm);
+                }
+            });
+            cell.setOnToggle(!allowed ? null : () -> {
+                togglePermission(perm);
+                row.setChecked(PluginPermissions.has(pluginId, perm), true);
+            });
+            items.add(UItem.asCustom(ID_PERM_BASE + switchable.size(), cell));
             switchable.add(perm);
         }
 
+        // Под списком — одна строка, а не четыре подряд: три абзаца сносок
+        // подряд читаются как простыня, и их перестают читать вовсе.
+        // Порядок важности: опасное предупреждение, потом происхождение
+        // списка, потом то, что приложение не умеет ограничить.
+        CharSequence note = null;
         if (hooks) {
-            // hooks идёт последним в PluginPermissions.ALL, значит его строка —
-            // последняя в списке, и предупреждение ложится прямо под неё.
-            items.add(UItem.asShadow(getString(R.string.PluginPermissionsHooksWarning)));
-        }
-        if (legacy) {
-            items.add(UItem.asShadow(getString(R.string.PluginPermissionsLegacyInfo)));
-        }
-        if (!unenforced.isEmpty()) {
+            note = getString(R.string.PluginPermissionsHooksWarning);
+        } else if (legacy) {
+            note = getString(R.string.PluginPermissionsLegacyInfo);
+        } else if (!unenforced.isEmpty()) {
             List<CharSequence> titles = new ArrayList<>();
             for (String perm : unenforced) {
                 titles.add(titleOf(perm));
             }
-            items.add(UItem.asShadow(LocaleController.formatString(
-                    R.string.PluginPermissionsUnenforcedInfo, TextUtils.join(", ", titles))));
+            note = LocaleController.formatString(
+                    R.string.PluginPermissionsUnenforcedInfo, TextUtils.join(", ", titles));
         }
-        items.add(UItem.asShadow(getString(R.string.PluginPermissionsAlwaysInfo)));
+        items.add(UItem.asShadow(note));
 
         // Что плагин делал по факту — рядом с тем, что он просил.
         items.add(UItem.asHeader(getString(R.string.PluginActivityHeader)));
@@ -357,7 +428,16 @@ public class PluginPermissionsActivity extends BaseFragment {
         if (index < 0 || index >= switchable.size()) {
             return;
         }
-        String perm = switchable.get(index);
+        togglePermission(switchable.get(index));
+    }
+
+    /**
+     * Выдать или забрать разрешение.
+     *
+     * Список после этого не пересобираем: строка сама показывает новое
+     * состояние, а пересборка схлопнула бы раскрытые улики соседних строк.
+     */
+    private void togglePermission(String perm) {
         if (!PluginTrustLevel.allows(pluginId, perm)) {
             // Сюда клик не доходит: строка нарисована выключенной, а
             // RecyclerListView не зовёт обработчик для таких (isEnabled,
@@ -370,10 +450,12 @@ public class PluginPermissionsActivity extends BaseFragment {
         } else {
             PluginPermissions.grant(pluginId, perm);
         }
-        applyNow();
-        if (listView != null) {
+        if (PluginPermissions.HOOKS.equals(perm) && listView != null) {
+            // Единственное разрешение, от которого меняется текст под уровнем:
+            // с выданными хуками остальные переключатели уже не соблюсти.
             listView.adapter.update(true);
         }
+        applyNow();
     }
 
     /**
