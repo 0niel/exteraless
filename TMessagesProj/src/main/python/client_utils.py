@@ -141,6 +141,19 @@ def get_queue_by_name(name: str):
     return queue
 
 
+def show_error_bulletin(message, fragment=None):
+    """Ошибка плашкой. Есть в SDK exteraGram и зовётся плагинами из client_utils,
+    хотя реализация живёт в ui.bulletin, — без этого имени они не грузятся."""
+    from ui.bulletin import BulletinHelper
+    BulletinHelper.show_error(message, fragment)
+
+
+def show_info_bulletin(message, fragment=None):
+    """Сообщение плашкой; парная к show_error_bulletin."""
+    from ui.bulletin import BulletinHelper
+    BulletinHelper.show_info(message, fragment)
+
+
 def run_on_queue(fn, queue: str = PLUGINS_QUEUE, delay: int = 0, delay_ms: int = None):
     """Post *fn* to a named DispatchQueue, optionally after *delay* ms.
 

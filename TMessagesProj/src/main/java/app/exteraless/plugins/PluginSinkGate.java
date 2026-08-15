@@ -55,6 +55,19 @@ public final class PluginSinkGate {
             "java.lang.Runtime",
             "java.lang.ProcessBuilder",
             "java.lang.Process",
+    };
+
+    /**
+     * Загрузка скомпилированного кода на ходу.
+     *
+     * Сначала эти классы стояли в списке «никогда», и это было ошибкой сразу с
+     * двух сторон. По совместимости: 33 плагина каталога грузят dex через
+     * InMemoryDexClassLoader — запрет молча сломал бы каждый одиннадцатый. По
+     * смыслу: загруженный dex — это произвольный Java-код в нашем процессе,
+     * ровно та же власть, что у Xposed-хуков. Значит и разрешение то же:
+     * hooks, уровень, про который на экране прямо сказано, что защиты дальше нет.
+     */
+    private static final String[] CODE_LOADING_CLASSES = {
             "dalvik.system.DexClassLoader",
             "dalvik.system.PathClassLoader",
             "dalvik.system.InMemoryDexClassLoader",
@@ -102,6 +115,7 @@ public final class PluginSinkGate {
         ok += hookNetwork(URL.class, "openConnection", "open a network connection");
         ok += hookNetwork(Socket.class, "connect", "connect to the network");
         ok += hookClassResolution();
+        ok += hookMessengerSinks();
         FileLog.d("PluginSinkGate: " + ok + " hooks installed");
     }
 
@@ -184,6 +198,17 @@ public final class PluginSinkGate {
                         return;
                     }
                 }
+                for (String loader : CODE_LOADING_CLASSES) {
+                    if (name.equals(loader)) {
+                        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS)) {
+                            deny(pluginId, event, "native", name,
+                                    "missing the 'hooks' permission", param);
+                        } else {
+                            PluginAuditJournal.record(pluginId, event, "native", name, true);
+                        }
+                        return;
+                    }
+                }
                 for (String prefix : NETWORK_CLASSES) {
                     boolean match = prefix.endsWith(".") ? name.startsWith(prefix) : name.equals(prefix);
                     if (!match) {
@@ -202,6 +227,326 @@ public final class PluginSinkGate {
         int count = hookAll(Class.class, "forName", hook);
         count += hookAll(ClassLoader.class, "loadClass", hook);
         return count;
+    }
+
+    /**
+     * Стоки самого мессенджера.
+     *
+     * Разбор каталога плагинов показал, чего не хватало: 30 плагинов шлют
+     * сообщения через SendMessagesHelper, 19 — произвольные запросы через
+     * ConnectionsManager, 17 читают базу напрямую. Всё это шло мимо проверок:
+     * они стояли на регистрации хуков нашего SDK, а не на самих действиях.
+     *
+     * Классы берутся по имени и могут отсутствовать (сборка без части
+     * подсистем) — поэтому через Class.forName с тихим пропуском, а не
+     * ссылкой на класс.
+     */
+    private static int hookMessengerSinks() {
+        int count = 0;
+        count += hookByName("org.telegram.messenger.SendMessagesHelper", "sendMessage",
+                PluginPermissions.MESSAGES_SEND, "send a message");
+        count += hookByName("org.telegram.messenger.SendMessagesHelper", "prepareSendingMedia",
+                PluginPermissions.MESSAGES_SEND, "send media");
+        count += hookByName("org.telegram.messenger.SendMessagesHelper", "prepareSendingDocument",
+                PluginPermissions.MESSAGES_SEND, "send a file");
+        count += hookByName("org.telegram.messenger.SendMessagesHelper", "prepareSendingPhoto",
+                PluginPermissions.MESSAGES_SEND, "send a photo");
+        // Ключ к базе сообщений: получив её, плагин читает переписку запросами
+        // мимо всякого API.
+        count += hookByName("org.telegram.messenger.MessagesStorage", "getDatabase",
+                PluginPermissions.MESSAGES_READ, "open the message database");
+        count += hookConnectionsManager();
+        count += hookCodeLoaders();
+        count += hookWebView();
+        count += hookIndirectDownloads();
+        return count;
+    }
+
+    /**
+     * Конструкторы загрузчиков dex.
+     *
+     * Имя класса плагин может и не называть: 18 плагинов каталога берут
+     * InMemoryDexClassLoader обычным импортом `from dalvik.system import ...`,
+     * а его проверка по имени не видит. Конструктор видит любой путь.
+     */
+    private static int hookCodeLoaders() {
+        int count = 0;
+        for (String className : CODE_LOADING_CLASSES) {
+            final Class<?> owner = classForName(className);
+            if (owner == null) {
+                continue;
+            }
+            try {
+                for (java.lang.reflect.Constructor<?> constructor : owner.getDeclaredConstructors()) {
+                    XposedBridge.hookMethod(constructor, new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) {
+                            String pluginId = enterCheck();
+                            if (pluginId == null) {
+                                return;
+                            }
+                            try {
+                                if (PluginPermissions.check(pluginId, PluginPermissions.HOOKS)) {
+                                    PluginAuditJournal.record(pluginId, "loadDex", "native",
+                                            className, true);
+                                    return;
+                                }
+                                // Здесь именно исключение: конструктор нельзя
+                                // «не выполнить», вернув пустое значение, —
+                                // объект всё равно оказался бы на руках.
+                                deny(pluginId, "loadDex", "native", className,
+                                        "missing the 'hooks' permission", param);
+                            } finally {
+                                leaveCheck();
+                            }
+                        }
+                    });
+                    count++;
+                }
+            } catch (Throwable t) {
+                FileLog.e("PluginSinkGate: cannot hook constructors of " + className, t);
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Произвольный запрос к серверу. Разрешение зависит от запроса: чтение
+     * истории — это messages.read, отправка и правка — messages.send.
+     * Различаем по имени класса запроса, других данных на этом уровне нет.
+     */
+    private static int hookConnectionsManager() {
+        final Class<?> owner = classForName("org.telegram.tgnet.ConnectionsManager");
+        if (owner == null) {
+            return 0;
+        }
+        return hookAll(owner, "sendRequest", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                String pluginId = enterCheck();
+                if (pluginId == null) {
+                    return;
+                }
+                try {
+                    final Object request = param.args == null || param.args.length == 0
+                            ? null : param.args[0];
+                    final String name = request == null ? "" : request.getClass().getSimpleName();
+                    final boolean writes = isWritingRequest(name);
+                    final String permission = writes
+                            ? PluginPermissions.MESSAGES_SEND : PluginPermissions.MESSAGES_READ;
+                    if (PluginPermissions.check(pluginId, permission)) {
+                        PluginAuditJournal.record(pluginId, "sendRequest", "messages", name, true);
+                        return;
+                    }
+                    denySilently(pluginId, "sendRequest", "messages", name,
+                            "missing the '" + permission + "' permission", param);
+                } finally {
+                    leaveCheck();
+                }
+            }
+        });
+    }
+
+    /**
+     * WebView — дыра в сетевом гейте, найденная разбором ещё семи каналов: там
+     * его создают 32 плагина из 153. Свои запросы WebView делает сам, нативно,
+     * мимо socket.connect и мимо URL.openConnection, поэтому плагин без
+     * разрешения на сеть мог загрузить любой адрес — с данными в параметрах.
+     *
+     * Гейтим загрузку, а не сам класс: WebView с локальной разметкой сети не
+     * требует, и запрещать его целиком означало бы ломать разметку ни за что.
+     */
+    private static int hookWebView() {
+        final Class<?> owner = classForName("android.webkit.WebView");
+        if (owner == null) {
+            return 0;
+        }
+        XC_MethodHook hook = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                String pluginId = enterCheck();
+                if (pluginId == null) {
+                    return;
+                }
+                try {
+                    final String url = param.args == null || param.args.length == 0
+                            ? "" : String.valueOf(param.args[0]);
+                    if (!isRemoteUrl(url)) {
+                        return;  // about:blank, data:, file:// — сети тут нет
+                    }
+                    if (PluginPermissions.check(pluginId, PluginPermissions.NETWORK)) {
+                        PluginAuditJournal.record(pluginId, "WebView.load", "network", url, true);
+                        return;
+                    }
+                    denySilently(pluginId, "WebView.load", "network", url,
+                            "missing the 'network' permission", param);
+                } finally {
+                    leaveCheck();
+                }
+            }
+        };
+        int count = hookAll(owner, "loadUrl", hook);
+        count += hookAll(owner, "postUrl", hook);
+        count += hookAll(owner, "loadDataWithBaseURL", hook);
+        return count;
+    }
+
+    /**
+     * Загрузка чужими руками.
+     *
+     * Плагину не обязательно открывать сокет самому: скачать по адресу может
+     * загрузчик самого приложения, системный DownloadManager или проигрыватель.
+     * По подсчёту на 512 плагинах: ImageReceiver/FileLoader зовут 86,
+     * MediaPlayer.setDataSource — 23, DownloadManager — 17. Данные при этом
+     * уходят так же, как из своего сокета.
+     *
+     * Гейтим точки, где адрес виден и однозначен. ImageReceiver целиком не
+     * трогаем — им 86 плагинов показывают обычные телеграмные картинки, а
+     * загрузка по URL идёт отдельным методом ImageLoader.loadHttpFile.
+     */
+    private static int hookIndirectDownloads() {
+        int count = 0;
+        count += hookRemoteUrlArgument("org.telegram.messenger.ImageLoader", "loadHttpFile",
+                "download a file");
+        count += hookRemoteUrlArgument("android.media.MediaPlayer", "setDataSource",
+                "stream from the network");
+        final Class<?> downloads = classForName("android.app.DownloadManager");
+        if (downloads != null) {
+            count += hookAll(downloads, "enqueue", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    String pluginId = enterCheck();
+                    if (pluginId == null) {
+                        return;
+                    }
+                    try {
+                        // Адрес спрятан внутри Request и наружу не отдаётся,
+                        // поэтому спрашиваем разрешение на саму постановку в
+                        // очередь: локальных загрузок у DownloadManager нет.
+                        if (PluginPermissions.check(pluginId, PluginPermissions.NETWORK)) {
+                            PluginAuditJournal.record(pluginId, "DownloadManager.enqueue",
+                                    "network", "", true);
+                            return;
+                        }
+                        denySilently(pluginId, "DownloadManager.enqueue", "network", "",
+                                "missing the 'network' permission", param);
+                    } finally {
+                        leaveCheck();
+                    }
+                }
+            });
+        }
+        return count;
+    }
+
+    /** Хук на метод, у которого первый строковый аргумент — адрес. */
+    private static int hookRemoteUrlArgument(String className, String methodName, String what) {
+        final Class<?> owner = classForName(className);
+        if (owner == null) {
+            return 0;
+        }
+        return hookAll(owner, methodName, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                String pluginId = enterCheck();
+                if (pluginId == null) {
+                    return;
+                }
+                try {
+                    String url = null;
+                    if (param.args != null) {
+                        for (Object arg : param.args) {
+                            if (arg instanceof String) {
+                                url = (String) arg;
+                                break;
+                            }
+                        }
+                    }
+                    if (!isRemoteUrl(url)) {
+                        return;  // локальный файл — сети тут нет
+                    }
+                    if (PluginPermissions.check(pluginId, PluginPermissions.NETWORK)) {
+                        PluginAuditJournal.record(pluginId, methodName, "network", url, true);
+                        return;
+                    }
+                    denySilently(pluginId, methodName, "network", url,
+                            "missing the 'network' permission (" + what + ")", param);
+                } finally {
+                    leaveCheck();
+                }
+            }
+        });
+    }
+
+    /** Адрес ведёт наружу, а не в локальную разметку. */
+    private static boolean isRemoteUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+        String lower = url.trim().toLowerCase(java.util.Locale.ROOT);
+        return lower.startsWith("http://") || lower.startsWith("https://")
+                || lower.startsWith("ws://") || lower.startsWith("wss://")
+                || lower.startsWith("ftp://");
+    }
+
+    /** Запрос меняет что-то на сервере, а не только читает. */
+    private static boolean isWritingRequest(String name) {
+        if (name == null) {
+            return false;
+        }
+        String lower = name.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains("send") || lower.contains("edit") || lower.contains("delete")
+                || lower.contains("forward") || lower.contains("set") || lower.contains("save")
+                || lower.contains("upload") || lower.contains("create") || lower.contains("join")
+                || lower.contains("leave") || lower.contains("invite") || lower.contains("report");
+    }
+
+    private static Class<?> classForName(String name) {
+        try {
+            return Class.forName(name);
+        } catch (Throwable ignored) {
+            // Класса нет в этой сборке — гейтить нечего.
+            return null;
+        }
+    }
+
+    /** Хук на метод класса, взятого по имени: отказ = нет разрешения. */
+    private static int hookByName(String className, String methodName,
+                                  String permission, String what) {
+        final Class<?> owner = classForName(className);
+        if (owner == null) {
+            return 0;
+        }
+        return hookAll(owner, methodName, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                String pluginId = enterCheck();
+                if (pluginId == null) {
+                    return;
+                }
+                try {
+                    if (PluginPermissions.check(pluginId, permission)) {
+                        PluginAuditJournal.record(pluginId, methodName, categoryFor(permission),
+                                describe(param), true);
+                        return;
+                    }
+                    denySilently(pluginId, methodName, categoryFor(permission), describe(param),
+                            "missing the '" + permission + "' permission", param);
+                } finally {
+                    leaveCheck();
+                }
+            }
+        });
+    }
+
+    private static String categoryFor(String permission) {
+        if (PluginPermissions.FILES.equals(permission)) {
+            return "files";
+        }
+        if (PluginPermissions.INTENTS.equals(permission)) {
+            return "intents";
+        }
+        return "messages";
     }
 
     // ---------- инфраструктура ----------
@@ -247,6 +592,49 @@ public final class PluginSinkGate {
         return count;
     }
 
+    /**
+     * Отказ без исключения: метод просто не выполняется и возвращает пустое
+     * значение своего типа.
+     *
+     * Для отправки сообщения и чтения базы это честнее исключения: плагин
+     * зовёт их как обычные методы и обработчика для SecurityException не имеет,
+     * так что упал бы весь его сценарий. Пустой результат он переживает — так
+     * же, как неудачную отправку.
+     */
+    private static void denySilently(String pluginId, String event, String category, String detail,
+                                     String reason, XC_MethodHook.MethodHookParam param) {
+        PluginAuditJournal.record(pluginId, event, category, detail, false);
+        FileLog.w("PluginSinkGate: skipped " + event + " for plugin " + pluginId + " — " + reason);
+        param.setResult(emptyResultFor(param));
+    }
+
+    /** Пустое значение под тип возврата метода: у примитивов null уронил бы распаковку. */
+    private static Object emptyResultFor(XC_MethodHook.MethodHookParam param) {
+        Class<?> returnType = null;
+        if (param.method instanceof Method) {
+            returnType = ((Method) param.method).getReturnType();
+        }
+        if (returnType == null || returnType == void.class || !returnType.isPrimitive()) {
+            return null;
+        }
+        if (returnType == boolean.class) {
+            return Boolean.FALSE;
+        }
+        if (returnType == long.class) {
+            return 0L;
+        }
+        if (returnType == float.class) {
+            return 0f;
+        }
+        if (returnType == double.class) {
+            return 0d;
+        }
+        if (returnType == char.class) {
+            return (char) 0;
+        }
+        return 0;
+    }
+
     private static void deny(String pluginId, String event, String category, String detail,
                              String reason, XC_MethodHook.MethodHookParam param) {
         PluginAuditJournal.record(pluginId, event, category, detail, false);
@@ -273,6 +661,16 @@ public final class PluginSinkGate {
             return new java.net.ConnectException(message);
         }
         return new SecurityException(message);
+    }
+
+    /** Загрузчики кода: требуют hooks, а не «никогда». */
+    static boolean isCodeLoader(String className) {
+        for (String loader : CODE_LOADING_CLASSES) {
+            if (loader.equals(className)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String describe(XC_MethodHook.MethodHookParam param) {

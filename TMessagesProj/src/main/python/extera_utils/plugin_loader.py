@@ -95,6 +95,14 @@ _VALID_STRATEGIES = frozenset({
 _context_state = threading.local()
 
 
+class ClassNotFoundError(Exception):
+    """Плагину не дали класс. Текст совпадает с обычной ошибкой Chaquopy,
+    чтобы плагин обработал это как «класса нет», а не как поломку."""
+
+    def __init__(self, name):
+        super().__init__(f"no class named {name}")
+
+
 _RUNTIME_UNSET = object()
 _java_runtime_class = _RUNTIME_UNSET
 
@@ -271,6 +279,75 @@ _IMPORT_RULES = {
 # Дешёвый префильтр: враппер __import__ стоит на пути ВСЕХ импортов процесса,
 # поэтому в общем случае он должен стоить один lookup в множестве.
 _GATED_ROOTS = frozenset(key.partition(".")[0] for key in _IMPORT_RULES)
+
+
+#: Java-классы, за которыми стоит разрешение. Ключ — точное имя или префикс
+#: с точкой на конце.
+#:
+#: Сюда попало только однозначное. MessagesController, например, здесь нет:
+#: его 71 плагин из каталога зовёт ради имени пользователя по id, и отказ
+#: сломал бы их, ничего не защитив, — за чтение переписки отвечает
+#: MessagesStorage, он и закрыт.
+_JAVA_CLASS_RULES = {
+    "org.telegram.messenger.SendMessagesHelper": "messages.send",
+    "org.telegram.messenger.MessagesStorage": "messages.read",
+    "org.telegram.tgnet.ConnectionsManager": "messages.read",
+    "android.content.ContentResolver": "files",
+    "android.provider.MediaStore": "files",
+    "de.robv.android.xposed.": "hooks",
+    # Загрузка dex — произвольный Java-код в нашем процессе, та же власть,
+    # что у хуков. 33 плагина каталога этим пользуются, поэтому запрет
+    # «никогда» им не подходит: это разрешение hooks, а не отказ.
+    "dalvik.system.DexClassLoader": "hooks",
+    "dalvik.system.PathClassLoader": "hooks",
+    "dalvik.system.InMemoryDexClassLoader": "hooks",
+    "dalvik.system.BaseDexClassLoader": "hooks",
+}
+
+
+def java_class_permission(name):
+    """Разрешение, нужное для класса, или None."""
+    if not name:
+        return None
+    exact = _JAVA_CLASS_RULES.get(name)
+    if exact is not None:
+        return exact
+    for prefix, perm in _JAVA_CLASS_RULES.items():
+        if prefix.endswith(".") and name.startswith(prefix):
+            return perm
+    return None
+
+
+def guard_java_class(name):
+    """Можно ли плагину получить этот Java-класс.
+
+    Возвращает True/False, ничего не бросая: вызывающий (find_class и обёртка
+    jclass) отдаёт None, а None у find_class — штатный ответ «класса нет», его
+    проверяют 188 мест в каталоге. Отказ через исключение ломал бы плагины,
+    которые до сих пор работали.
+
+    Полной эту проверку считать нельзя: 210 плагинов каталога тянут
+    org.telegram.* обычным импортом на верхнем уровне модуля, и туда она не
+    достаёт. Настоящая граница — хуки на самих действиях
+    (app.exteraless.plugins.PluginSinkGate), эта проверка лишь снимает самый
+    ходовой путь: 178 плагинов зовут find_class, 94 — jclass.
+    """
+    perm = java_class_permission(name)
+    if perm is None:
+        return True
+    pid = plugin_frame_owner()
+    if pid is None:
+        return True
+    if has_permission(perm, pid):
+        return True
+    _log_once(f"{pid}|jclass|{name}",
+              f"plugin {pid!r}: class {name!r} refused, missing {perm!r}")
+    try:
+        from . import audit_gate
+        audit_gate.note_denied_class(pid, name, perm)
+    except Exception:
+        pass
+    return False
 
 
 def _log(message: str) -> None:
@@ -674,6 +751,35 @@ def _install_thread_marking() -> None:
         print(f"[exteraless:plugin_loader] thread marking failed: {e}", file=sys.stderr)
 
 
+def _install_jclass_guard() -> None:
+    """Обернуть java.jclass проверкой разрешений. Идемпотентно, не бросает.
+
+    Плагины берут Java-классы по имени двумя способами: наш find_class и
+    java.jclass напрямую (94 плагина каталога). Второй мимо SDK, поэтому
+    оборачиваем сам jclass.
+    """
+    try:
+        import java
+        original = getattr(java, "jclass", None)
+        if original is None or getattr(original, "_exteraless_guard", False):
+            return
+
+        def jclass(name, *args, **kwargs):
+            try:
+                if isinstance(name, str) and not guard_java_class(name):
+                    raise ClassNotFoundError(name)
+            except ClassNotFoundError:
+                raise
+            except Exception:
+                pass  # сломанная проверка не должна ломать доступ к Java
+            return original(name, *args, **kwargs)
+
+        jclass._exteraless_guard = True
+        java.jclass = jclass
+    except Exception as e:
+        print(f"[exteraless:plugin_loader] jclass guard failed: {e}", file=sys.stderr)
+
+
 def _install_sandbox() -> None:
     """Поставить финдер и врапперы импорта/open. Идемпотентно, не бросает."""
     global _original_import, _original_import_module, _original_open
@@ -698,6 +804,7 @@ def _install_sandbox() -> None:
         from . import audit_gate
         audit_gate.install(sys.modules[__name__])
         _install_thread_marking()
+        _install_jclass_guard()
         if not any(isinstance(finder, _PermissionFinder) for finder in sys.meta_path):
             # В начало: elyx_runtime ставит свой финдер тоже в начало и может
             # оказаться перед нами — это безопасно, для не-ElyxPlugins имён он
@@ -1216,6 +1323,15 @@ def dispatch_setting_click(plugin_id: str, callback_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Dev server (port 42690; started by the engine in developer mode)
 # ---------------------------------------------------------------------------
+
+def scan_capabilities_json(path: str) -> str:
+    """Что плагин может делать — по исходнику, без запуска (для диалога установки)."""
+    try:
+        from . import capability_scan
+        return capability_scan.scan_json(path)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+
 
 def get_audit_journal_json(plugin_id: Optional[str] = None, limit: int = 100) -> str:
     """Последние наблюдения audit-гейта (для экрана «Что делал плагин»)."""

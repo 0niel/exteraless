@@ -103,6 +103,22 @@ public class PythonPluginsEngine {
         });
     }
 
+    /**
+     * Что плагин может делать — статический разбор исходника перед установкой.
+     * @return JSON {"network":["requests"],...} или null, если движок не поднят.
+     */
+    public String scanCapabilitiesJson(String path) {
+        if (!started) {
+            return null;
+        }
+        try {
+            return loader.callAttr("scan_capabilities_json", path).toJava(String.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: capability scan failed", t);
+            return null;
+        }
+    }
+
     // ---------- журнал наблюдений ----------
 
     /** Журнал Python-гейта по плагину (или по всем, если id == null). */

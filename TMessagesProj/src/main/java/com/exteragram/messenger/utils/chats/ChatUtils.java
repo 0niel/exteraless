@@ -1,0 +1,77 @@
+package com.exteragram.messenger.utils.chats;
+
+import org.telegram.messenger.MessageObject;
+import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.UserConfig;
+import org.telegram.tgnet.TLRPC;
+
+import tw.nekomimi.nekogram.helpers.MessageHelper;
+
+/**
+ * Шим {@code com.exteragram.messenger.utils.chats.ChatUtils}.
+ *
+ * Нужен настоящим плагинам: из семи новых каналов его зовут 13 штук, и без
+ * него они не грузятся вовсе. Используют ровно три метода — путь к файлу
+ * сообщения (46 вызовов), текст сообщения (3) и разбор ссылки на канал (1),
+ * поэтому шим повторяет их, а не весь класс exteraGram.
+ *
+ * За каждым методом стоит наш собственный код (NagramX MessageHelper,
+ * MessagesController), а не перенос: смысл шима в имени, которое плагины
+ * ожидают увидеть.
+ */
+public final class ChatUtils {
+
+    private static volatile ChatUtils instance;
+
+    private final int currentAccount;
+
+    private ChatUtils(int account) {
+        this.currentAccount = account;
+    }
+
+    public static ChatUtils getInstance() {
+        ChatUtils local = instance;
+        if (local == null || local.currentAccount != UserConfig.selectedAccount) {
+            synchronized (ChatUtils.class) {
+                local = instance;
+                if (local == null || local.currentAccount != UserConfig.selectedAccount) {
+                    local = new ChatUtils(UserConfig.selectedAccount);
+                    instance = local;
+                }
+            }
+        }
+        return local;
+    }
+
+    /** Путь к скачанному файлу сообщения или null, если файла нет. */
+    public String getPathToMessage(MessageObject messageObject) {
+        if (messageObject == null) {
+            return null;
+        }
+        return MessageHelper.getPathToMessage(messageObject);
+    }
+
+    /** Текст сообщения без разметки; пустая строка вместо null — как ждут плагины. */
+    public CharSequence getMessageText(MessageObject messageObject) {
+        if (messageObject == null) {
+            return "";
+        }
+        String text = MessageHelper.getMessagePlainText(messageObject, null);
+        return text == null ? "" : text;
+    }
+
+    /**
+     * Канал по @username из кэша.
+     *
+     * Сетевого запроса здесь нет намеренно: плагины зовут это из отрисовки, а
+     * поход на сервер оттуда означал бы подвисания. Нет в кэше — null.
+     */
+    public TLRPC.Chat resolveChannel(String username) {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        String name = username.startsWith("@") ? username.substring(1) : username;
+        Object cached = MessagesController.getInstance(currentAccount).getUserOrChat(name);
+        return cached instanceof TLRPC.Chat ? (TLRPC.Chat) cached : null;
+    }
+}

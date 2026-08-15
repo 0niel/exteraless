@@ -56,7 +56,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private static final int TYPE_EXPANDABLE_SWITCH = 104;
     /** Круглая галочка внутри группы. */
     private static final int TYPE_ROUND_CHECK = 105;
-    /** Две карточки-превью формы плавающей кнопки (exteraGram: UItem.asCustom(FAB_SHAPE,...) :461). */
+    /** Две карточки-превью формы плавающей кнопки. */
     private static final int TYPE_FAB_SHAPE = 106;
 
     // Appearance
@@ -280,8 +280,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * Порядок пунктов «Folder Title» у exteraGram (:500) — «Names with Icons», «Names only»,
-     * «Icons only»; у NekoConfig.tabsTitleType значения 0 TEXT, 1 ICON, 2 MIX.
+     * Порядок пунктов «Folder Title» — «Names with Icons», «Names only», «Icons only»;
+     * у NekoConfig.tabsTitleType значения 0 TEXT, 1 ICON, 2 MIX.
      * Массив переводит индекс диалога в значение конфига.
      */
     private static final int[] TAB_TITLE_ORDER = {2, 0, 1};
@@ -311,7 +311,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         // Theme.getColor читает закешированное значение — сбросить кэш обязательно.
         AppearanceConfig.invalidateDividerStyle();
         // «Сегменты» рисуются раздельными карточками, и заголовок обязан быть своей карточкой,
-        // иначе секция склеивается: exteraGram дожимает настройку принудительно (lambda$onClick$2 :384-391).
+        // иначе секция склеивается — настройка дожимается принудительно.
         if (AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS
                 && !AppearanceConfig.separateHeaders.Bool()) {
             AppearanceConfig.separateHeaders.setConfigBool(true);
@@ -319,7 +319,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (listAdapter != null) {
             listAdapter.notifyItemChanged(separateHeadersRow);
         }
-        // цвет разделителя лежит в общей теме,
+        // Цвет разделителя лежит в общей теме,
         // без applyCommonTheme новые значения не подхватят уже созданные ячейки.
         Theme.applyCommonTheme();
         if (listView != null) {
@@ -331,7 +331,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * новый радиус надо занести в декоратор
+     * Новый радиус надо занести в декоратор
      * списка и перерисовать его, иначе на текущем экране ничего не меняется.
      */
     private void onSectionRadiusChanged(int value) {
@@ -375,7 +375,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         } else if (position == md3SliderRow) {
             // Стиль слайдера читается в SeekBarView.getEffectiveSliderStyle() на каждой отрисовке,
             // стиль переключателя — в Switch на каждой; перезапуск не нужен, хватает пересборки
-            // вьюх (так же делает NekoGeneralSettingsActivity:306-311 и exteraGram, case 23 :695-702).
+            // вьюх — так же делает NekoGeneralSettingsActivity.
             NaConfig.INSTANCE.getSliderStyle().setConfigInt(
                     isMd3(NaConfig.INSTANCE.getSliderStyle().Int()) ? 0 : STYLE_MD3);
             if (avatarCornersPreviewCell != null) {
@@ -414,8 +414,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             if (getParentActivity() == null) {
                 return;
             }
-            // Порядок пунктов диалога — исходный (initializeOptionStrings :500),
-            // а значения NekoConfig.tabsTitleType свои (0 TEXT, 1 ICON, 2 MIX),
+            // Порядок пунктов диалога свой, значения NekoConfig.tabsTitleType тоже
+            // (0 TEXT, 1 ICON, 2 MIX),
             // поэтому индекс диалога отображается через TAB_TITLE_ORDER.
             AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
             builder.setTitle(getString(R.string.OEAppearanceTabTitleStyle));
@@ -446,8 +446,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             });
             return;
         } else if (position == centerTitleRow) {
-            // У exteraGram это обычный переключатель (AppearancePreferencesActivity:443),
-            // а не селектор из четырёх пунктов: центровка либо есть, либо нет.
+            // Обычный переключатель, а не селектор из четырёх пунктов:
+            // центровка либо есть, либо нет.
             AppearanceConfig.centerTitle.setConfigBool(!AppearanceConfig.INSTANCE.centerTitle());
             if (view instanceof org.telegram.ui.Cells.TextCheckCell) {
                 ((org.telegram.ui.Cells.TextCheckCell) view)
@@ -495,7 +495,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
             }
-            // стеклянное меню рисуется поверх
+            // Стеклянное меню рисуется поверх
             // блюра, и без него настройка не даёт ничего видимого, поэтому предлагаем включить.
             if (enabled && !SharedConfig.chatBlurEnabled() && getParentActivity() != null) {
                 BulletinFactory.of(this)
@@ -508,7 +508,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == separateHeadersRow
                 && AppearanceConfig.dividerStyle.Int() == AppearanceConfig.DIVIDER_SEGMENTS) {
-            // При «Сегментах» строка нарисована выключенной (exteraGram :482 setEnabled(...)),
+            // При «Сегментах» строка нарисована выключенной,
             // клик по ней ничего не меняет.
             return;
         }
@@ -563,7 +563,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             if (foldersPreviewCell != null) {
                 foldersPreviewCell.updateAllChatsTabName(true);
             }
-            // вкладки пересобираются по уведомлению,
+            // Вкладки пересобираются по уведомлению,
             // перезапуск не нужен (плюс rebuild ниже пересоздаёт сам список чатов).
             getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
             getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
@@ -714,6 +714,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 case TYPE_EXPANDABLE_SWITCH: {
                     org.telegram.ui.Cells.TextCheckCell2 cell =
                             (org.telegram.ui.Cells.TextCheckCell2) holder.itemView;
+                    // Иначе выключенная группа горит красным: Switch по умолчанию
+                    // идёт в «разрешительных» цветах экрана прав участника.
+                    cell.useStandardSwitchColors();
                     cell.setTextAndCheck(getString(R.string.OEAppearanceMaterialDesign3),
                             md3SelectedCount() > 0, true);
                     // Правая зона (76 dp за разделителем) — сам переключатель, как у exteraGram:
@@ -768,7 +771,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     break;
                 }
                 case TYPE_DETAIL_SETTINGS: {
-                    // иконка слева, подпись под заголовком.
+                    // Иконка слева, подпись под заголовком.
                     TextDetailSettingsCell cell = (TextDetailSettingsCell) holder.itemView;
                     if (position == appNavigationRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OEAppearanceNavigation), getString(R.string.OEAppearanceNavigationSub), R.drawable.msg_newphone, true);
@@ -881,7 +884,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         if (avatarCornersPreviewCell != null) {
             avatarCornersPreviewCell.invalidate();
         }
-        // Перезапуск не нужен: все пять стилей читаются при отрисовке или при создании вьюх,
+        // Перезапуск не нужен: все пять стилей читаются при отрисовке или при создании вьюх.
         rebuildAll();
     }
 

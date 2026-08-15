@@ -123,6 +123,21 @@ public class TextCheckCell2 extends FrameLayout {
         addView(checkBox, LayoutHelper.createFrame(37, 40, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0));
     }
 
+    /**
+     * Обычные цвета переключателя вместо «разрешительных».
+     *
+     * Switch по умолчанию красит выключенное состояние в key_fill_RedNormal и
+     * рисует иконку замка (drawIconType 1) — это стиль экрана прав участника,
+     * где красный означает «запрещено». В обычных настройках он читается как
+     * ошибка: у сворачиваемых групп заголовок горел красным просто потому, что
+     * внутри ничего не выбрано.
+     */
+    public void useStandardSwitchColors() {
+        checkBox.setDrawIconType(0);
+        checkBox.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked,
+                Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (isMultiline) {

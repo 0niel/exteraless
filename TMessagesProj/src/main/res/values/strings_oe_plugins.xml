@@ -75,7 +75,6 @@
     <string name="PluginPermHooks">Change how the app itself works</string>
     <string name="PluginPermHooksInfo">Xposed hooks: rewrites the app\'s code while it runs. Everything else on this list becomes possible for it anyway.</string>
 
-    <string name="PluginsInstallNothing">It asks for nothing beyond its own menu items and settings screen.</string>
 
     <string name="PluginActivityHeader">Behaviour</string>
     <string name="PluginActivityLog">What it actually did</string>
@@ -108,10 +107,6 @@
     <string name="PluginLevelGatedFooter">Permissions below are yours to give and take back. Rewriting the app\'s code needs the Trusted level.</string>
     <string name="PluginLevelTrustedFooter">At this level the switches below are courtesy, not enforcement: a plugin that rewrites the app\'s code can undo any of them. Keep it only for authors you trust.</string>
 
-    <string name="PluginsInstallIsolated">It will be installed **isolated**: its own menus and settings screen, nothing more. You decide what else it gets, on the plugin\'s screen.</string>
-    <string name="PluginsInstallAsks">What it asks for:</string>
-    <string name="PluginsInstallUndeclaredIsolated">It does not say what it needs. Isolated it stays harmless; give it anything only if you trust the author.</string>
-    <string name="PluginsInstallHooksWarningLevel">It asks for Xposed hooks — rewriting the app\'s code while it runs. That is not a permission among others — granting it puts the plugin above every other switch. Only the Trusted level allows it.</string>
     <string name="PluginPermissionsLegacyInfo">This plugin never said what it needs, so everything it could possibly ask for is listed above.</string>
     <string name="PluginLevelApply">Use this level</string>
     <string name="PluginActivityDidImport">Loaded %1$s</string>
@@ -128,4 +123,8 @@
     <string name="PluginsSourceUnknown">From an unknown source. Nobody has vouched for this file.</string>
     <string name="PluginDeniedNotice">%1$s tried to do something it is not allowed to: %2$s</string>
     <string name="PluginDeniedOpen">Permissions</string>
+    <string name="PluginsInstallScanned">The app read the source and found what this plugin can do. Tick what you allow — the rest stays blocked, and you can change it later on the plugin\'s screen.</string>
+    <string name="PluginsInstallNothingFound">Nothing beyond its own menus and settings was found in the source. It will be installed isolated.</string>
+    <string name="PluginsInstallDenied">The plugin stopped on its first run: it needs \"%1$s\" and does not have it. Tick that permission on the plugin\'s screen and reload it.</string>
+    <string name="PluginsInstallDeniedGeneric">The plugin stopped on its first run: it tried to do something it is not allowed to. Its permissions are on the plugin\'s screen.</string>
 </resources>

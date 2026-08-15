@@ -3,14 +3,10 @@ package app.exteraless.plugins;
 import android.app.Activity;
 import android.content.Context;
 import android.database.Cursor;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.text.TextUtils;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.StyleSpan;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLoader;
@@ -30,6 +26,16 @@ import java.util.List;
 import java.util.Locale;
 
 import app.exteraless.plugins.ui.PluginPermissionsActivity;
+import android.util.TypedValue;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.telegram.ui.Cells.CheckBoxCell;
+import org.telegram.ui.Components.LayoutHelper;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Установка плагина из файла, открытого снаружи: тап по .plugin в чате, файловый
@@ -257,21 +263,131 @@ public final class PluginInstallHelper {
                     .show();
             return;
         }
-        controller.readMetadataAsync(file, plugin -> AndroidUtilities.runOnUIThread(() -> {
-            if (activity.isFinishing()) {
-                return;
+        controller.readMetadataAsync(file, plugin -> {
+            // Разбор исходника — на фоновом потоке: это чтение файла и AST.
+            final Map<String, List<String>> capabilities = scanCapabilities(file);
+            AndroidUtilities.runOnUIThread(() -> {
+                if (activity.isFinishing()) {
+                    return;
+                }
+                showConsentDialog(activity, file, plugin, knownSource, capabilities);
+            });
+        });
+    }
+
+    /**
+     * Диалог установки с галочками.
+     *
+     * Раньше он перечислял `__permissions__`, но их объявляет меньшинство: из
+     * 512 плагинов двух каталогов большинство молчит, и человек видел либо
+     * пустой список, либо «получит всё». Теперь показывается то, что нашлось в
+     * исходнике, — и каждая находка это галочка, которую можно снять.
+     *
+     * Галочки по умолчанию сняты. Плагин ставится ровно с тем, что отметили:
+     * ничего не отметили — уровень «Изоляция», отметили что-то — «Ограниченный»,
+     * отметили переписывание кода — «Доверенный».
+     */
+    private static void showConsentDialog(Activity activity, File file, Plugin plugin,
+                                          boolean knownSource, Map<String, List<String>> capabilities) {
+        final List<String> permissions = orderedPermissions(capabilities);
+        final List<CheckBoxCell> cells = new ArrayList<>();
+
+        LinearLayout content = new LinearLayout(activity);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        TextView summary = new TextView(activity);
+        summary.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        summary.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        summary.setText(buildConfirmMessage(plugin, knownSource, permissions.isEmpty()));
+        summary.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), AndroidUtilities.dp(4));
+        content.addView(summary);
+
+        for (String permission : permissions) {
+            CheckBoxCell cell = new CheckBoxCell(activity, CheckBoxCell.TYPE_CHECK_BOX_ROUND, 21, null);
+            // Улики — то, по чему разбор так решил: человеку видно основание,
+            // а не только вывод.
+            cell.setText(PluginPermissionsActivity.titleOf(permission),
+                    evidenceOf(capabilities, permission), false, false);
+            cell.setOnClickListener(v -> cell.setChecked(!cell.isChecked(), true));
+            cell.setTag(permission);
+            cells.add(cell);
+            content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 50));
+        }
+
+        ScrollView scroll = new ScrollView(activity);
+        scroll.addView(content);
+
+        new AlertDialog.Builder(activity)
+                .setTitle(LocaleController.getString(R.string.PluginsInstallTitle))
+                .setView(scroll)
+                .setPositiveButton(LocaleController.getString(R.string.PluginsInstallAction),
+                        (dialog, which) -> {
+                            List<String> granted = new ArrayList<>();
+                            for (CheckBoxCell cell : cells) {
+                                if (cell.isChecked() && cell.getTag() instanceof String) {
+                                    granted.add((String) cell.getTag());
+                                }
+                            }
+                            grantOnConsent(plugin, granted);
+                            install(activity, file, plugin != null ? plugin.id : null);
+                        })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    /** Разрешения в порядке экрана плагина, чтобы список читался одинаково везде. */
+    private static List<String> orderedPermissions(Map<String, List<String>> capabilities) {
+        List<String> out = new ArrayList<>();
+        if (capabilities == null) {
+            return out;
+        }
+        for (String permission : PluginPermissions.REQUESTABLE) {
+            if (capabilities.containsKey(permission)) {
+                out.add(permission);
             }
-            new AlertDialog.Builder(activity)
-                    .setTitle(LocaleController.getString(R.string.PluginsInstallTitle))
-                    .setMessage(buildConfirmMessage(plugin, knownSource))
-                    .setPositiveButton(LocaleController.getString(R.string.PluginsInstallAction),
-                            (dialog, which) -> {
-                                grantOnConsent(plugin);
-                                install(activity, file, plugin != null ? plugin.id : null);
-                            })
-                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                    .show();
-        }));
+        }
+        return out;
+    }
+
+    private static String evidenceOf(Map<String, List<String>> capabilities, String permission) {
+        List<String> evidence = capabilities == null ? null : capabilities.get(permission);
+        if (evidence == null || evidence.isEmpty()) {
+            return "";
+        }
+        // Двух признаков хватает: строка не должна вытеснять сам заголовок.
+        return evidence.size() <= 2
+                ? TextUtils.join(", ", evidence)
+                : TextUtils.join(", ", evidence.subList(0, 2)) + "…";
+    }
+
+    /** Статический разбор исходника; пустая карта, если движок молчит. */
+    private static Map<String, List<String>> scanCapabilities(File file) {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        try {
+            String json = PythonPluginsEngine.getInstance().scanCapabilitiesJson(file.getAbsolutePath());
+            if (TextUtils.isEmpty(json)) {
+                return result;
+            }
+            JSONObject parsed = new JSONObject(json);
+            for (java.util.Iterator<String> keys = parsed.keys(); keys.hasNext(); ) {
+                String key = keys.next();
+                if (!PluginPermissions.isKnown(key)) {
+                    continue;  // "error" и всё незнакомое
+                }
+                JSONArray array = parsed.optJSONArray(key);
+                List<String> evidence = new ArrayList<>();
+                for (int i = 0; array != null && i < array.length(); i++) {
+                    String item = JsonUtils.optStringOrNull(array, i);
+                    if (item != null) {
+                        evidence.add(item);
+                    }
+                }
+                result.put(key, evidence);
+            }
+        } catch (Throwable t) {
+            FileLog.e("PluginInstallHelper: capability scan failed", t);
+        }
+        return result;
     }
 
     /**
@@ -282,7 +398,14 @@ public final class PluginInstallHelper {
      * идёт отдельным абзацем и красным — обладая ей, плагин может всё
      * перечисленное выше независимо от остальных ключей.
      */
-    private static CharSequence buildConfirmMessage(Plugin plugin, boolean knownSource) {
+    /**
+     * Шапка диалога: откуда файл, кто автор, и что означают галочки ниже.
+     *
+     * Перечисление разрешений отсюда ушло в сами галочки: список, который
+     * нельзя тронуть, человек пролистывает, а отметку — принимает или снимает.
+     */
+    private static CharSequence buildConfirmMessage(Plugin plugin, boolean knownSource,
+                                                    boolean nothingFound) {
         SpannableStringBuilder sb = new SpannableStringBuilder();
         // Откуда файл — первым делом: это то, на что человек реально опирается,
         // решая ставить или нет.
@@ -299,57 +422,34 @@ public final class PluginInstallHelper {
                 plugin.getDisplayName(),
                 plugin.version != null ? plugin.version : "1.0",
                 plugin.author != null ? plugin.author : "—"));
-
-        // Плагин ставится в изоляции, что бы он ни просил, — права выдаются
-        // потом и осознанно. Поэтому список ниже это «что он просит», а не
-        // «что он получит»; иначе диалог обещал бы больше, чем происходит.
-        sb.append("\n\n").append(LocaleController.getString(R.string.PluginsInstallIsolated));
-        List<String> requested = PluginPermissions.getRequested(plugin);
-        if (!plugin.permissionsDeclared) {
-            sb.append("\n\n").append(LocaleController.getString(R.string.PluginsInstallUndeclaredIsolated));
-            return sb;
-        }
-        if (requested.isEmpty()) {
-            sb.append("\n\n").append(LocaleController.getString(R.string.PluginsInstallNothing));
-            return sb;
-        }
-        sb.append("\n\n").append(LocaleController.getString(R.string.PluginsInstallAsks));
-        boolean hooks = false;
-        for (String perm : requested) {
-            hooks |= PluginPermissions.isDangerous(perm);
-            sb.append("\n\n");
-            int start = sb.length();
-            sb.append("• ").append(PluginPermissionsActivity.titleOf(perm));
-            sb.setSpan(new StyleSpan(Typeface.BOLD), start, sb.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            CharSequence info = PluginPermissionsActivity.infoOf(perm);
-            if (!TextUtils.isEmpty(info)) {
-                sb.append("\n").append(info);
-            }
-        }
-        if (hooks) {
-            sb.append("\n\n");
-            int start = sb.length();
-            sb.append(LocaleController.getString(R.string.PluginsInstallHooksWarningLevel));
-            sb.setSpan(new ForegroundColorSpan(Theme.getColor(Theme.key_text_RedBold)),
-                    start, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
+        sb.append("\n\n").append(LocaleController.getString(nothingFound
+                ? R.string.PluginsInstallNothingFound
+                : R.string.PluginsInstallScanned));
         return sb;
     }
 
     /**
-     * Зафиксировать состояние новой установки: изоляция и пустой набор прав.
+     * Зафиксировать выбор пользователя: отмеченные разрешения и уровень под них.
      *
-     * Запись делается всегда, в том числе плагину, который ничего не объявил, —
-     * именно её наличие отличает установленное при модели от старого, которому
-     * иначе достался бы режим совместимости со всеми правами сразу.
+     * Запись делается всегда, даже пустая: именно её наличие отличает плагин,
+     * поставленный при модели разрешений, от старого, которому иначе достался
+     * бы режим совместимости со всеми правами сразу.
      */
-    private static void grantOnConsent(Plugin plugin) {
+    private static void grantOnConsent(Plugin plugin, List<String> granted) {
         if (plugin == null || TextUtils.isEmpty(plugin.id)) {
             return;
         }
-        PluginPermissions.setGranted(plugin.id, new ArrayList<>());
-        PluginTrustLevel.setLevel(plugin.id, PluginTrustLevel.ISOLATED);
+        PluginPermissions.setGranted(plugin.id, granted);
+        final int level;
+        if (granted.isEmpty()) {
+            level = PluginTrustLevel.ISOLATED;
+        } else if (granted.contains(PluginPermissions.HOOKS)) {
+            // Хуки живут только на доверенном уровне: там про это и сказано.
+            level = PluginTrustLevel.TRUSTED;
+        } else {
+            level = PluginTrustLevel.GATED;
+        }
+        PluginTrustLevel.setLevel(plugin.id, level);
     }
 
     private static void install(Activity activity, File file, String consentedId) {
@@ -374,8 +474,7 @@ public final class PluginInstallHelper {
                                 && PluginsController.getInstance().getPlugin(consentedId) == null) {
                             PluginPermissions.clear(consentedId);
                         }
-                        showError(activity, error != null ? error
-                                : LocaleController.getString(R.string.PluginsInstallError));
+                        showError(activity, humanError(error, consentedId));
                         return;
                     }
                     new AlertDialog.Builder(activity)
@@ -385,6 +484,40 @@ public final class PluginInstallHelper {
                             .setPositiveButton(LocaleController.getString(R.string.OK), null)
                             .show();
                 }));
+    }
+
+    /**
+     * Ошибка установки человеческим языком.
+     *
+     * Плагин, которому не хватило разрешения, падал с текстом вида
+     * «PermissionError: plugin 'quotecreate' is not allowed to modify files
+     * (/storage/.../cache/quotecreate): missing the 'files' permission» — это
+     * сообщение для разработчика, а не для того, кто ставит плагин. Разбираем
+     * его обратно в понятное: чего не хватило и что с этим делать.
+     *
+     * Остальные ошибки оставляем как есть: там текст обычно и есть суть
+     * (битый архив, нет метаданных), а прятать её было бы хуже.
+     */
+    private static CharSequence humanError(CharSequence error, String pluginId) {
+        if (error == null) {
+            return LocaleController.getString(R.string.PluginsInstallError);
+        }
+        String text = error.toString();
+        if (!text.contains("PermissionError") && !text.contains("missing the")) {
+            return error;
+        }
+        String permission = null;
+        for (String candidate : PluginPermissions.ALL) {
+            if (text.contains("'" + candidate + "'")) {
+                permission = candidate;
+                break;
+            }
+        }
+        if (permission == null) {
+            return LocaleController.getString(R.string.PluginsInstallDeniedGeneric);
+        }
+        return LocaleController.formatString(R.string.PluginsInstallDenied,
+                PluginPermissionsActivity.titleOf(permission));
     }
 
     private static void showError(Activity activity, CharSequence message) {

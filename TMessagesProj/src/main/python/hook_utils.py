@@ -9,7 +9,18 @@ from typing import Any, Optional
 
 
 def find_class(name: str):
-    """Return the Java class object for *name*, or None if it cannot be found."""
+    """Java-класс по имени или None, если его нет или он плагину не положен.
+
+    None здесь — штатный ответ, а не поломка: плагины его проверяют (188 мест
+    в каталоге). Поэтому отказ в разрешении выглядит для плагина так же, как
+    отсутствующий класс, и обрабатывается его же кодом.
+    """
+    try:
+        from extera_utils.plugin_loader import guard_java_class
+        if not guard_java_class(name):
+            return None
+    except Exception:
+        pass  # сломанная проверка не должна закрывать доступ к Java
     try:
         from java import jclass
         return jclass(name)

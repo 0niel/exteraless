@@ -155,7 +155,7 @@ public class IconPackManager {
         }
         // режим точечной замены: запоминаем, какие иконки реально просит текущий экран
         app.exteraless.icons.picker.IconObserver.log(resId);
-        // Порядок exteraGram (ExteraResources.java:24): сначала пользовательский пак,
+        // Порядок разбора: сначала пользовательский пак,
         // потом встроенный набор (Solar/Remix), потом оригинал.
         Drawable fromPack = getUserPackDrawable(resources, resId, density, theme);
         if (fromPack != null) {
@@ -401,10 +401,45 @@ public class IconPackManager {
     }
 
     /** id ресурса drawable по имени или 0. */
+    /**
+     * Имена иконок exteraGram, которых у нас нет под тем же именем.
+     *
+     * Паки собирают под exteraGram, и часть иконок там называется иначе: у них
+     * `ic_ab_search`, у нас `outline_header_search`. Без сопоставления такая
+     * иконка молча остаётся стоковой — пак применён, а пара картинок нет.
+     *
+     * Соответствия выведены из BaseIconPacks: там уже записано, какой наш
+     * ресурс какому их варианту (`*_remix`, `*_solar`) соответствует. Проверено
+     * на 18 настоящих паках: с ними совпадает 92-100% имён, эти девять
+     * добирают самые ходовые из оставшихся.
+     */
+    private static final java.util.Map<String, String> RESOURCE_ALIASES = new java.util.HashMap<>();
+
+    static {
+        RESOURCE_ALIASES.put("ic_ab_search", "outline_header_search");
+        RESOURCE_ALIASES.put("message", "filled_profile_message_24");
+        RESOURCE_ALIASES.put("mute", "filled_profile_mute_24");
+        RESOURCE_ALIASES.put("unmute", "filled_profile_unmute_24");
+        RESOURCE_ALIASES.put("video", "filled_profile_video_24");
+        RESOURCE_ALIASES.put("block", "filled_profile_stop_24");
+        RESOURCE_ALIASES.put("join", "filled_profile_member_24");
+        RESOURCE_ALIASES.put("story", "filled_profile_story");
+        RESOURCE_ALIASES.put("msg_bots", "msg_bot");
+    }
+
     public int getResourceId(String name) {
         if (name == null) {
             return 0;
         }
+        int id = resolveResourceId(name);
+        if (id != 0) {
+            return id;
+        }
+        String alias = RESOURCE_ALIASES.get(name);
+        return alias == null ? 0 : resolveResourceId(alias);
+    }
+
+    private int resolveResourceId(String name) {
         try {
             return ApplicationLoader.applicationContext.getResources()
                     .getIdentifier(name, "drawable", ApplicationLoader.applicationContext.getPackageName());

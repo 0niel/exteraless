@@ -1265,6 +1265,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
          * счётчик «N/M» рядом с ним.
          */
         private void bindGroupHeader(TextCheckCell2 cell, int position) {
+            // Иначе заголовок группы красный, пока в ней ничего не выбрано:
+            // Switch по умолчанию идёт в «разрешительных» цветах экрана прав.
+            cell.useStandardSwitchColors();
             // Третий аргумент setTextAndCheck — разделитель. У свёрнутой группы
             // заголовок оказывается последней строкой карточки, и линия под ним
             // висела бы в воздухе; поэтому разделитель = «группа раскрыта».

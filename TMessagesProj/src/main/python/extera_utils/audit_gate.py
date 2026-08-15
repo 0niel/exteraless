@@ -103,6 +103,13 @@ _NETWORK = {
     "telnetlib.Telnet.open": "connect to the network",
 }
 
+# Разрешение files: доступ к базам данных приложения идёт мимо open()
+# (sqlite3 открывает файл сам, из C), поэтому событие своё.
+_DATABASE = {
+    "sqlite3.connect": "open a database",
+    "sqlite3.connect/handle": "open a database",
+}
+
 # Разрешение files. Значение — индекс аргумента с путём (для текста ошибки и
 # для проверки «свой каталог»); None — путь не при чём (перечисление и т.п.).
 _FILES = {
@@ -143,8 +150,8 @@ _JOURNAL_ONLY = frozenset({
     "code.__new__", "builtins.input",
 })
 
-_WATCHED = (set(_DENY_ALWAYS) | set(_NETWORK) | set(_FILES) | set(_JOURNAL_ONLY)
-            | {"object.__getattr__"})
+_WATCHED = (set(_DENY_ALWAYS) | set(_NETWORK) | set(_FILES) | set(_DATABASE)
+            | set(_JOURNAL_ONLY) | {"object.__getattr__"})
 
 # Категория для профиля плагина (что он вообще делал).
 _CATEGORY = {}
@@ -155,11 +162,14 @@ for _e in _NETWORK:
     _CATEGORY[_e] = "network"
 for _e in _FILES:
     _CATEGORY[_e] = "files"
+for _e in _DATABASE:
+    _CATEGORY[_e] = "database"
 for _e in _JOURNAL_ONLY:
     _CATEGORY[_e] = "code" if _e in ("exec", "compile", "marshal.loads",
                                      "code.__new__", "pickle.find_class") else "misc"
 _CATEGORY["import"] = "imports"
 _CATEGORY["object.__getattr__"] = "introspection"
+_CATEGORY["java class"] = "reflection"
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +274,11 @@ def get_profile(plugin_id: Optional[str] = None):
         if plugin_id is None:
             return {pid: dict(cats) for pid, cats in _profile.items()}
         return dict(_profile.get(plugin_id, {}))
+
+
+def note_denied_class(plugin_id: str, name: str, permission: str) -> None:
+    """Отказ в Java-классе — в тот же журнал, что и остальное поведение."""
+    _record(plugin_id, "java class", name, False)
 
 
 def clear_plugin(plugin_id: str) -> None:
@@ -452,6 +467,16 @@ def _check(event, args):
         _record(plugin_id, event, detail, allowed)
         if not allowed:
             _deny_network(plugin_id, event, what, detail)
+        return
+
+    if event in _DATABASE:
+        path = _as_text(_arg(args, 0))
+        if _is_own_file(plugin_id, path) or _is_runtime_file(path):
+            return
+        allowed = _loader.has_permission(_loader.PERM_FILES, plugin_id)
+        _record(plugin_id, event, path, allowed)
+        _loader.require_permission(_loader.PERM_FILES, _DATABASE[event],
+                                   detail=path, plugin_id=plugin_id)
         return
 
     if event in _FILES:

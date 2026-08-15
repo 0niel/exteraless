@@ -71,7 +71,6 @@
     <string name="PluginPermSettingsInfo">Может включать и выключать настройки приложения, не спрашивая вас.</string>
     <string name="PluginPermHooks">Менять работу самого приложения</string>
     <string name="PluginPermHooksInfo">Xposed-хуки: переписывает код приложения на ходу. Всё остальное из этого списка становится ему доступно и так.</string>
-    <string name="PluginsInstallNothing">Он не просит ничего сверх своих пунктов меню и экрана настроек.</string>
     <string name="PluginActivityHeader">Поведение</string>
     <string name="PluginActivityLog">Что он делал на самом деле</string>
     <string name="PluginActivityLogInfo">Манифест — это обещание. А здесь записано, куда плагин обращался во время работы и что ему запретили.</string>
@@ -103,10 +102,6 @@
     <string name="PluginLevelGatedFooter">Разрешения ниже вы выдаёте и отзываете сами. Переписывать код приложения можно только на уровне «Доверенный».</string>
     <string name="PluginLevelTrustedFooter">На этом уровне переключатели ниже — вежливость, а не защита: плагин, переписывающий код приложения, отменит любой из них. Оставляйте его только авторам, которым доверяете.</string>
 
-    <string name="PluginsInstallIsolated">Он будет установлен **в изоляции**: свои меню и экран настроек, больше ничего. Что ему можно сверх этого — решаете вы, на экране плагина.</string>
-    <string name="PluginsInstallAsks">Что он просит:</string>
-    <string name="PluginsInstallUndeclaredIsolated">Он не говорит, что ему нужно. В изоляции он безвреден; выдавайте что-либо, только если доверяете автору.</string>
-    <string name="PluginsInstallHooksWarningLevel">Он просит Xposed-хуки — право переписывать код приложения на ходу. Это не разрешение в ряду прочих: выдав его, вы ставите плагин выше всех остальных переключателей. Оно доступно только на уровне «Доверенный».</string>
     <string name="PluginPermissionsLegacyInfo">Плагин не сказал, что ему нужно, поэтому выше перечислено всё, что он в принципе мог бы попросить.</string>
     <string name="PluginLevelApply">Выбрать этот уровень</string>
     <string name="PluginActivityDidImport">Загрузил %1$s</string>
@@ -123,4 +118,8 @@
     <string name="PluginsSourceUnknown">Из неизвестного источника. За этот файл никто не ручается.</string>
     <string name="PluginDeniedNotice">%1$s попытался сделать то, чего ему нельзя: %2$s</string>
     <string name="PluginDeniedOpen">Разрешения</string>
+    <string name="PluginsInstallScanned">Приложение прочитало исходник и нашло, что этот плагин умеет. Отметьте, что разрешаете, — остальное останется закрытым, и всё это можно поменять потом на экране плагина.</string>
+    <string name="PluginsInstallNothingFound">Ничего сверх своих меню и настроек в исходнике не нашлось. Плагин будет установлен в изоляции.</string>
+    <string name="PluginsInstallDenied">Плагин остановился на первом запуске: ему нужно «%1$s», а этого у него нет. Отметьте это разрешение на экране плагина и перезагрузите его.</string>
+    <string name="PluginsInstallDeniedGeneric">Плагин остановился на первом запуске: он попытался сделать то, чего ему нельзя. Разрешения — на экране плагина.</string>
 </resources>
