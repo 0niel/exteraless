@@ -48,6 +48,11 @@ public final class XposedHooks {
      * ("aliuhook")) и заодно снимает hidden API restrictions. Вызывается лениво из
      * hookMethod/hookAll*; ошибки — в FileLog, без падения приложения.
      */
+    /** Поднять Aliuhook и сказать, доступны ли хуки. Для гейта стоков. */
+    public static boolean ensureReady() {
+        return ensureInitialized();
+    }
+
     private static boolean ensureInitialized() {
         if (initAttempted) {
             return initOk;
@@ -64,6 +69,7 @@ public final class XposedHooks {
                 }
                 // Режим совместимости: ART Profile Saver со временем
                 // перекомпилирует методы и сбивает уже поставленные хуки.
+                // exteraGram гасит его при инициализации движка, за флагом.
                 if (PluginsController.getInstance().isCompatibilityMode()) {
                     boolean ok = XposedBridge.disableProfileSaver();
                     FileLog.d("XposedHooks: disableProfileSaver() -> " + ok);

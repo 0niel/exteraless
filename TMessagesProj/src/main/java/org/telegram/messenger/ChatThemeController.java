@@ -10,6 +10,8 @@ import android.util.SparseArray;
 
 import androidx.annotation.Nullable;
 
+import app.exteraless.appearance.AppearanceConfig;
+
 import org.telegram.messenger.wallpaper.WallpaperBitmapHolder;
 import org.telegram.messenger.wallpaper.WallpaperGiftPatternPosition;
 import org.telegram.messenger.wallpaper.pgm.PGMImage;
@@ -373,6 +375,11 @@ public class ChatThemeController extends BaseController {
     }
 
     public TLRPC.WallPaper getDialogWallpaper(long dialogId) {
+        // Перенос exteraGram 12.9.0:ChatThemeController:950 — «Индивидуальные
+        // темы в чатах». NagramX-условие рядом про своё: показ обоев премиума.
+        if (!AppearanceConfig.customThemes()) {
+            return null;
+        }
         if (!NaConfig.INSTANCE.getPremiumItemCustomWallpaper().Bool()) {
             return null;
         }

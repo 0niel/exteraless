@@ -170,8 +170,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int seamlessSwitchingRow;
     private int extendedFpsRow;
     private int cameraStabilizationRow;
-    private int cameraMirrorRow;
-    private int wideAngleCameraRow;
     private int videoMessagesCameraRow;
     private int rememberLastUsedCameraRow;
     private int staticZoomRow;
@@ -287,8 +285,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
         cameraHeaderRow = addRow("cameraHeader");
         cameraTypeRow = addRow("cameraType");
-        seamlessSwitchingRow = extendedFpsRow = cameraStabilizationRow = cameraMirrorRow = wideAngleCameraRow = -1;
-        // расширенные настройки относятся только к Camera2/CameraX.
+        seamlessSwitchingRow = extendedFpsRow = cameraStabilizationRow = -1;
+        // расширенные настройки относятся только к Camera2 (у exteraGram ещё к CameraX).
         if (cameraTypeIndex() != CAMERA_TYPE_SYSTEM) {
             extendedSettingsGroupRow = addRow("extendedSettings");
             if (extendedSettingsExpanded) {
@@ -298,8 +296,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 }
                 extendedFpsRow = addRow();
                 cameraStabilizationRow = addRow();
-                cameraMirrorRow = addRow();
-                wideAngleCameraRow = addRow();
             }
             if (!isSeamlessSwitchingAvailable() && isSeamlessSwitchingEnabled()) {
                 // на устройстве без второй камеры флаг гасится принудительно.
@@ -443,14 +439,18 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 ChatsConfig.pauseOnMinimizeRound.Bool());
     }
 
-    /** Знаменатель «N/M» считается по реально показанным строкам, как у exteraGram (:403-417). */
+    /**
+     * Знаменатель «N/M» считается по реально показанным строкам, как у exteraGram (:403-417).
+     * У exteraGram в группе ещё зеркалирование и широкоугольная камера, но обе строки он
+     * показывает только при CameraType.CAMERA_X (:884, :887) и применяет только в
+     * CameraXSession (:321, :755) — CameraX в форке нет, поэтому их здесь нет тоже.
+     */
     private static int cameraSettingsTotal() {
-        return isSeamlessSwitchingAvailable() ? 5 : 4;
+        return isSeamlessSwitchingAvailable() ? 3 : 2;
     }
 
     private static int cameraSettingsSelected() {
-        int selected = count(ChatsConfig.extendedFramesPerSecond.Bool(), ChatsConfig.cameraStabilization.Bool(),
-                ChatsConfig.cameraMirrorMode.Bool(), ChatsConfig.startWithWideAngleCamera.Bool());
+        int selected = count(ChatsConfig.extendedFramesPerSecond.Bool(), ChatsConfig.cameraStabilization.Bool());
         if (isSeamlessSwitchingAvailable() && isSeamlessSwitchingEnabled()) {
             selected++;
         }
@@ -504,8 +504,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         setSeamlessSwitching(enable && isSeamlessSwitchingAvailable());
         ChatsConfig.extendedFramesPerSecond.setConfigBool(enable);
         ChatsConfig.cameraStabilization.setConfigBool(enable);
-        ChatsConfig.cameraMirrorMode.setConfigBool(enable);
-        ChatsConfig.startWithWideAngleCamera.setConfigBool(enable);
         reloadList();
     }
 
@@ -556,9 +554,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private static final int VIDEO_CAMERA_ASK = 2;
 
     /**
-     * У exteraGram три типа камеры, у нас два: CameraX в дереве нет. Реальный переключатель —
-     * SharedConfig.useCamera2Force, его читает InstantCameraView; ключ ChatsConfig.cameraType
-     * держим синхронным, чтобы экран и конфиг не разъезжались.
+     * У exteraGram три типа камеры, у нас два: CameraX в дереве нет. Единственный источник
+     * правды — SharedConfig.useCamera2Force, его читает InstantCameraView (:1235 exteraGram).
+     * Отдельного ключа под тип камеры не держим: второе хранилище того же факта неизбежно
+     * разъезжается с первым, а прочитать его было некому.
      */
     private int cameraTypeIndex() {
         return SharedConfig.isUsingCamera2(currentAccount) ? CAMERA_TYPE_CAMERA2 : CAMERA_TYPE_SYSTEM;
@@ -568,7 +567,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (cameraTypeIndex() != index) {
             SharedConfig.toggleUseCamera2(currentAccount);
         }
-        ChatsConfig.cameraType.setConfigInt(index);
     }
 
     /**
@@ -951,8 +949,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 || position == menuDetailsRow) {
             return messageMenuGroupRow;
         } else if (position == seamlessSwitchingRow || position == extendedFpsRow
-                || position == cameraStabilizationRow || position == cameraMirrorRow
-                || position == wideAngleCameraRow) {
+                || position == cameraStabilizationRow) {
             return extendedSettingsGroupRow;
         } else if (position == pauseVideoRow || position == pauseVoiceRow || position == pauseRoundRow) {
             return pauseGroupRow;
@@ -1014,8 +1011,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == groupedMessageMenuRow) return NaConfig.INSTANCE.getGroupedMessageMenu();
         if (position == extendedFpsRow) return ChatsConfig.extendedFramesPerSecond;
         if (position == cameraStabilizationRow) return ChatsConfig.cameraStabilization;
-        if (position == cameraMirrorRow) return ChatsConfig.cameraMirrorMode;
-        if (position == wideAngleCameraRow) return ChatsConfig.startWithWideAngleCamera;
         if (position == rememberLastUsedCameraRow) return ChatsConfig.rememberLastUsedCamera;
         if (position == staticZoomRow) return ChatsConfig.staticZoom;
         if (position == hideCameraTileRow) return ChatsConfig.hideCameraTile;
@@ -1340,10 +1335,6 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setText(getString(R.string.OEChatsExtendedFps), "", ChatsConfig.extendedFramesPerSecond.Bool(), true, true);
             } else if (position == cameraStabilizationRow) {
                 cell.setText(getString(R.string.OEChatsCameraStabilization), "", ChatsConfig.cameraStabilization.Bool(), true, true);
-            } else if (position == cameraMirrorRow) {
-                cell.setText(getString(R.string.OEChatsCameraMirrorMode), "", ChatsConfig.cameraMirrorMode.Bool(), true, true);
-            } else if (position == wideAngleCameraRow) {
-                cell.setText(getString(R.string.OEChatsWideAngleCamera), "", ChatsConfig.startWithWideAngleCamera.Bool(), true, true);
             } else if (position == pauseVideoRow) {
                 cell.setText(getString(R.string.OEChatsPauseVideo), "", NekoConfig.autoPauseVideo.Bool(), true, true);
             } else if (position == pauseVoiceRow) {

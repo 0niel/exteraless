@@ -479,6 +479,17 @@ public class VideoPlayer implements Player.Listener, VideoListener, AnalyticsLis
     }
 
     public static Quality getSavedQuality(ArrayList<Quality> qualities, MessageObject messageObject) {
+        // exteraGram 12.9.0, VideoPlayer.java:1076-1089: «предпочитать оригинал» стоит выше
+        // и сохранённого для сообщения выбора, и качества по умолчанию — иначе настройка
+        // молча проигрывала бы прошлому выбору пользователя в этом же чате.
+        // ensureLoaded обязателен: ChatsConfig грузится лениво, без него поле вернуло бы
+        // значение по умолчанию, а не то, что выставил пользователь.
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        if (qualities != null && app.exteraless.chats.ChatsConfig.preferOriginalQuality.Bool()) {
+            for (Quality q : qualities) {
+                if (q.original) return q;
+            }
+        }
         if (messageObject == null) return getDefaultSavedQuality(qualities);
         var q = getSavedQuality(qualities, messageObject.getDialogId(), messageObject.getId());
         if (q == null) {

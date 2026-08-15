@@ -46,6 +46,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import tw.nekomimi.nekogram.NekoConfig;
+import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.helpers.remote.EmojiHelper;
 
 public class Emoji {
@@ -717,7 +718,10 @@ public class Emoji {
         boolean replacedAppleLogo = EmojiHelper.replaceAppleLogo(s, fontMetrics);
         ArrayList<EmojiSpanRange> emojis = parseEmojis(s, emojiOnly);
         if (emojis.isEmpty()) {
-            return replacedAppleLogo ? s : cs;
+            // exteraGram фильтрует зальго на обоих выходах replaceEmoji
+            // (12.9.0:Emoji.java:887,920) — то есть во всём приложении, а не
+            // в отдельных ячейках, как это делает NagramX.
+            return MessageHelper.zalgoFilter(replacedAppleLogo ? s : cs);
         }
 
         AnimatedEmojiSpan[] animatedEmojiSpans = s.getSpans(0, s.length(), AnimatedEmojiSpan.class);
@@ -768,7 +772,7 @@ public class Emoji {
                 break;
             }
         }
-        return s;
+        return MessageHelper.zalgoFilter(s);
     }
 
     public static CharSequence replaceWithRestrictedEmoji(CharSequence cs, TextView textView, Runnable update) {

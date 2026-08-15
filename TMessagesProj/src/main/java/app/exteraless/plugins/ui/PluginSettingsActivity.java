@@ -27,8 +27,10 @@ import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import app.exteraless.plugins.Plugin;
+import app.exteraless.plugins.PluginPermissions;
 import app.exteraless.plugins.PluginsController;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
@@ -48,11 +50,13 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     private int itemsStartRow;
     private int notLoadedRow;
+    private int permissionsShadowRow;
+    private int permissionsRow;
 
     public PluginSettingsActivity() {
     }
 
-    /** Конструктор для шима исходного API: {@code PluginSettingsActivity(plugin)}. */
+    /** Конструктор для шима внешнего API: {@code PluginSettingsActivity(plugin)}. */
     public PluginSettingsActivity(String pluginId) {
         this.pluginId = pluginId;
     }
@@ -127,6 +131,18 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             itemsStartRow = rowCount;
             rowCount += items.size();
         }
+
+        // Вход в разрешения — только на корневом экране плагина: подстраница
+        // (sub_page) принадлежит самому плагину, разрешениям там не место.
+        if (subPageJson == null) {
+            // Разделитель нужен, только когда выше стоит карточка настроек плагина:
+            // строка «плагин не загружен» уже рисует тень под собой сама.
+            permissionsShadowRow = notLoadedRow == -1 ? addRow() : -1;
+            permissionsRow = addRow();
+        } else {
+            permissionsShadowRow = -1;
+            permissionsRow = -1;
+        }
     }
 
     @Override
@@ -141,6 +157,25 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     @Override
     protected BaseListAdapter createAdapter(Context context) {
         return new ListAdapter(context);
+    }
+
+    /**
+     * Значение строки «Разрешения»: сколько из запрошенного сейчас выдано.
+     * Цифрами, а не словами, — строка справа узкая, а перевода не требует.
+     */
+    private String permissionsValue() {
+        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
+        List<String> requested = PluginPermissionsActivity.requestedFor(plugin);
+        if (requested.isEmpty()) {
+            return "";
+        }
+        int granted = 0;
+        for (String perm : requested) {
+            if (PluginPermissions.has(pluginId, perm)) {
+                granted++;
+            }
+        }
+        return granted + "/" + requested.size();
     }
 
     private JSONObject itemAt(int position) {
@@ -181,6 +216,10 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
+        if (position == permissionsRow) {
+            presentFragment(new PluginPermissionsActivity(pluginId));
+            return;
+        }
         JSONObject item = itemAt(position);
         if (item == null) {
             return;
@@ -333,7 +372,16 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     }
                     break;
                 }
+                // TYPE_SHADOW не биндим: ShadowSectionCell рисует свой фон сам
+                // (updateBackground в конструкторе), а перекрашивание его здесь
+                // только сломало бы тень.
                 case TYPE_SETTINGS: {
+                    if (position == permissionsRow) {
+                        ((TextSettingsCell) holder.itemView).setTextAndValue(
+                                getString(R.string.PluginPermissions), permissionsValue(), false);
+                        ((TextSettingsCell) holder.itemView).setIcon(0);
+                        break;
+                    }
                     JSONObject item = itemAt(position);
                     if (item == null) {
                         break;
@@ -408,6 +456,12 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         public int getItemViewType(int position) {
             if (position == notLoadedRow) {
                 return TYPE_INFO_PRIVACY;
+            }
+            if (position == permissionsShadowRow) {
+                return TYPE_SHADOW;
+            }
+            if (position == permissionsRow) {
+                return TYPE_SETTINGS;
             }
             JSONObject item = itemAt(position);
             if (item == null) {

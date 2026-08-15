@@ -1584,7 +1584,11 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     if (!inPreviewMode && !transitionAnimationPreviewMode && !startedTracking && currentFragment.isSwipeBackEnabled(ev)) {
                         float velX = velocityTracker.getXVelocity();
                         float velY = velocityTracker.getYVelocity();
-                        if (velX >= AppUtils.getSwipeVelocity() && velX > Math.abs(velY) && currentFragment.canBeginSlide()) {
+                        // Флик засчитывается только после реального сдвига пальца:
+                        // без этого резкий рывок на месте стартовал жест
+                        if (containerView.getX() > AndroidUtilities.getPixelsInCM(0.15f, true)
+                                && velX >= AppUtils.getSwipeVelocity() && velX > Math.abs(velY)
+                                && currentFragment.canBeginSlide()) {
                             startedTrackingX = (int) ev.getX();
                             prepareForMoving();
                             if (!beginTrackingSent) {

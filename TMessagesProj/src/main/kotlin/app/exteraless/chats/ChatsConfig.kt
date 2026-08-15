@@ -49,25 +49,13 @@ object ChatsConfig {
 
     // ---- Камера ----
 
-    /** Тип камеры: 0 — системная, 1 — Camera2, 2 — CameraX. */
-    @JvmField
-    val cameraType = addConfig("OEChatsCameraType", ConfigItem.configTypeInt, 0)
-
     /** Стабилизация видео. */
     @JvmField
     val cameraStabilization = addConfig("OEChatsCameraStabilization", ConfigItem.configTypeBool, false)
 
-    /** Зеркалирование фронтальной камеры. */
-    @JvmField
-    val cameraMirrorMode = addConfig("OEChatsCameraMirrorMode", ConfigItem.configTypeBool, false)
-
     /** Расширенный диапазон FPS. */
     @JvmField
     val extendedFramesPerSecond = addConfig("OEChatsExtendedFps", ConfigItem.configTypeBool, false)
-
-    /** Стартовать с широкоугольного объектива. */
-    @JvmField
-    val startWithWideAngleCamera = addConfig("OEChatsWideAngleCamera", ConfigItem.configTypeBool, false)
 
     /** Статичный зум: уровень не сбрасывается после отпускания пальца. */
     @JvmField
@@ -116,12 +104,6 @@ object ChatsConfig {
 
     // ---- Чаты ----
 
-    /** Быстрый свайп-переход (родитель + каналы / темы, группа-мультивыбор, только UI). */
-    @JvmField
-    val quickTransitionForChannels = addConfig("OEChatsQuickTransitionChannels", ConfigItem.configTypeBool, false)
-    @JvmField
-    val quickTransitionForTopics = addConfig("OEChatsQuickTransitionTopics", ConfigItem.configTypeBool, false)
-
     // ---- Сообщения ----
 
     /** Убрать «хвостик» пузыря (только UI). */
@@ -137,10 +119,6 @@ object ChatsConfig {
     val showResultsBeforeVoting = addConfig("OEChatsShowResultsBeforeVoting", ConfigItem.configTypeBool, false)
 
     // ---- Камера (расширенные) ----
-
-    /** Бесшовное переключение камер (только UI). */
-    @JvmField
-    val cameraSeamlessSwitching = addConfig("OEChatsCameraSeamless", ConfigItem.configTypeBool, false)
 
     /** Запоминать последнюю использованную камеру (только UI). */
     @JvmField
@@ -166,10 +144,6 @@ object ChatsConfig {
     /** Индекс в [SEEK_DURATIONS]: время перемотки двойным тапом. */
     @JvmField
     val doubleTapSeekDuration = addConfig("OEChatsDoubleTapSeekDuration", ConfigItem.configTypeInt, 1)
-
-    /** Пауза при сворачивании приложения или блокировке экрана. */
-    @JvmField
-    val pauseOnMinimize = addConfig("OEChatsPauseOnMinimize", ConfigItem.configTypeBool, false)
 
     /** Свайп вниз по видео — в режим «картинка в картинке». */
     @JvmField

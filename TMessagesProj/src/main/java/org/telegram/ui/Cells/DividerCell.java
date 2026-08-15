@@ -16,6 +16,8 @@ import android.view.View;
 
 import androidx.core.graphics.ColorUtils;
 
+import app.exteraless.appearance.AppearanceConfig;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 
@@ -44,9 +46,11 @@ public class DividerCell extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        // Разделители скрыты — не рисуем линию вовсе (ветка forceDarkTheme берёт цвет
-        // не из key_divider, поэтому одного патча в Theme.getColor не хватает).
-        if (NaConfig.INSTANCE.getHideDividers().Bool()) {
+        // Линия рисуется только в режиме «Линия» — как у exteraGram
+        // (12.9.0:DividerCell.java:39). Ветка forceDarkTheme берёт цвет не из
+        // key_divider, поэтому патча в Theme.getColor тут не хватает: в режиме
+        // «Сегменты» линия иначе осталась бы поверх карточек.
+        if (NaConfig.INSTANCE.getHideDividers().Bool() || AppearanceConfig.dividerHidden()) {
             return;
         }
         if (forceDarkTheme) {

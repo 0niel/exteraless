@@ -3810,7 +3810,11 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 avatarRadius = 1;
             } else if (drawCommunityAvatar) {
                 avatarRadius = dp(12);
-            } else if (chat != null && chat.forum && currentDialogFolderId == 0 && !useFromUserAsAvatar || !isSavedDialog && user != null && user.self && MessagesController.getInstance(currentAccount).savedViewAsChats) {
+            } else if ((chat != null && chat.forum && currentDialogFolderId == 0 && !useFromUserAsAvatar
+                    && !app.exteraless.appearance.AppearanceConfig.singleCornerRadius())
+                    || !isSavedDialog && user != null && user.self && MessagesController.getInstance(currentAccount).savedViewAsChats) {
+                // «Единое закругление»: с настройкой форумы получают ту же форму
+                // аватарки, что и обычные чаты, то есть падают в ветку ниже.
                 avatarRadius = dp(16);
             } else {
                 avatarRadius = dp(28);

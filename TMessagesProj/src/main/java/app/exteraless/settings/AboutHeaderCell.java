@@ -2,11 +2,17 @@ package app.exteraless.settings;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.graphics.Canvas;
+import android.graphics.Path;
+import android.view.HapticFeedbackConstants;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import app.exteraless.icons.IconPacksConfig;
+import app.exteraless.icons.IconShapeHelper;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -18,23 +24,55 @@ import org.telegram.ui.Components.LayoutHelper;
 
 /**
  * About-шапка корневого экрана exteraless.
- * Порт HeaderSettingsCell из exteraGram 12.9.0: круглый логотип 72dp,
+ * Порт HeaderSettingsCell из exteraGram 12.9.0: логотип 72dp,
  * название 20sp bold, версия 15sp bold с кодом сборки в скобках.
+ *
+ * Форма логотипа — маска лаунчера, а не жёсткий круг: на прошивке со сквирклом
+ * или каплей иконка в настройках выглядит так же, как на рабочем столе
+ *. Переключается долгим
+ * нажатием по самому логотипу, отдельной строки нет и у exteraGram.
  */
 public class AboutHeaderCell extends LinearLayout {
 
     /** Цвет подложки иконки приложения, как R.color.ic_background в exteraGram. */
     private static final int LOGO_BACKGROUND = 0xFFE83030;
 
+    /** Путь формы логотипа. Считается один раз, сбрасывается при смене режима. */
+    private Path shapePath;
+
+    private Path shapePath() {
+        if (shapePath == null) {
+            shapePath = IconShapeHelper.getFinalIconShapePath(72, 72, 18);
+        }
+        return shapePath;
+    }
+
     public AboutHeaderCell(Context context) {
         super(context);
         setOrientation(VERTICAL);
         setGravity(Gravity.CENTER);
 
-        ImageView logo = new ImageView(context);
+        ImageView logo = new ImageView(context) {
+            @Override
+            public void draw(Canvas canvas) {
+                canvas.save();
+                canvas.clipPath(shapePath());
+                super.draw(canvas);
+                canvas.restore();
+            }
+        };
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        logo.setBackground(Theme.createCircleDrawable(AndroidUtilities.dp(72), LOGO_BACKGROUND));
+        logo.setBackgroundColor(LOGO_BACKGROUND);
         logo.setImageResource(R.mipmap.icon_foreground);
+        logo.setOnLongClickListener(v -> {
+            IconPacksConfig.toggleSystemIconShape();
+            IconShapeHelper.invalidate();
+            shapePath = null;
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS,
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+            v.invalidate();
+            return true;
+        });
         addView(logo, LayoutHelper.createLinear(72, 72,
                 Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 40, 0, 0));
 

@@ -49,7 +49,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
     private int googleHeaderRow;
     private int crashlyticsRow;
-    private int analyticsRow;
     private int googleDividerRow;
 
     private int exportSettingsRow;
@@ -80,8 +79,10 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         super.updateRows();
 
         googleHeaderRow = addRow("googleHeader");
+        // У exteraGram рядом стоит Analytics (OtherPreferencesActivity.java:443), но он
+        // выключает сбор через FirebaseAnalytics (:203-207). Зависимости
+        // firebase-analytics в сборке нет, выключать нечего — строки нет тоже.
         crashlyticsRow = addRow("crashlytics");
-        analyticsRow = addRow("analytics");
         googleDividerRow = addRow();
 
         exportSettingsRow = addRow("exportSettings");
@@ -118,11 +119,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                         .setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
             } catch (Exception e) {
                 FileLog.e(e);
-            }
-        } else if (position == analyticsRow) {
-            boolean value = GeneralConfig.analyticsCollection.toggleConfigBool();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(value);
             }
         } else if (position == exportSettingsRow) {
             if (getParentActivity() == null) {
@@ -277,13 +273,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
                     if (position == crashlyticsRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralCrashlytics),
-                                !NaConfig.INSTANCE.getDisableCrashlyticsCollection().Bool(), true);
+                                !NaConfig.INSTANCE.getDisableCrashlyticsCollection().Bool(), false);
                         // setIcon после setTextAndCheck — тот сбрасывает отступы текста.
                         cell.setIcon(R.drawable.msg_report);
-                    } else if (position == analyticsRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGeneralAnalytics),
-                                GeneralConfig.analyticsCollection.Bool(), false);
-                        cell.setIcon(R.drawable.msg_data);
                     } else {
                         cell.setIcon(0);
                     }
@@ -307,7 +299,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     boolean bottom = position == bottomDividerRow;
                     if (position == googleDividerRow) {
-                        cell.setText(getString(R.string.OEGeneralAnalyticsInfo));
+                        cell.setText(getString(R.string.OEGeneralCrashlyticsInfo));
                     } else {
                         cell.setText(null);
                     }

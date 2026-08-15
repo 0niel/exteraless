@@ -258,6 +258,8 @@ public class PluginsController {
                 existing.sdkVersion = fresh.sdkVersion;
                 existing.beta = fresh.beta;
                 existing.requirements = fresh.requirements;
+                existing.permissions = fresh.permissions;
+                existing.permissionsDeclared = fresh.permissionsDeclared;
                 existing.loadError = fresh.loadError;
                 existing.enabled = enabled;
                 continue;
@@ -315,6 +317,21 @@ public class PluginsController {
             if (reqs != null) {
                 for (int i = 0; i < reqs.length(); i++) {
                     p.requirements.add(reqs.optString(i));
+                }
+            }
+            // __permissions__: ключи уже проверены AST-парсером, неизвестный ключ
+            // приезжает как ok=false выше. permissions_declared отличает
+            // «объявил пусто» от «не объявлял» — от этого зависит режим
+            // совместимости в PluginPermissions.getEffective.
+            p.permissions = new ArrayList<>();
+            p.permissionsDeclared = meta.optBoolean("permissions_declared", false);
+            JSONArray perms = meta.optJSONArray("permissions");
+            if (perms != null) {
+                for (int i = 0; i < perms.length(); i++) {
+                    String key = perms.optString(i);
+                    if (PluginPermissions.isKnown(key) && !p.permissions.contains(key)) {
+                        p.permissions.add(key);
+                    }
                 }
             }
             String constraintError = checkVersionConstraints(p);
@@ -489,6 +506,8 @@ public class PluginsController {
             p.version = fresh.version;
             p.icon = fresh.icon;
             p.requirements = fresh.requirements;
+            p.permissions = fresh.permissions;
+            p.permissionsDeclared = fresh.permissionsDeclared;
             p.loadError = null;
             loadPluginInternal(p);
         } else if (fresh != null) {
@@ -589,6 +608,13 @@ public class PluginsController {
                 }
                 p.enabled = true;
                 preferences.edit().putBoolean(PluginsConstants.KEY_PLUGIN_ENABLED_PREFIX + id, true).apply();
+                // Согласие пользователя записывает диалог установки (PluginPermissions.setGranted).
+                // Если он этого не сделал, а плагин объявил __permissions__ — фиксируем
+                // объявленное как выданное: иначе запись не появится вовсе и плагин уедет
+                // в режим совместимости, где ему дают всё.
+                if (!PluginPermissions.hasRecord(id) && p.permissionsDeclared) {
+                    PluginPermissions.setGranted(id, p.permissions);
+                }
                 synchronized (this) {
                     plugins.put(id, p);
                 }
@@ -618,6 +644,10 @@ public class PluginsController {
             plugins.remove(id);
         }
         preferences.edit().remove(PluginsConstants.KEY_PLUGIN_ENABLED_PREFIX + id).apply();
+        // Иначе переустановка того же id молча унаследует старое согласие.
+        PluginPermissions.clear(id);
+        PluginTrustLevel.clear(id);
+        PythonPluginsEngine.getInstance().forgetAudit(id);
         File f = new File(p.path);
         // SharedPreferences plugin_settings_<id> — отдельный файл, удаляем напрямую.
         File prefsFile = new File(appContext.getFilesDir().getParentFile(),
@@ -741,10 +771,23 @@ public class PluginsController {
     // ---------- реестры хуков (зовётся из PythonBridge) ----------
 
     public void registerSendMessageHook(String pluginId, int priority) {
+        // PLUGINS-SECURITY.md, «Точки проверки»: хук исходящих даёт и чтение текста,
+        // и отмену отправки. Отказ — молча не регистрируем, плагин продолжает жить.
+        if (!PluginPermissions.check(pluginId, PluginPermissions.MESSAGES_SEND,
+                "send-message hook")) {
+            return;
+        }
         sendMessageHooks.put(pluginId, priority);
     }
 
     public void registerRequestHook(String pluginId, String requestName, boolean matchSubstring, int priority) {
+        // PLUGINS-SECURITY.md: update/updates/post-request хуки требуют messages.read.
+        // Pre- и post-request живут в одном реестре (findRequestHookTargets), разделить
+        // их на регистрации нечем — поэтому гейт стоит на всей регистрации.
+        if (!PluginPermissions.check(pluginId, PluginPermissions.MESSAGES_READ,
+                "request hook " + requestName)) {
+            return;
+        }
         // Маршрутизация по имени: TL_updates* — контейнеры апдейтов, TL_update* —
         // одиночные апдейты, остальное — TL-запросы (pre/post request hook).
         Map<String, List<String>> target;

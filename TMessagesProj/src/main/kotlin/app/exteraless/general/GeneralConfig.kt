@@ -26,17 +26,6 @@ object GeneralConfig {
     fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
 
     /**
-     * Сбор аналитики Google. Аналог `useGoogleAnalytics` из exteraGram.
-     * Firebase Analytics SDK в сборке не подключён, поэтому значение только хранится
-     * и применяется, если SDK когда-нибудь появится (см. [analyticsCollection]).
-     */
-    @JvmField
-    val analyticsCollection = addConfig("OEGeneralAnalyticsCollection", ConfigItem.configTypeBool, false)
-
-    @JvmStatic
-    fun analyticsCollection(): Boolean = analyticsCollection.Bool()
-
-    /**
      * «Download Speed Boost» — трёхпозиционный выбор (0: обычный, 1: быстрый,
      * 2: максимальный). Применяется в FileLoadOperation.updateParams: уровень 2
      * берёт куски по мегабайту и двенадцать параллельных запросов, уровень 1

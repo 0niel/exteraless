@@ -17,6 +17,10 @@ import java.io.IOException
 
 object DeepLTranslator : Translator {
 
+    const val FORMALITY_NONE = 0
+    const val FORMALITY_INFORMAL = 1
+    const val FORMALITY_FORMAL = 2
+
     private val httpClient = HttpClient.instance
 
     override suspend fun doTranslate(
@@ -76,6 +80,13 @@ object DeepLTranslator : Translator {
         }
         if (html) {
             formBodyBuilder.add("tag_handling", "html")
+        }
+        // Тон перевода. prefer_*, а не more/less: строгие значения DeepL
+        // отвергает с ошибкой для языков, где формальности нет, и перевод
+        // просто падал бы вместо того, чтобы вернуться обычным.
+        when (NaConfig.deepLFormality.Int()) {
+            FORMALITY_INFORMAL -> formBodyBuilder.add("formality", "prefer_less")
+            FORMALITY_FORMAL -> formBodyBuilder.add("formality", "prefer_more")
         }
 
         val request = Request.Builder()

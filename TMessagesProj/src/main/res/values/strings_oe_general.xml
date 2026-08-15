@@ -57,8 +57,7 @@
     <!-- Google -->
     <string name="OEGeneralGoogleHeader">Google</string>
     <string name="OEGeneralCrashlytics">Crashlytics</string>
-    <string name="OEGeneralAnalytics">Analytics</string>
-    <string name="OEGeneralAnalyticsInfo">When these options are enabled, data about the device is collected and sent to Google Analytics and Crashlytics, allowing us to keep usage statistics and track errors in the app.\n\nHowever, if the options are switched off, data collection stops and any sent data is instantly deleted.</string>
+    <string name="OEGeneralCrashlyticsInfo">When this option is enabled, data about the device is collected and sent to Google Crashlytics, allowing us to track errors in the app.\n\nHowever, if the option is switched off, data collection stops and any sent data is instantly deleted.</string>
 
     <!-- Settings Management -->
     <string name="OEGeneralExportSettings">Export Settings</string>
@@ -68,4 +67,7 @@
     <string name="OEGeneralDeleteAccount">Delete Account</string>
     <string name="OEGeneralPredictiveBack">Material 3 back gesture</string>
     <string name="OEGeneralPredictiveBackValue">The closing screen slides away as a card, revealing the one behind it</string>
+    <string name="DeepLFormalityDefault">Tone: as it comes</string>
+    <string name="DeepLFormalityInformal">Tone: informal</string>
+    <string name="DeepLFormalityFormal">Tone: formal</string>
 </resources>

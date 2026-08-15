@@ -41,4 +41,6 @@
     <string name="IconPickerCurrent">Current</string>
     <string name="IconPickerSelectImage">Select Image</string>
     <string name="IconPickerClipboardEmpty">There\'s no image in the clipboard.</string>
+    <string name="IconPackPriorityUp">Higher priority</string>
+    <string name="IconPackPriorityDown">Lower priority</string>
 </resources>

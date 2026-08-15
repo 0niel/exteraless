@@ -27,6 +27,16 @@ public final class PluginsConstants {
     /** Префикс ключа включённости конкретного плагина: plugin_enabled_<id>. */
     public static final String KEY_PLUGIN_ENABLED_PREFIX = "plugin_enabled_";
 
+    /**
+     * Префикс ключа выданных разрешений: plugin_perms_&lt;id&gt;, значение — ключи через
+     * запятую (пустая строка = только ui). Спецификация называла файлом хранения nkmrcfg,
+     * но все остальные ключи движка (plugin_enabled_) лежат здесь, в PREFS_NAME, и
+     * удаляются вместе с плагином — разносить по двум файлам нечем оправдать.
+     */
+    public static final String KEY_PLUGIN_PERMS_PREFIX = "plugin_perms_";
+    /** Уровень доступа плагина: {@code plugin_level_<id>}, значение — int. */
+    public static final String KEY_PLUGIN_LEVEL_PREFIX = "plugin_level_";
+
     /** Watchdog: id плагина, которого грузили/выполняли в момент падения. */
     /** Устарел: маркер исполняемого плагина уехал в файл plugins/.watchdog. */
     public static final String KEY_WATCHDOG_LOADING_LEGACY = "watchdog_loading_plugin";
@@ -38,13 +48,13 @@ public final class PluginsConstants {
     /** Per-plugin настройки: отдельный prefs-файл plugin_settings_<id>, значения — JSON. */
     public static final String SETTINGS_PREFS_PREFIX = "plugin_settings_";
 
-    /** Расширения файлов плагинов..plugin — как у exteraGram,.py — для удобства dev-сценария. */
+    /** Расширения файлов плагинов. .plugin — как у exteraGram, .py — для удобства dev-сценария. */
     public static final String PLUGIN_EXT = ".plugin";
     public static final String PLUGIN_EXT_PY = ".py";
     public static final String PLUGIN_EXT_ELYX = ".elyx";
     public static final String PLUGIN_EXT_EAF = ".eaf";
 
-    /** Версия нашего Python SDK. Своя линейка, к исходной 1.4.5.0 отношения не имеет. */
+    /** Версия нашего Python SDK. Своя линейка, к 1.4.5.0 из exteraGram отношения не имеет. */
     /**
      * Версия SDK, о которой мы заявляем плагинам.
      *

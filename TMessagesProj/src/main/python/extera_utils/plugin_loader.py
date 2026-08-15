@@ -5,7 +5,9 @@ module-level functions of this module via Chaquopy. All return values that
 cross the bridge are JSON strings, plain strings or booleans.
 
 User-code exceptions from hook callbacks propagate to Java intentionally —
-the engine catches them and disables the offending plugin.
+the engine catches them and disables the offending plugin. PermissionError is
+the one exception to that rule: a denied permission is not a broken plugin, so
+it is logged and swallowed here (docs/port/PLUGINS-SECURITY.md).
 """
 
 import contextlib
@@ -61,6 +63,10 @@ __all__ = [
     "get_settings_json", "notify_setting_changed", "dispatch_setting_click",
     "is_loaded", "plugins", "PluginRecord", "start_dev_server",
     "plugin_context", "current_plugin_id",
+    # песочница (docs/port/PLUGINS-SECURITY.md)
+    "caller_plugin_id", "has_permission", "require_permission", "plugin_files",
+    "PERM_UI", "PERM_MESSAGES_READ", "PERM_MESSAGES_SEND", "PERM_NETWORK",
+    "PERM_FILES", "PERM_INTENTS", "PERM_SETTINGS", "PERM_HOOKS",
 ]
 
 
@@ -89,6 +95,67 @@ _VALID_STRATEGIES = frozenset({
 _context_state = threading.local()
 
 
+_RUNTIME_UNSET = object()
+_java_runtime_class = _RUNTIME_UNSET
+
+
+def _java_runtime():
+    """app.exteraless.plugins.PluginRuntime или None (нет JVM / старая сборка)."""
+    global _java_runtime_class
+    if _java_runtime_class is _RUNTIME_UNSET:
+        try:
+            from app.exteraless.plugins import PluginRuntime as _Runtime
+            _java_runtime_class = _Runtime
+        except Exception:
+            _java_runtime_class = None
+    return _java_runtime_class
+
+
+@contextlib.contextmanager
+def java_runtime_mark(plugin_id: Optional[str]):
+    """Пометить поток на Java-стороне: чей код сейчас исполняется.
+
+    Нужно PluginSinkGate: в стеке JVM между плагином и стоком лежит Chaquopy,
+    и по нему владельца не определить. Метку ставим там, где управление
+    переходит к коду плагина.
+    """
+    runtime = _java_runtime()
+    if runtime is None or plugin_id is None:
+        yield
+        return
+    previous = None
+    try:
+        previous = runtime.enter(plugin_id)
+    except Exception:
+        yield
+        return
+    try:
+        yield
+    finally:
+        try:
+            runtime.exit(previous)
+        except Exception:
+            pass
+
+
+def owner_of_function(fn) -> Optional[str]:
+    """id плагина, которому принадлежит функция-колбэк (по файлу её кода)."""
+    try:
+        path = fn.__code__.co_filename
+    except Exception:
+        return None
+    if not path or path.startswith("<"):
+        return None
+    if path in _path_owner_cache:
+        return _path_owner_cache[path]
+    try:
+        owner = _resolve_owner(path)
+    except Exception:
+        owner = None
+    _path_owner_cache[path] = owner
+    return owner
+
+
 @contextlib.contextmanager
 def plugin_context(plugin_id: Optional[str]):
     """Mark *plugin_id* as the running plugin on this thread.
@@ -99,13 +166,546 @@ def plugin_context(plugin_id: Optional[str]):
     previous = getattr(_context_state, "plugin_id", None)
     _context_state.plugin_id = plugin_id
     try:
-        yield plugin_id
+        with java_runtime_mark(plugin_id):
+            yield plugin_id
     finally:
         _context_state.plugin_id = previous
 
 
 def current_plugin_id() -> Optional[str]:
     return getattr(_context_state, "plugin_id", None)
+
+
+# ---------------------------------------------------------------------------
+# Песочница: разрешения плагинов (docs/port/PLUGINS-SECURITY.md)
+# ---------------------------------------------------------------------------
+#
+# Граница честная и узкая: проверки ловят обращения ЧЕРЕЗ SDK и импорты из кода
+# плагина. Плагин, который дёргает Java напрямую (`from java.lang import ...`,
+# Chaquopy), проходит мимо — спецификация это признаёт («Честная граница
+# применимости»). Задача — сделать намерения видимыми и ограничить случайный
+# вред, а не построить границу против атакующего.
+
+from .metadata_parser import KNOWN_PERMISSIONS, PERMISSION_UI  # noqa: F401
+
+PERM_UI = PERMISSION_UI
+PERM_MESSAGES_READ = "messages.read"
+PERM_MESSAGES_SEND = "messages.send"
+PERM_NETWORK = "network"
+PERM_FILES = "files"
+PERM_INTENTS = "intents"
+PERM_SETTINGS = "settings"
+PERM_HOOKS = "hooks"
+
+_OUT_OF_SYNC = [p for p in (PERM_UI, PERM_MESSAGES_READ, PERM_MESSAGES_SEND,
+                            PERM_NETWORK, PERM_FILES, PERM_INTENTS,
+                            PERM_SETTINGS, PERM_HOOKS)
+                if p not in KNOWN_PERMISSIONS]
+if _OUT_OF_SYNC:  # набор разошёлся с metadata_parser/PluginPermissions — это баг
+    print(f"[exteraless:plugin_loader] unknown permission keys {_OUT_OF_SYNC}",
+          file=sys.stderr)
+
+# Файл плагина -> его id. Заполняется ДО exec_module, иначе импорты верхнего
+# уровня плагина (а их большинство) проверить было бы некому.
+#
+# Ключ — путь, а НЕ имя модуля: `__name__` у плагина занято метаданными
+# (`__name__ = "Мой плагин"` есть у каждого второго в каталоге), так что
+# f_globals["__name__"] к коду плагина отношения не имеет. co_filename кадра
+# плагин переписать не может.
+_owner_files: Dict[str, str] = {}
+_path_owner_cache: Dict[str, Optional[str]] = {}
+
+# Каталоги Elyx: <plugins_dir>/.elyx_extracted/<id>/<sha>/ и
+# <plugins_dir>/elyx_local_libs/<id>/<wheel>/ (elyx_runtime/archive.py:38,39).
+# Владелец вычисляется из самого пути — регистрировать его негде: модули
+# Elyx-плагина исполняются внутри elyx_runtime.load_plugin_record, то есть
+# раньше, чем управление вернётся к нам.
+_ELYX_DIR_MARKERS = (".elyx_extracted", "elyx_local_libs")
+
+# Кадры, которые НЕ считаются «тем, кто импортирует»: машинерия импорта, мы сами
+# и per-module __import__ Elyx (elyx_runtime/namespace.py:_make_plugin_import) —
+# он стоит между кодом плагина и нами, и без этого пропуска любой импорт
+# Elyx-плагина выглядел бы как импорт из elyx_runtime.
+_IMPORT_MACHINERY = frozenset({
+    __name__, "importlib", "importlib._bootstrap", "importlib._bootstrap_external",
+    "importlib.util", "importlib.machinery", "importlib.abc",
+    "elyx_runtime.namespace",
+})
+_SELF_FILE = os.path.normcase(os.path.abspath(__file__))
+_ELYX_NAMESPACE_FILE = os.path.normcase(os.path.join(
+    _SRC_DIR, "elyx_runtime", "namespace.py"))
+
+_MAX_FRAMES = 60
+
+# Таблица импорт-хука (PLUGINS-SECURITY.md, «Python, импорт-хук»).
+# Ключ — точный dotted-префикс: "urllib" целиком гейтить нельзя, urllib.parse
+# это чистый разбор строк и им пользуется половина каталога.
+# Значение None — не выдаётся никогда, ни при каком разрешении.
+_IMPORT_RULES = {
+    "subprocess": None,
+    "_posixsubprocess": None,
+    "ctypes": None,
+    "_ctypes": None,
+    "multiprocessing": None,
+    "socket": PERM_NETWORK,
+    "socketserver": PERM_NETWORK,
+    "requests": PERM_NETWORK,
+    "urllib.request": PERM_NETWORK,
+    "urllib.error": PERM_NETWORK,
+    "http.client": PERM_NETWORK,
+    "http.server": PERM_NETWORK,
+    "urllib3": PERM_NETWORK,
+    "httpx": PERM_NETWORK,
+    "aiohttp": PERM_NETWORK,
+    "websocket": PERM_NETWORK,
+    "websockets": PERM_NETWORK,
+    "ftplib": PERM_NETWORK,
+    "smtplib": PERM_NETWORK,
+    "poplib": PERM_NETWORK,
+    "imaplib": PERM_NETWORK,
+    "telnetlib": PERM_NETWORK,
+    "xmlrpc.client": PERM_NETWORK,
+    "shutil": PERM_FILES,
+}
+
+# Дешёвый префильтр: враппер __import__ стоит на пути ВСЕХ импортов процесса,
+# поэтому в общем случае он должен стоить один lookup в множестве.
+_GATED_ROOTS = frozenset(key.partition(".")[0] for key in _IMPORT_RULES)
+
+
+def _log(message: str) -> None:
+    try:
+        from android_utils import log as _android_log
+        _android_log(message)
+    except Exception:
+        print(f"[exteraless:plugin_loader] {message}", file=sys.stderr)
+
+
+_logged_denials = set()
+
+
+def _log_once(mark: str, message: str) -> None:
+    """Лог отказа один раз на процесс: отказ в цикле иначе зальёт лог."""
+    if mark in _logged_denials:
+        return
+    if len(_logged_denials) > 256:
+        # В ключе бывает путь к файлу — множество иначе растёт без границы.
+        _logged_denials.clear()
+    _logged_denials.add(mark)
+    _log(message)
+
+
+def log_denial(plugin_id: str, event: str, what: str) -> None:
+    """Отказ audit-гейта в общий лог, один раз на (плагин, событие)."""
+    _log_once(f"{plugin_id}|audit|{event}",
+              f"plugin {plugin_id!r}: {what} refused ({event})")
+
+
+def _register_owner(path: str, plugin_id: str) -> None:
+    _owner_files[os.path.normcase(os.path.abspath(path))] = plugin_id
+    _path_owner_cache.clear()
+
+
+def _forget_owner(path: str) -> None:
+    _owner_files.pop(os.path.normcase(os.path.abspath(path)), None)
+    _path_owner_cache.clear()
+
+
+def _resolve_owner(path: str) -> Optional[str]:
+    full = os.path.normcase(os.path.abspath(path))
+    owner = _owner_files.get(full)
+    if owner is not None:
+        return owner
+    parts = full.split(os.sep)
+    for marker in _ELYX_DIR_MARKERS:
+        try:
+            index = parts.index(os.path.normcase(marker))
+        except ValueError:
+            continue
+        if index + 1 < len(parts) and parts[index + 1]:
+            return parts[index + 1]
+    return None
+
+
+def plugin_files(plugin_id: str):
+    """Пути файлов самого плагина.
+
+    Регистрация идёт до exec_module, поэтому список полон уже во время
+    исполнения модуля плагина — а запись в ``plugins`` появляется только
+    после него, и по ней «читаю сам себя» на загрузке выглядело бы как
+    доступ наружу.
+    """
+    out = [path for path, owner in _owner_files.items() if owner == plugin_id]
+    record = plugins.get(plugin_id)
+    path = getattr(record, "path", None) if record is not None else None
+    if path:
+        out.append(os.path.normcase(os.path.abspath(path)))
+    return out
+
+
+def _owner_of_frame(frame) -> Optional[str]:
+    """id плагина, чей файл исполняется в кадре, или None (SDK / чужой код)."""
+    path = frame.f_code.co_filename
+    if not path or path.startswith("<"):  # <string>, <frozen importlib._bootstrap>
+        return None
+    if path in _path_owner_cache:
+        return _path_owner_cache[path]
+    try:
+        owner = _resolve_owner(path)
+    except Exception:
+        owner = None
+    _path_owner_cache[path] = owner
+    return owner
+
+
+def _frame_is_machinery(frame) -> bool:
+    """Кадр импортной машинерии, нашего враппера или import-шима Elyx."""
+    if frame.f_globals.get("__name__") in _IMPORT_MACHINERY:
+        return True
+    path = frame.f_code.co_filename
+    return bool(path) and (path.startswith("<frozen importlib")
+                           or path == _SELF_FILE
+                           or path == _ELYX_NAMESPACE_FILE)
+
+
+def caller_plugin_id() -> Optional[str]:
+    """Чей код привёл нас сюда: самый внутренний кадр плагина на стеке.
+
+    Через стек, а не через plugin_context: контекст выставлен только вокруг
+    load/unload и диспетчеризации хуков, а колбэки плагина прилетают ещё и из
+    Java (OnClickListener, RequestDelegate, настройки) — там контекста нет,
+    и проверка молча пропускала бы всё. Кадр плагина на стеке есть всегда,
+    когда исполняется его код.
+    """
+    owner = plugin_frame_owner()
+    return owner if owner is not None else current_plugin_id()
+
+
+def plugin_frame_owner() -> Optional[str]:
+    """Только по кадрам, без подстановки plugin_context.
+
+    Для audit-гейта: контекст выставлен на всё время load/unload, а внутри
+    загрузки SDK делает свою работу (распаковка Elyx-архива, pip, чтение
+    метаданных). С подстановкой контекста эти операции выглядели бы как
+    действия плагина и упирались бы в его разрешения ещё до того, как он
+    вообще начал исполняться. Кадр плагина на стеке — признак того, что
+    действие исходит именно от его кода.
+    """
+    try:
+        frame = sys._getframe(1)
+    except Exception:
+        frame = None
+    depth = 0
+    while frame is not None and depth < _MAX_FRAMES:
+        owner = _owner_of_frame(frame)
+        if owner is not None:
+            return owner
+        frame = frame.f_back
+        depth += 1
+    return None
+
+
+def _direct_plugin_caller() -> Optional[str]:
+    """Кто вызвал напрямую: ПЕРВЫЙ кадр вне машинерии импорта и нас самих.
+
+    Именно первый, а не любой кадр плагина на стеке. Для импорта: если socket
+    тянет наш SDK или библиотека, поставленная плагином (requests тянет
+    urllib3), импортирует не плагин, и запрещать нечего — гейтился сам
+    `import requests` в коде плагина. Для open(): если файл открывает SDK по
+    просьбе плагина, проверка уже стоит в file_utils. Так ни SDK, ни чужие
+    плагины не задеваются.
+    """
+    try:
+        frame = sys._getframe(1)
+    except Exception:
+        return None
+    depth = 0
+    while frame is not None and depth < _MAX_FRAMES:
+        if not _frame_is_machinery(frame):
+            return _owner_of_frame(frame)
+        frame = frame.f_back
+        depth += 1
+    return None
+
+
+_PERMISSIONS_UNSET = object()
+_permissions_class = _PERMISSIONS_UNSET
+
+
+def _permissions():
+    """app.exteraless.plugins.PluginPermissions или None (нет JVM: хост, тесты)."""
+    global _permissions_class
+    if _permissions_class is _PERMISSIONS_UNSET:
+        try:
+            from app.exteraless.plugins import PluginPermissions
+            _permissions_class = PluginPermissions
+        except Exception:
+            _permissions_class = None
+    return _permissions_class
+
+
+def has_permission(perm: str, plugin_id: Optional[str] = None) -> bool:
+    """Тихая проверка. Вне кода плагина и без JVM — True (гейтить нечего)."""
+    pid = plugin_id or caller_plugin_id()
+    if pid is None:
+        return True
+    java = _permissions()
+    if java is None:
+        return True
+    try:
+        return bool(java.has(pid, perm))
+    except Exception:
+        return True
+
+
+def require_permission(perm: str, what: str, detail: Optional[str] = None,
+                       plugin_id: Optional[str] = None) -> None:
+    """Проверка в точке вызова; при отказе — PermissionError с внятным текстом.
+
+    Отказ не роняет плагин: исключение ловит android_utils.safe_call на
+    колбэках и _dispatch_hook на хуках, и уходит в лог, как любая другая
+    ошибка плагина.
+
+    *what* — короткое имя точки («send_text»), оно уходит в Java-лог и
+    дедуплицируется там; *detail* (путь, имя модуля) идёт только в текст
+    исключения, иначе множество дедупликации на Java-стороне росло бы
+    на каждый новый путь.
+    """
+    pid = plugin_id or caller_plugin_id()
+    if pid is None:
+        return
+    java = _permissions()
+    if java is None:
+        return
+    try:
+        allowed = bool(java.check(pid, perm, what))
+    except Exception:
+        return  # мост сломан — не мешаем работать
+    if allowed:
+        return
+    where = what if detail is None else f"{what} ({detail})"
+    raise PermissionError(
+        f"plugin {pid!r} is not allowed to {where}: missing the {perm!r} "
+        f"permission. Declare it in __permissions__ and grant it on the "
+        f"plugin's screen."
+    )
+
+
+def _log_permission_error(plugin_id: Optional[str], exc: BaseException) -> None:
+    _log_once(f"{plugin_id}|{exc}", f"permission denied: {exc}")
+
+
+# ---- импорт-хук ----
+
+def _gate_for(name: str):
+    """(правило, разрешение) для модуля, или (None, None) если не гейтится."""
+    parts = name.split(".")
+    for i in range(len(parts), 0, -1):
+        key = ".".join(parts[:i])
+        if key in _IMPORT_RULES:
+            return key, _IMPORT_RULES[key]
+    return None, None
+
+
+def _guard_import(name: str, fromlist=()) -> None:
+    """Записать в лог интересный импорт плагина. Ничего не запрещает.
+
+    Раньше отсюда летел PermissionError, и это ломало плагины целиком:
+    `import requests` стоит в шапке модуля почти у каждого сетевого плагина,
+    поэтому плагин без разрешения на сеть не загружался вовсе — не «терял
+    сеть», а переставал существовать. У пользователя это выглядело так:
+    выключаешь сеть плагину, и его команды перестают отвечать совсем.
+
+    Сам по себе импорт ничего не делает. Запрещать надо действие, и оно
+    запрещается в extera_utils/audit_gate.py — событием на уровне C, которое
+    не обойти через sys.modules. Здесь остаётся только запись в лог: видно,
+    что плагин собирался делать, и это не мешает ему работать в остальном.
+    """
+    candidates = [name]
+    if fromlist:
+        candidates.extend(f"{name}.{item}" for item in fromlist
+                          if isinstance(item, str) and item != "*")
+    for candidate in candidates:
+        key, perm = _gate_for(candidate)
+        if key is None:
+            continue
+        pid = _direct_plugin_caller()
+        if pid is None:
+            return  # импортирует не плагин
+        _log_once(f"{pid}|import|{key}",
+                  f"plugin {pid!r} imports {key!r}"
+                  + ("" if perm is None else f" (needs {perm!r} to use it)"))
+        return
+
+
+class _PermissionFinder:
+    """sys.meta_path-финдер: замечает импорт ещё не загруженных модулей.
+
+    Ничего не находит сам (всегда None) и ничего не запрещает — только даёт
+    записи в лог для модулей, которые загружаются впервые (враппер
+    builtins.__import__ этот случай тоже видит, но не всегда: importlib
+    ходит в машинерию напрямую).
+    """
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.partition(".")[0] in _GATED_ROOTS:
+            try:
+                _guard_import(fullname)
+            except Exception:
+                pass  # запись в лог не должна ломать импорт
+        return None
+
+
+_original_import = None
+_original_import_module = None
+
+
+def _sandboxed_import_module(name, package=None):
+    """Обёртка importlib.import_module.
+
+    Отдельно от __import__: import_module идёт в машинерию напрямую, минуя
+    builtins.__import__, а для уже загруженного модуля — ещё и минуя meta_path.
+    """
+    if package is None and type(name) is str \
+            and name.partition(".")[0] in _GATED_ROOTS:
+        try:
+            _guard_import(name)
+        except Exception:
+            pass
+    return _original_import_module(name, package)
+
+
+_sandboxed_import_module._exteraless_sandbox = True
+
+
+def _sandboxed_import(name, globals=None, locals=None, fromlist=(), level=0):
+    """Обёртка builtins.__import__.
+
+    Одного meta_path-финдера мало: socket, http и urllib.request к моменту
+    старта движка уже лежат в sys.modules, а закэшированный импорт до
+    meta_path вообще не доходит. Враппер ловит именно этот случай — для лога.
+    """
+    if level == 0 and type(name) is str and name.partition(".")[0] in _GATED_ROOTS:
+        try:
+            _guard_import(name, fromlist)
+        except Exception:
+            pass
+    return _original_import(name, globals, locals, fromlist, level)
+
+
+_sandboxed_import._exteraless_sandbox = True
+
+
+# ---- прямой доступ к файлам из кода плагина ----
+
+_original_open = None
+
+
+def _sandboxed_open(file, mode="r", *args, **kwargs):
+    """Обёртка builtins.open.
+
+    Плагины пишут файлы через open(), а не через file_utils, — без этой
+    обёртки разрешение "files" закрывало бы только парадный вход. Проверяется
+    только прямой вызов из кода плагина: у SDK своя проверка в file_utils.
+    """
+    try:
+        pid = _direct_plugin_caller()
+        target = file if isinstance(file, (str, bytes, os.PathLike)) else None
+        if pid is not None and target is not None:
+            from file_utils import _is_own_path
+            if not _is_own_path(pid, os.fsdecode(target)):
+                require_permission(PERM_FILES, "open a file",
+                                   detail=f"{os.fsdecode(target)} ({mode})",
+                                   plugin_id=pid)
+    except PermissionError:
+        raise
+    except Exception:
+        pass  # сломанная проверка не должна ломать открытие файлов
+    return _original_open(file, mode, *args, **kwargs)
+
+
+_sandboxed_open._exteraless_sandbox = True
+
+
+def owner_of_object(obj) -> Optional[str]:
+    """Владелец функции, метода или класса — по файлу его кода."""
+    for candidate in (obj, getattr(obj, "__func__", None), getattr(obj, "run", None)):
+        if candidate is None:
+            continue
+        owner = owner_of_function(candidate)
+        if owner is not None:
+            return owner
+    return None
+
+
+def _install_thread_marking() -> None:
+    """Перенести метку владельца в потоки, которые плагин создаёт сам.
+
+    Проверено на устройстве: без этого плагин, которому запрещена сеть,
+    получал java.net.URL из собственного threading.Thread — метка потока там
+    не стоит, и Java-гейт пропускал. Патчим Thread.run (он исполняется уже на
+    новом потоке), а не start.
+
+    Потоки приложения не задеты: если владельца нет, обёртка сразу зовёт
+    оригинал.
+    """
+    try:
+        import threading
+        original_run = threading.Thread.run
+        if getattr(original_run, "_exteraless_marked", False):
+            return
+
+        def run(self):
+            owner = None
+            try:
+                owner = owner_of_object(getattr(self, "_target", None))
+                if owner is None:
+                    owner = owner_of_object(type(self))
+            except Exception:
+                owner = None
+            if owner is None:
+                return original_run(self)
+            with java_runtime_mark(owner):
+                return original_run(self)
+
+        run._exteraless_marked = True
+        threading.Thread.run = run
+    except Exception as e:
+        print(f"[exteraless:plugin_loader] thread marking failed: {e}", file=sys.stderr)
+
+
+def _install_sandbox() -> None:
+    """Поставить финдер и врапперы импорта/open. Идемпотентно, не бросает."""
+    global _original_import, _original_import_module, _original_open
+    try:
+        import builtins
+        if _original_import is None:
+            # Ровно один раз: если кто-то встанет поверх нас позже, повторный
+            # захват сделал бы _original_import ссылкой на обёртку над нами —
+            # то есть бесконечную рекурсию на первом же импорте.
+            _original_import = builtins.__import__
+            builtins.__import__ = _sandboxed_import
+        if _original_import_module is None:
+            import importlib as _importlib
+            _original_import_module = _importlib.import_module
+            _importlib.import_module = _sandboxed_import_module
+        if _original_open is None:
+            _original_open = builtins.open
+            builtins.open = _sandboxed_open
+        # Audit hook (PEP 578) — принуждение уровня действия. Врапперы выше
+        # остаются: они дают внятный текст ошибки в точке импорта, а гейт
+        # ловит то, что мимо них проходит (sys.modules, importlib изнутри C).
+        from . import audit_gate
+        audit_gate.install(sys.modules[__name__])
+        _install_thread_marking()
+        if not any(isinstance(finder, _PermissionFinder) for finder in sys.meta_path):
+            # В начало: elyx_runtime ставит свой финдер тоже в начало и может
+            # оказаться перед нами — это безопасно, для не-ElyxPlugins имён он
+            # возвращает None и передаёт очередь дальше.
+            sys.meta_path.insert(0, _PermissionFinder())
+    except Exception as e:
+        print(f"[exteraless:plugin_loader] sandbox install failed: {e}",
+              file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -136,10 +736,15 @@ def _import_module(path: str, plugin_id: str):
         raise ImportError(f"cannot create a module spec for {path!r}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module  # needed by dataclasses/pickles inside the module
+    # Владельца регистрируем ДО exec_module: импорт-хук определяет плагина по
+    # имени модуля в кадре, а импорты верхнего уровня выполняются уже внутри
+    # exec_module — после него регистрировать было бы поздно.
+    _register_owner(path, plugin_id)
     try:
         spec.loader.exec_module(module)
     except Exception:
         sys.modules.pop(module_name, None)
+        _forget_owner(path)
         raise
     return module
 
@@ -155,6 +760,7 @@ def _find_plugin_class(module, path: str):
 
 def load_plugin(path: str, plugin_id: str) -> str:
     """Validate metadata, install requirements, import and start the plugin."""
+    _install_sandbox()  # идемпотентно; на случай, если импорт модуля не прошёл
     if str(path).endswith((".elyx", ".eaf")):
         return _load_elyx_plugin(path, plugin_id)
 
@@ -256,6 +862,8 @@ def _unload_record(plugin_id: str, quiet: bool):
             module = getattr(record, "module", None)
             if module is not None:
                 sys.modules.pop(module.__name__, None)
+        if getattr(record, "path", None):
+            _forget_owner(record.path)
 
 
 def unload_plugin(plugin_id: str) -> None:
@@ -306,7 +914,10 @@ def call_app_event(plugin_id: str, event: str) -> None:
     if app_event is None:
         instance.log(f"unknown app event {event!r}")
         return None
-    instance.on_app_event(app_event)
+    try:
+        instance.on_app_event(app_event)
+    except PermissionError as e:  # отказ разрешения — не поломка плагина
+        _log_permission_error(plugin_id, e)
     return None
 
 
@@ -322,6 +933,22 @@ def _strategy_of(result) -> str:
     return strategy if strategy in _VALID_STRATEGIES else HookStrategy.DEFAULT
 
 
+def _dispatch_hook(plugin_id: str, account: int, fn, *args) -> str:
+    """Вызвать хук в scope аккаунта и вернуть стратегию.
+
+    PermissionError гасится здесь: движок трактует исключение из хука как
+    поломку и отключает плагин целиком, а отказ в разрешении — не поломка
+    (PLUGINS-SECURITY.md: «Отказ не роняет плагин»). Остальные исключения
+    уходят в Java как раньше.
+    """
+    try:
+        with client_utils.hook_scope(account), plugin_context(plugin_id):
+            return _strategy_of(fn(*args))
+    except PermissionError as e:
+        _log_permission_error(plugin_id, e)
+        return HookStrategy.DEFAULT
+
+
 def call_send_message_hook(plugin_id: str, account: int, params) -> str:
     record = plugins.get(plugin_id)
     if record is None:
@@ -329,8 +956,8 @@ def call_send_message_hook(plugin_id: str, account: int, params) -> str:
     instance = record.instance
     if not _overrides(type(instance), "on_send_message_hook"):
         return HookStrategy.DEFAULT
-    with client_utils.hook_scope(account), plugin_context(plugin_id):
-        return _strategy_of(instance.on_send_message_hook(account, params))
+    return _dispatch_hook(plugin_id, account,
+                          instance.on_send_message_hook, account, params)
 
 
 def call_pre_request_hook(plugin_id: str, account: int, request_name: str, request) -> str:
@@ -340,8 +967,8 @@ def call_pre_request_hook(plugin_id: str, account: int, request_name: str, reque
     instance = record.instance
     if not _overrides(type(instance), "pre_request_hook"):
         return HookStrategy.DEFAULT
-    with client_utils.hook_scope(account), plugin_context(plugin_id):
-        return _strategy_of(instance.pre_request_hook(request_name, account, request))
+    return _dispatch_hook(plugin_id, account,
+                          instance.pre_request_hook, request_name, account, request)
 
 
 def call_post_request_hook(plugin_id: str, account: int, request_name: str,
@@ -352,8 +979,8 @@ def call_post_request_hook(plugin_id: str, account: int, request_name: str,
     instance = record.instance
     if not _overrides(type(instance), "post_request_hook"):
         return HookStrategy.DEFAULT
-    with client_utils.hook_scope(account), plugin_context(plugin_id):
-        return _strategy_of(instance.post_request_hook(request_name, account, response, error))
+    return _dispatch_hook(plugin_id, account,
+                          instance.post_request_hook, request_name, account, response, error)
 
 
 def call_update_hook(plugin_id: str, account: int, update_name: str, update) -> str:
@@ -364,8 +991,8 @@ def call_update_hook(plugin_id: str, account: int, update_name: str, update) -> 
     instance = record.instance
     if not _overrides(type(instance), "on_update_hook"):
         return HookStrategy.DEFAULT
-    with client_utils.hook_scope(account), plugin_context(plugin_id):
-        return _strategy_of(instance.on_update_hook(update_name, account, update))
+    return _dispatch_hook(plugin_id, account,
+                          instance.on_update_hook, update_name, account, update)
 
 
 def call_updates_hook(plugin_id: str, account: int, container_name: str, updates) -> str:
@@ -376,8 +1003,8 @@ def call_updates_hook(plugin_id: str, account: int, container_name: str, updates
     instance = record.instance
     if not _overrides(type(instance), "on_updates_hook"):
         return HookStrategy.DEFAULT
-    with client_utils.hook_scope(account), plugin_context(plugin_id):
-        return _strategy_of(instance.on_updates_hook(container_name, account, updates))
+    return _dispatch_hook(plugin_id, account,
+                          instance.on_updates_hook, container_name, account, updates)
 
 
 # ---------------------------------------------------------------------------
@@ -565,7 +1192,10 @@ def notify_setting_changed(plugin_id: str, key: str, json_value: str) -> None:
     record.instance.set_setting(key, value)
     callback = record.change_callbacks.get(key)
     if callback is not None:
-        _call_with_optional_arg(callback, value)
+        try:
+            _call_with_optional_arg(callback, value)
+        except PermissionError as e:  # отказ разрешения — не поломка плагина
+            _log_permission_error(plugin_id, e)
     return None
 
 
@@ -576,13 +1206,42 @@ def dispatch_setting_click(plugin_id: str, callback_id: str) -> None:
         return None
     callback = record.click_callbacks.get(callback_id)
     if callback is not None:
-        _call_with_optional_arg(callback, None)
+        try:
+            _call_with_optional_arg(callback, None)
+        except PermissionError as e:  # отказ разрешения — не поломка плагина
+            _log_permission_error(plugin_id, e)
     return None
 
 
 # ---------------------------------------------------------------------------
 # Dev server (port 42690; started by the engine in developer mode)
 # ---------------------------------------------------------------------------
+
+def get_audit_journal_json(plugin_id: Optional[str] = None, limit: int = 100) -> str:
+    """Последние наблюдения audit-гейта (для экрана «Что делал плагин»)."""
+    try:
+        from . import audit_gate
+        return json.dumps(audit_gate.get_journal(plugin_id, limit), ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+
+def get_audit_profile_json(plugin_id: Optional[str] = None) -> str:
+    """Счётчики по категориям: что плагин делал по факту, а не по манифесту."""
+    try:
+        from . import audit_gate
+        return json.dumps(audit_gate.get_profile(plugin_id), ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+
+def forget_audit(plugin_id: str) -> None:
+    try:
+        from . import audit_gate
+        audit_gate.clear_plugin(plugin_id)
+    except Exception:
+        pass
+
 
 _dev_server_started = False
 
@@ -601,6 +1260,12 @@ def start_dev_server() -> None:
               file=sys.stderr)
     return None
 
+
+# Песочницу ставим на импорте модуля: враппер builtins.__import__ должен
+# оказаться в цепочке ДО того, как elyx_runtime.namespace захватит себе
+# _ORIGINAL_IMPORT (elyx_runtime/namespace.py:53) — иначе импорты Elyx-плагинов
+# пойдут мимо нас. plugin_loader импортируется движком раньше elyx_runtime.
+_install_sandbox()
 
 # Re-expose previously installed shared libs (pip_controller) at engine start.
 if pip_controller is not None:

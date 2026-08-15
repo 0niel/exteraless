@@ -1417,6 +1417,21 @@ object NaConfig {
             ""
         )
 
+    /**
+     * Тон перевода DeepL: 0 — как есть, 1 — неформальный, 2 — формальный.
+     *
+     * Перенос единственной части переводчиков exteraGram, которой у NagramX нет
+     * (12.9.0: TranslationFormality + DeepLTranslator.getFormality). Работает
+     * только по своему ключу API: бесключевой путь у нас уходит в стороннюю
+     * библиотеку app.nekogram.translator, в которую параметр не пробросить.
+     */
+    val deepLFormality =
+        addConfig(
+            "DeepLFormality",
+            ConfigItem.configTypeInt,
+            0
+        )
+
     val preferredTranslateTargetLangList = ArrayList<String>()
     fun updatePreferredTranslateTargetLangList() {
         AndroidUtilities.runOnUIThread({

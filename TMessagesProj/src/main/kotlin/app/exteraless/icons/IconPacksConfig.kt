@@ -45,6 +45,26 @@ object IconPacksConfig {
     @JvmField
     val customNotificationIcon = addConfig("OEIconPacksNotificationIcon", ConfigItem.configTypeBool, false)
 
+    /**
+     * Обрезать логотип в шапке настроек по форме иконок лаунчера.
+     *
+     * Перенос ключа `useSystemIconShape` exteraGram (12.9.0). Переключается долгим
+     * нажатием на самом логотипе — своей строки в настройках у него нет и там
+     * (MainPreferencesActivity:211).
+     */
+    @JvmField
+    val useSystemIconShape = addConfig("OEIconPacksSystemShape", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun useSystemIconShape(): Boolean = useSystemIconShape.Bool()
+
+    @JvmStatic
+    fun toggleSystemIconShape(): Boolean {
+        val value = !useSystemIconShape.Bool()
+        useSystemIconShape.setConfigBool(value)
+        return value
+    }
+
     @JvmStatic
     fun enabled(): Boolean = enabled.Bool()
 

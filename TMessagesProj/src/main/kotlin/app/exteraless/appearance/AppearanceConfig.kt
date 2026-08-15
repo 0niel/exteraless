@@ -99,10 +99,26 @@ object AppearanceConfig {
         return gooeyAvatarAnimation.Bool()
     }
 
-    /** Индивидуальные темы в чатах. Только UI. */
+    /**
+     * Индивидуальные темы и обои в чатах.
+     *
+     * Выключено — приложение не применяет тему и обои, выставленные для
+     * конкретного диалога, и везде остаётся общая тема. exteraGram гейтит этим
+     * ключом две точки: ChatActivity.setupChatTheme (12.9.0:12501) и
+     * ChatThemeController.getDialogWallpaper (12.9.0:950).
+     *
+     * По умолчанию включено — как в exteraGram: иначе обновление приложения
+     * молча погасило бы у всех уже настроенные темы чатов.
+     */
     @JvmField
     val customThemes =
-        addConfig("OEAppearanceCustomThemes", ConfigItem.configTypeBool, false)
+        addConfig("OEAppearanceCustomThemes", ConfigItem.configTypeBool, true)
+
+    @JvmStatic
+    fun customThemes(): Boolean {
+        ensureLoaded()
+        return customThemes.Bool()
+    }
 
     /** Радиус карточек-секций, dp. Применяется ко всем спискам через RecyclerListView.setSections(). */
     @JvmField
@@ -251,6 +267,18 @@ object AppearanceConfig {
     fun separateHeaders(): Boolean {
         ensureLoaded()
         return separateHeaders.Bool()
+    }
+
+    /**
+     * Выносить ли заголовки секций из карточки — с учётом стиля разделителя.
+     *
+     * В режиме «Сегменты» каждая строка сама по себе карточка, и заголовок
+     * внутри неё выглядел бы чужеродно, поэтому exteraGram включает вынос
+     * принудительно (ExteraConfig.getSectionsSeparatedHeaders: SEGMENTS || pref).
+     */
+    @JvmStatic
+    fun sectionsSeparatedHeaders(): Boolean {
+        return separateHeaders() || dividerStyle() == DIVIDER_SEGMENTS
     }
 
     /** Стиль разделителя внутри карточки: 0 — скрыт, 1 — линия, 2 — сегменты. */

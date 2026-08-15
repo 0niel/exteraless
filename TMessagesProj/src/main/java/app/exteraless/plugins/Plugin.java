@@ -23,6 +23,18 @@ public class Plugin {
     public boolean beta;
     public List<String> requirements = new ArrayList<>();
 
+    /**
+     * Объявленные в {@code __permissions__} разрешения (уже проверенные ключи,
+     * см. {@link PluginPermissions}). Пустой список при {@code __permissions__ = []}.
+     */
+    public List<String> permissions = new ArrayList<>();
+    /**
+     * Было ли объявление {@code __permissions__} в файле вообще. Отличать «объявил пусто»
+     * от «не объявлял»: плагин без объявления, установленный до появления модели,
+     * работает в режиме совместимости (см. PluginPermissions.getEffective).
+     */
+    public boolean permissionsDeclared;
+
     /** Абсолютный путь к файлу плагина в filesDir/plugins. */
     public String path;
 

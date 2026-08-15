@@ -78,6 +78,13 @@ public class PythonPluginsEngine {
                 }
                 loader = Python.getInstance().getModule("extera_utils.plugin_loader");
                 started = true;
+                // Гейт на Java-стоках. Ставится после старта интерпретатора и
+                // до загрузки плагинов: хуки должны стоять раньше их кода.
+                try {
+                    PluginSinkGate.install();
+                } catch (Throwable t) {
+                    FileLog.e("PluginsEngine: sink gate install failed", t);
+                }
                 // Dev-сервер (порт 42690) — только в developer mode; реализован в plugin_loader.
                 if (PluginsController.getInstance().isDeveloperMode()) {
                     try {
@@ -94,6 +101,47 @@ public class PythonPluginsEngine {
                 callback.onStarted(started);
             }
         });
+    }
+
+    // ---------- журнал наблюдений ----------
+
+    /** Журнал Python-гейта по плагину (или по всем, если id == null). */
+    public String getAuditJournalJson(String pluginId) {
+        if (!started) {
+            return null;
+        }
+        try {
+            return loader.callAttr("get_audit_journal_json", pluginId, 100).toJava(String.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: audit journal read failed", t);
+            return null;
+        }
+    }
+
+    /** Счётчики по категориям: что плагин делал по факту. */
+    public String getAuditProfileJson(String pluginId) {
+        if (!started) {
+            return null;
+        }
+        try {
+            return loader.callAttr("get_audit_profile_json", pluginId).toJava(String.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: audit profile read failed", t);
+            return null;
+        }
+    }
+
+    /** Забыть наблюдения плагина (удаление плагина, сброс профиля). */
+    public void forgetAudit(String pluginId) {
+        PluginAuditJournal.forget(pluginId);
+        if (!started) {
+            return;
+        }
+        try {
+            loader.callAttr("forget_audit", pluginId);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: audit forget failed", t);
+        }
     }
 
     // ---------- метаданные ----------
@@ -122,7 +170,8 @@ public class PythonPluginsEngine {
             return "{\"ok\":false,\"error\":\"engine not started\"}";
         }
         PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
-        watchdog.notePluginEnter(plugin.id);
+        // Загрузка — единственный заход, который пишется в маркер сразу.
+        watchdog.notePluginEnter(plugin.id, true);
         try {
             String result = loader.callAttr("load_plugin", plugin.path, plugin.id).toJava(String.class);
             watchdog.notePluginExit(plugin.id);

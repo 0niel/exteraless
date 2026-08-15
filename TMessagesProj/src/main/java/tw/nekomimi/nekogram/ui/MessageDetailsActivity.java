@@ -42,6 +42,8 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
+import app.exteraless.utils.MediaUtils;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.ChatObject;
@@ -135,6 +137,9 @@ public class MessageDetailsActivity extends BaseFragment implements Notification
     private int filePathRow;
     private int fileSizeRow;
     private int fileMimeTypeRow;
+    /** «Снято на» — платформа по сигнатуре JPEG. */
+    private int photoPlatformRow;
+    private String photoPlatform;
     private int mediaRow;
     private int dcRow;
     private int languageRow;
@@ -209,6 +214,11 @@ public class MessageDetailsActivity extends BaseFragment implements Notification
         if (!file.exists()) {
             return;
         }
+
+        // Платформа снимка по сигнатуре JPEG. Догадка по первым байтам, а не
+        // метаданные: пересохранённый файл покажет последний редактор, а не
+        // камеру.
+        photoPlatform = MediaUtils.getPhotoPlatform(filePath);
 
         frameRate = 0;
         bitRate = 0;
@@ -536,6 +546,7 @@ public class MessageDetailsActivity extends BaseFragment implements Notification
         filePathRow = TextUtils.isEmpty(filePath) ? -1 : rowCount++;
         fileSizeRow = messageObject.getSize() != 0 ? rowCount++ : -1;
         fileMimeTypeRow = !TextUtils.isEmpty(messageObject.getMimeType()) ? rowCount++ : -1;
+        photoPlatformRow = TextUtils.isEmpty(photoPlatform) ? -1 : rowCount++;
         mediaRow = (width > 0 && height > 0) || !TextUtils.isEmpty(video_codec) || frameRate > 0 || bitRate > 0 || audioBitRate > 0 || sampleRate > 0 ? rowCount++ : -1;
         dcRow = dc != 0 ? rowCount++ : -1;
         languageRow = TextUtils.isEmpty(MessageHelper.getMessagePlainText(messageObject, messageGroup)) ? -1 : rowCount++;
@@ -1205,6 +1216,8 @@ public class MessageDetailsActivity extends BaseFragment implements Notification
                         textCell.setTextAndValue("File Size", AndroidUtilities.formatFileSize(messageObject.getSize()), divider);
                     } else if (position == fileMimeTypeRow) {
                         textCell.setTextAndValue("MIME Type", messageObject.getMimeType(), divider);
+                    } else if (position == photoPlatformRow) {
+                        textCell.setTextAndValue("Made With", photoPlatform, divider);
                     } else if (position == mediaRow) {
                         StringBuilder mediaInfo = new StringBuilder();
                         if (width > 0 && height > 0) {

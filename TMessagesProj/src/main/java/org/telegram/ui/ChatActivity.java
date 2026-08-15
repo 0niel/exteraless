@@ -9,6 +9,7 @@
 package org.telegram.ui;
 
 import app.exteraless.OpenExteraConfig;
+import app.exteraless.appearance.AppearanceConfig;
 import app.exteraless.appearance.GlassMenuHelper;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
@@ -32424,7 +32425,7 @@ public class ChatActivity extends BaseFragment implements
             Drawable shadowDrawable = getParentActivity().getResources().getDrawable(R.drawable.popup_fixed_alert4).mutate();
             shadowDrawable.getPadding(backgroundPaddings);
             popupLayout.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
-            // openExtera: матовое стекло под меню сообщения — (applyToPopup).
+            // openExtera: матовое стекло под меню сообщения.
             // Гейт тот же, что в exteraGram: настройка + доступный блюр.
             // Флаг выключен или блюр недоступен -> ниже ничего не меняется, popup остаётся прежним.
             final boolean glassMenu = GlassMenuHelper.isEnabled(currentAccount, themeDelegate);
@@ -33572,7 +33573,7 @@ public class ChatActivity extends BaseFragment implements
                     scrimPopupContainerLayout.addView(reactionsLayout, params);
                     scrimPopupContainerLayout.setReactionsLayout(reactionsLayout);
                     scrimPopupContainerLayout.setClipChildren(false);
-                    // openExtera: (applyToReactions)
+                    // openExtera: стекло под панелью реакций
                     if (glassMenu) {
                         GlassMenuHelper.applyToReactions(scrimBlur3Factory, themeDelegate, reactionsLayout);
                     }
@@ -33638,7 +33639,7 @@ public class ChatActivity extends BaseFragment implements
                     shadowDrawable2.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
 
                     FrameLayout fl = new FrameLayout(contentView.getContext());
-                    // openExtera: нижняя плашка тоже стеклянная — (createPanelBackground)
+                    // openExtera: нижняя плашка тоже стеклянная
                     if (glassMenu) {
                         fl.setBackground(GlassMenuHelper.createPanelBackground(scrimBlur3Factory, themeDelegate, fl));
                     } else {
@@ -33666,7 +33667,7 @@ public class ChatActivity extends BaseFragment implements
                     shadowDrawable2.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground), PorterDuff.Mode.MULTIPLY));
 
                     FrameLayout fl = new FrameLayout(contentView.getContext());
-                    // openExtera: нижняя плашка тоже стеклянная — (createPanelBackground)
+                    // openExtera: нижняя плашка тоже стеклянная
                     if (glassMenu) {
                         fl.setBackground(GlassMenuHelper.createPanelBackground(scrimBlur3Factory, themeDelegate, fl));
                     } else {
@@ -33738,7 +33739,7 @@ public class ChatActivity extends BaseFragment implements
                 reactionsLayout.setParentLayout(scrimPopupContainerLayout);
             }
             // openExtera: на стекле сплошной разделитель между группами пунктов заменяется
-            // еле заметной подложкой — (separatorColor) + :37-50 (applyToGaps)
+            // еле заметной подложкой
             if (glassMenu) {
                 GlassMenuHelper.applyToGaps(popupLayout, GlassMenuHelper.separatorColor(true, themeDelegate));
             }
@@ -33855,7 +33856,7 @@ public class ChatActivity extends BaseFragment implements
             }
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
-            // openExtera: снимок экрана как источник блюра для меню —.
+            // openExtera: снимок экрана как источник блюра для меню
             // dimBehindView(v, true) идёт без блюра, поэтому scrimBlur3SourceBitmap иначе остался бы пустым.
             if (glassMenu) {
                 GlassMenuHelper.captureBlur(scrimBlur3SourceBitmap, scrimBlur3Factory, fragmentView);
@@ -45609,6 +45610,9 @@ public class ChatActivity extends BaseFragment implements
         }
 
         private void setupChatTheme(EmojiThemes chatTheme, TLRPC.WallPaper wallPaper, boolean withAnimation, boolean createNewResources) {
+            // Перенос exteraGram 12.9.0:ChatActivity:12501: при выключенных
+            // индивидуальных темах чат остаётся в общей теме приложения.
+            if (!AppearanceConfig.customThemes()) return;
             if (parentThemeDelegate != null) return;
 
             this.chatTheme = chatTheme;

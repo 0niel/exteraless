@@ -22,9 +22,7 @@
     <string name="OEChatsCameraType">Тип камеры</string>
     <string name="OEChatsCameraTypeCamera2">Camera2</string>
     <string name="OEChatsCameraStabilization">Стабилизация</string>
-    <string name="OEChatsCameraMirrorMode">Зеркалирование</string>
     <string name="OEChatsExtendedFps">Расширенный диапазон FPS</string>
-    <string name="OEChatsWideAngleCamera">Начинать с широкоугольной</string>
     <string name="OEChatsStaticZoom">Статичный зум</string>
     <string name="OEChatsStaticZoomInfo">При записи видеосообщений уровень зума не сбрасывается, когда вы убираете пальцы.</string>
 

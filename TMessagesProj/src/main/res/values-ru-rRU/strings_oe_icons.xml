@@ -41,4 +41,6 @@
     <string name="IconPickerCurrent">Сейчас</string>
     <string name="IconPickerSelectImage">Выбрать изображение</string>
     <string name="IconPickerClipboardEmpty">В буфере обмена нет изображения.</string>
+    <string name="IconPackPriorityUp">Выше приоритет</string>
+    <string name="IconPackPriorityDown">Ниже приоритет</string>
 </resources>

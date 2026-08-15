@@ -143,6 +143,14 @@ public class NekoTranslatorSettingsActivity extends BaseNekoXSettingsActivity {
     );
     private final AbstractConfigCell googleCloudTranslateKeyRow = cellGroup.appendCell(new ConfigCellTextDetail(NekoConfig.googleCloudTranslateKey, (view, position) -> showConfigDialog(position, NekoConfig.googleCloudTranslateKey, getString(R.string.GoogleCloudTransKeyNotice), getString(R.string.LlmApiKey)), getString(R.string.None), true));
     private final AbstractConfigCell deepLTranslateKeyRow = cellGroup.appendCell(new ConfigCellTextDetail(NaConfig.INSTANCE.getDeepLTranslateKey(), (view, position) -> showConfigDialog(position, NaConfig.INSTANCE.getDeepLTranslateKey(), getString(R.string.DeepLTranslateKeyNotice), getString(R.string.LlmApiKey)), getString(R.string.None), true));
+    // Тон перевода DeepL — единственная часть переводчиков exteraGram, которой
+    // у NagramX не было (12.9.0: TranslationFormality). Действует только по
+    // своему ключу API, о чём сказано в подписи строки.
+    private final AbstractConfigCell deepLFormalityRow = cellGroup.appendCell(new ConfigCellSelectBox(null, NaConfig.INSTANCE.getDeepLFormality(), new String[]{
+            getString(R.string.DeepLFormalityDefault),
+            getString(R.string.DeepLFormalityInformal),
+            getString(R.string.DeepLFormalityFormal),
+    }, null));
 
     private final AbstractConfigCell dividerTranslation = cellGroup.appendCell(new ConfigCellDivider());
 
@@ -590,6 +598,7 @@ public class NekoTranslatorSettingsActivity extends BaseNekoXSettingsActivity {
             cellGroup.appendCell(googleCloudTranslateKeyRow);
         } else if (shouldShowDeepLTranslateKeyRow()) {
             cellGroup.appendCell(deepLTranslateKeyRow);
+            cellGroup.appendCell(deepLFormalityRow);
         }
         cellGroup.appendCell(dividerTranslation);
 
@@ -1390,8 +1399,10 @@ public class NekoTranslatorSettingsActivity extends BaseNekoXSettingsActivity {
         boolean changed = false;
         changed |= removeTranslationKeyRowIfHidden(googleCloudTranslateKeyRow, shouldShowGoogleCloudTranslateKeyRow());
         changed |= removeTranslationKeyRowIfHidden(deepLTranslateKeyRow, shouldShowDeepLTranslateKeyRow());
+        changed |= removeTranslationKeyRowIfHidden(deepLFormalityRow, shouldShowDeepLTranslateKeyRow());
         changed |= addTranslationKeyRowIfVisible(googleCloudTranslateKeyRow, shouldShowGoogleCloudTranslateKeyRow());
         changed |= addTranslationKeyRowIfVisible(deepLTranslateKeyRow, shouldShowDeepLTranslateKeyRow());
+        changed |= addTranslationKeyRowIfVisible(deepLFormalityRow, shouldShowDeepLTranslateKeyRow());
         if (changed) {
             addRowsToMap(cellGroup);
         }

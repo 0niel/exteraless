@@ -1225,6 +1225,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             }
         }
         isFrontface = !isFrontface;
+        // exteraGram 12.9.0, InstantCameraView.java:2597-2600: «запоминать последнюю камеру»
+        // дописывает выбор в ту же настройку, из которой камера берётся при старте записи
+        // (см. :801 выше). Режим «спрашивать» (2) не трогаем — запоминать в нём нечего.
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        if (app.exteraless.chats.ChatsConfig.rememberLastUsedCamera.Bool()
+                && NaConfig.INSTANCE.getCameraInVideoMessages().Int() != 2) {
+            NaConfig.INSTANCE.getCameraInVideoMessages().setConfigInt(isFrontface ? 0 : 1);
+        }
         updateFlash();
         if (useCamera2) {
             if (bothCameras) {

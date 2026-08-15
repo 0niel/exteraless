@@ -5,6 +5,7 @@ interpreter is safe; calling the helpers without a JVM raises the underlying
 import error.
 """
 
+import contextlib
 import sys
 
 _BRIDGE_UNSET = object()
@@ -45,6 +46,29 @@ def log(data):
     print(f"[exteraless:sdk] {message}", file=sys.stderr)
 
 
+@contextlib.contextmanager
+def _plugin_mark(fn):
+    """Пометить поток на Java-стороне владельцем колбэка.
+
+    Владелец берётся из файла самой функции, а не из стека: в момент вызова
+    кадра плагина на стеке ещё нет — колбэк прилетел из Java. Без метки
+    Java-гейт (PluginSinkGate) не знает, чей код побежит, и пропускает
+    обращения плагина к сети и рефлексии из UI-колбэков.
+    """
+    try:
+        from extera_utils import plugin_loader
+        owner = plugin_loader.owner_of_function(fn)
+        if owner is None:
+            yield
+            return
+        with plugin_loader.java_runtime_mark(owner):
+            yield
+        return
+    except Exception:
+        pass
+    yield
+
+
 def safe_call(fn, *args, **kwargs):
     """Вызвать колбэк плагина так, чтобы ошибка не убила приложение.
 
@@ -59,7 +83,15 @@ def safe_call(fn, *args, **kwargs):
     if fn is None:
         return None
     try:
-        return fn(*args, **kwargs)
+        with _plugin_mark(fn):
+            return fn(*args, **kwargs)
+    except PermissionError as e:
+        # Отказ в разрешении — не поломка плагина, а его собственный выбор не
+        # объявлять разрешение (docs/port/PLUGINS-SECURITY.md: «Отказ не роняет
+        # плагин»). Трассировка тут ничего не объясняет, текст исключения
+        # объясняет всё, а сам отказ уже записан на Java-стороне.
+        log(f"permission denied: {e}")
+        return None
     except Exception:
         import traceback
         log("callback failed:\n" + traceback.format_exc())

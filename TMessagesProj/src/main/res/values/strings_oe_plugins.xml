@@ -28,8 +28,8 @@
     <string name="PluginDisable">Disable</string>
     <string name="PluginsInstallTitle">Install plugin</string>
     <string name="PluginsInstallAction">Install</string>
-    <string name="PluginsInstallConfirm">Install %1$s?\n\nVersion: %2$s\nAuthor: %3$s\n\nPlugins run with full access to the app. Install only what you trust.</string>
-    <string name="PluginsInstallUnknownConfirm">This file could not be recognised as a plugin. Install it anyway?\n\nPlugins run with full access to the app. Install only what you trust.</string>
+    <string name="PluginsInstallConfirm">%1$s, version %2$s\nby %3$s</string>
+    <string name="PluginsInstallUnknownConfirm">This file could not be recognised as a plugin, so there is no telling what it does. Installed anyway, it gets everything: your messages, your files, the network and the app\'s own code.</string>
     <string name="PluginsInstalled">%1$s installed.</string>
     <string name="PluginsEngineDisabledHint">The plugin engine is off. Turn it on in Settings → Plugins first.</string>
     <string name="PluginsEngineEnableAndInstall">Enable and install</string>
@@ -47,4 +47,85 @@
     <string name="PluginsNotFound">No plugins found</string>
     <string name="EnablePluginsEngine">Enable Plugins Engine</string>
     <string name="RestartRequired">Restart the app to apply</string>
+    <!-- exteraless: разрешения плагинов. Формулировка — последствие для человека,
+         а не имя ключа: решение принимают по тому, что плагин сможет сделать. -->
+    <string name="PluginPermissions">Permissions</string>
+    <string name="PluginPermissionsHeader">What this plugin can do</string>
+    <string name="PluginPermissionsNothing">This plugin asks for nothing beyond its own menu items and settings screen.</string>
+    <string name="PluginPermissionsAlwaysInfo">Its own menu items, dialogs and settings screen are always allowed and are not asked about.</string>
+    <string name="PluginPermissionsUnenforcedInfo">The plugin also declares: %1$s. There is no switch for that yet: the app cannot actually stop it, and a switch that changes nothing would only mislead you.</string>
+    <string name="PluginPermissionsHooksWarning">Rewriting the app\'s code puts this plugin above everything else on this list — with it, the plugin can read and send your messages even with those switches off. Keep it only for authors you trust.</string>
+    <string name="PluginPermissionsApplied">Plugin restarted, the change is in effect.</string>
+    <string name="PluginPermissionsGone">This plugin is no longer installed.</string>
+
+    <string name="PluginPermUi">Add its own menus and settings</string>
+    <string name="PluginPermUiInfo">Menu items, dialogs and a settings screen of its own.</string>
+    <string name="PluginPermMessagesRead">Read your chats and messages</string>
+    <string name="PluginPermMessagesReadInfo">Sees your chat list and the text of messages as they arrive, private ones included.</string>
+    <string name="PluginPermMessagesSend">Send, edit and delete messages as you</string>
+    <string name="PluginPermMessagesSendInfo">Whatever it sends looks like it came from you, and it can change or delete what you wrote.</string>
+    <string name="PluginPermNetwork">Reach the internet on its own</string>
+    <string name="PluginPermNetworkInfo">Can contact any server, including sending there whatever it has read.</string>
+    <string name="PluginPermFiles">Reach files outside its own folder</string>
+    <string name="PluginPermFilesInfo">Can open your downloads and save or overwrite files anywhere the app can reach.</string>
+    <string name="PluginPermIntents">Handle the links and files you open</string>
+    <string name="PluginPermIntentsInfo">Sees the links you tap and the files you open, and can take them over instead of the app.</string>
+    <string name="PluginPermSettings">Change app settings</string>
+    <string name="PluginPermSettingsInfo">Can turn the app\'s own options on and off without asking you.</string>
+    <string name="PluginPermHooks">Change how the app itself works</string>
+    <string name="PluginPermHooksInfo">Xposed hooks: rewrites the app\'s code while it runs. Everything else on this list becomes possible for it anyway.</string>
+
+    <string name="PluginsInstallNothing">It asks for nothing beyond its own menu items and settings screen.</string>
+
+    <string name="PluginActivityHeader">Behaviour</string>
+    <string name="PluginActivityLog">What it actually did</string>
+    <string name="PluginActivityLogInfo">A manifest is a promise. This is the record of what the plugin reached for while it ran, and what was refused.</string>
+    <string name="PluginActivityProfile">Observed</string>
+    <string name="PluginActivityProfileInfo">Asked for something it never uses? Revoke it — nothing breaks. Reaching for something it never asked for is worth a closer look.</string>
+    <string name="PluginActivityRecent">Recent</string>
+    <string name="PluginActivityNothing">Nothing observed yet.</string>
+    <string name="PluginActivityDenied">refused</string>
+    <string name="PluginActivityCounts">%1$d done, %2$d refused</string>
+    <string name="PluginActivityImports">Modules it loaded</string>
+    <string name="PluginActivityProcess">Running programs</string>
+    <string name="PluginActivityNative">Native code</string>
+    <string name="PluginActivityReflection">Reaching for app internals</string>
+    <string name="PluginActivityIntrospection">Reading other code\'s state</string>
+    <string name="PluginActivityCode">Building code at runtime</string>
+    <string name="PluginActivityOther">Other</string>
+    <string name="PluginActivityClear">Clear the record</string>
+    <string name="PluginActivityCleared">Record cleared</string>
+    <string name="PluginActivityInfo">The record lives in memory and is lost when the app restarts.</string>
+
+    <string name="PluginLevelHeader">Access level</string>
+    <string name="PluginLevelIsolated">Isolated</string>
+    <string name="PluginLevelIsolatedInfo">Its own menus, dialogs and settings screen. Nothing else — no messages, no files, no network.</string>
+    <string name="PluginLevelGated">Limited</string>
+    <string name="PluginLevelGatedInfo">You hand out permissions one by one, and the app enforces them.</string>
+    <string name="PluginLevelTrusted">Trusted</string>
+    <string name="PluginLevelTrustedInfo">Lets you grant Xposed hooks — rewriting the app\'s code as it runs. Nothing below can be enforced against a plugin that has them.</string>
+    <string name="PluginLevelIsolatedFooter">New plugins start here. Raise the level only for what you actually need — a plugin that never gets the level never gets the reach.</string>
+    <string name="PluginLevelGatedFooter">Permissions below are yours to give and take back. Rewriting the app\'s code needs the Trusted level.</string>
+    <string name="PluginLevelTrustedFooter">At this level the switches below are courtesy, not enforcement: a plugin that rewrites the app\'s code can undo any of them. Keep it only for authors you trust.</string>
+
+    <string name="PluginsInstallIsolated">It will be installed **isolated**: its own menus and settings screen, nothing more. You decide what else it gets, on the plugin\'s screen.</string>
+    <string name="PluginsInstallAsks">What it asks for:</string>
+    <string name="PluginsInstallUndeclaredIsolated">It does not say what it needs. Isolated it stays harmless; give it anything only if you trust the author.</string>
+    <string name="PluginsInstallHooksWarningLevel">It asks for Xposed hooks — rewriting the app\'s code while it runs. That is not a permission among others — granting it puts the plugin above every other switch. Only the Trusted level allows it.</string>
+    <string name="PluginPermissionsLegacyInfo">This plugin never said what it needs, so everything it could possibly ask for is listed above.</string>
+    <string name="PluginLevelApply">Use this level</string>
+    <string name="PluginActivityDidImport">Loaded %1$s</string>
+    <string name="PluginActivityDidNetwork">Network: %1$s</string>
+    <string name="PluginActivityDidFile">File: %1$s</string>
+    <string name="PluginActivityDidReach">Reached %1$s</string>
+    <string name="PluginActivityDidProcess">Tried to run a program</string>
+    <string name="PluginActivityDidNative">Tried to load native code</string>
+    <string name="PluginActivityDidIntrospect">Tried to read another module\'s state</string>
+    <string name="PluginActivityDidCode">Built code at runtime</string>
+    <string name="PluginActivityRepeat">× %1$d</string>
+    <string name="PluginLevelTrustedFooterIdle">This level only unlocks the last switch — Xposed hooks. While it stays off, everything above is enforced as usual.</string>
+    <string name="PluginsSourceKnown">From @exteraPlugins — the channel this app knows as the plugin catalogue.</string>
+    <string name="PluginsSourceUnknown">From an unknown source. Nobody has vouched for this file.</string>
+    <string name="PluginDeniedNotice">%1$s tried to do something it is not allowed to: %2$s</string>
+    <string name="PluginDeniedOpen">Permissions</string>
 </resources>

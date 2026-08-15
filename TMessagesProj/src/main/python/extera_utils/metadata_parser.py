@@ -18,7 +18,23 @@ class PluginMetadataError(Exception):
 _METADATA_KEYS = (
     "__id__", "__name__", "__description__", "__author__", "__version__",
     "__icon__", "__app_version__", "__sdk_version__", "__min_version__",
-    "__beta__", "__requirements__",
+    "__beta__", "__requirements__", "__permissions__",
+)
+
+# Permission keys a plugin may declare in ``__permissions__``.
+# Mirrors app.exteraless.plugins.PluginPermissions (docs/port/PLUGINS-SECURITY.md);
+# the Python import hook in plugin_loader imports this tuple, so the two lists
+# cannot drift apart.
+PERMISSION_UI = "ui"
+KNOWN_PERMISSIONS = (
+    PERMISSION_UI,
+    "messages.read",
+    "messages.send",
+    "network",
+    "files",
+    "intents",
+    "settings",
+    "hooks",
 )
 
 _ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{1,31}$")
@@ -80,11 +96,38 @@ def _validate_plugin_id(plugin_id: Any) -> str:
     return plugin_id
 
 
+def _validate_permissions(declared: Any) -> list:
+    """Normalise and validate ``__permissions__``.
+
+    An unknown key is a metadata error on purpose: a typo must not silently turn
+    into a missing permission (docs/port/PLUGINS-SECURITY.md, "Объявление в плагине").
+    """
+    if isinstance(declared, str):
+        # Same leniency as __requirements__: a single permission is often written bare.
+        declared = [declared] if declared.strip() else []
+    if not isinstance(declared, (list, tuple, set, frozenset)):
+        raise PluginMetadataError("__permissions__ must be a list of permission keys")
+    out = []
+    for item in declared:
+        if not isinstance(item, str):
+            raise PluginMetadataError(
+                f"__permissions__ entries must be strings, got {type(item).__name__}")
+        key = item.strip()
+        if key not in KNOWN_PERMISSIONS:
+            raise PluginMetadataError(
+                f"unknown permission {item!r} in __permissions__; known keys: "
+                + ", ".join(KNOWN_PERMISSIONS))
+        if key not in out:
+            out.append(key)
+    return out
+
+
 def read_metadata(path: str) -> Dict[str, Any]:
     """Read and validate plugin metadata from *path* without executing the module.
 
     Returns a dict with keys: id, name, description, author, version, icon,
-    app_version, sdk_version, beta, requirements.
+    app_version, sdk_version, beta, requirements, permissions,
+    permissions_declared.
     Raises PluginMetadataError with a human-readable message on any problem.
     """
     constants = _extract_constants(path)
@@ -117,6 +160,10 @@ def read_metadata(path: str) -> Dict[str, Any]:
             or not all(isinstance(item, str) for item in requirements):
         raise PluginMetadataError("__requirements__ must be a string or a list of PEP 508 strings")
 
+    declared_permissions = "__permissions__" in constants
+    permissions = _validate_permissions(constants.get("__permissions__") or []) \
+        if declared_permissions else []
+
     return {
         "id": plugin_id,
         "name": name,
@@ -128,6 +175,11 @@ def read_metadata(path: str) -> Dict[str, Any]:
         "sdk_version": constants.get("__sdk_version__"),
         "beta": bool(constants.get("__beta__", False)),
         "requirements": list(requirements),
+        # A plugin that declares nothing gets "ui" only — but only once the user has
+        # consented at install time; the Java side keeps "declared nothing at all"
+        # apart from "declared an empty list" through permissions_declared.
+        "permissions": permissions,
+        "permissions_declared": declared_permissions,
     }
 
 

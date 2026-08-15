@@ -22,6 +22,8 @@ import android.widget.TextView;
 
 import androidx.core.view.ViewCompat;
 
+import app.exteraless.appearance.AppearanceConfig;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.ui.ActionBar.SimpleTextView;
@@ -76,8 +78,13 @@ public class HeaderCell extends FrameLayout {
     public HeaderCell(Context context, int textColorKey, int padding, int topMargin, int bottomMargin, boolean text2, boolean animated, Theme.ResourcesProvider resourcesProvider) {
         super(context);
         this.resourcesProvider = resourcesProvider;
-        this.padding = padding;
-        this.bottomMargin = bottomMargin;
+        // Вынесенный заголовок живёт вне карточки, поэтому у него свои отступы:
+        // 24 по краям вместо 18 и 3 снизу.
+        boolean separated = AppearanceConfig.sectionsSeparatedHeaders();
+        this.padding = separated ? 24 : padding;
+        this.bottomMargin = separated ? 3 : bottomMargin;
+        padding = this.padding;
+        bottomMargin = this.bottomMargin;
         this.animated = animated;
 
         if (animated) {
@@ -119,7 +126,24 @@ public class HeaderCell extends FrameLayout {
         return animatedTextView.getDrawable().getCurrentWidth();
     }
 
+    /**
+     * Дальше — сеттеры, которыми экраны подгоняют заголовок под карточку:
+     * подложка, высота, отступы. Для вынесенного заголовка всё это лишнее и
+     * гасится целиком, иначе каждый экран пересчитывал бы геометрию под старую
+     * раскладку.
+     */
+    @Override
+    public void setBackground(android.graphics.drawable.Drawable background) {
+        if (AppearanceConfig.sectionsSeparatedHeaders()) {
+            return;
+        }
+        super.setBackground(background);
+    }
+
     public void setHeight(int value) {
+        if (AppearanceConfig.sectionsSeparatedHeaders()) {
+            return;
+        }
         int newMinHeight = AndroidUtilities.dp(height = value) - ((LayoutParams) textView.getLayoutParams()).topMargin;
         if (textView.getMinHeight() != newMinHeight) {
             textView.setMinHeight(newMinHeight);
@@ -128,11 +152,17 @@ public class HeaderCell extends FrameLayout {
     }
 
     public void setTopMargin(int topMargin) {
+        if (AppearanceConfig.sectionsSeparatedHeaders()) {
+            return;
+        }
         ((LayoutParams) textView.getLayoutParams()).topMargin = AndroidUtilities.dp(topMargin);
         setHeight(height);
     }
 
     public void setBottomMargin(int bottomMargin) {
+        if (AppearanceConfig.sectionsSeparatedHeaders()) {
+            return;
+        }
         ((LayoutParams) textView.getLayoutParams()).bottomMargin = AndroidUtilities.dp(bottomMargin);
         if (textView2 != null) {
             ((LayoutParams) textView2.getLayoutParams()).bottomMargin = AndroidUtilities.dp(bottomMargin);

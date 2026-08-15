@@ -26,6 +26,7 @@ import org.telegram.ui.DocumentSelectActivity;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
@@ -75,7 +76,7 @@ public class IconPacksActivity extends BaseNekoSettingsActivity {
         super.updateRows();
 
         packs.clear();
-        packs.addAll(IconPackStorage.getInstalledPacks());
+        packs.addAll(sortByPriority(IconPackStorage.getInstalledPacks()));
 
         // Секция «Базовые наборы» — порт IconPacksActivity.fillItems:254 (заголовок BasePacks).
         // В exteraGram активен ровно один встроенный набор: первый id "base.*" в iconPacksLayout,
@@ -120,6 +121,33 @@ public class IconPacksActivity extends BaseNekoSettingsActivity {
     @Override
     protected String getKey() {
         return "iconpacks";
+    }
+
+    /**
+     * Активные паки — вперёд, в своём порядке; остальные следом.
+     *
+     * Порядок активных и есть приоритет при конфликте имён иконок: побеждает
+     * первый (IconPacksConfig.activePacks — упорядоченный список). Поэтому
+     * перетаскивание должно быть видимым, а для этого активные обязаны идти
+     * подряд и сверху.
+     */
+    private List<IconPack> sortByPriority(List<IconPack> installed) {
+        List<String> active = IconPacksConfig.getActivePackIds();
+        List<IconPack> result = new ArrayList<>();
+        for (String id : active) {
+            for (IconPack pack : installed) {
+                if (pack.getId().equals(id)) {
+                    result.add(pack);
+                    break;
+                }
+            }
+        }
+        for (IconPack pack : installed) {
+            if (!active.contains(pack.getId())) {
+                result.add(pack);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -191,26 +219,65 @@ public class IconPacksActivity extends BaseNekoSettingsActivity {
         if (context == null) {
             return;
         }
-        CharSequence[] items = new CharSequence[]{
-                getString(R.string.Edit),
-                getString(R.string.IconPackEditIcons),
-                getString(R.string.ShareFile),
-                getString(R.string.Delete)
-        };
+        // Приоритет показываем только у активных паков и только когда их
+        // больше одного: у единственного двигать нечего, у выключенного
+        // приоритета нет вовсе.
+        final int priority = IconPacksConfig.getActivePackIds().indexOf(pack.getId());
+        final int activeCount = IconPacksConfig.getActivePackIds().size();
+        final boolean canRaise = priority > 0;
+        final boolean canLower = priority >= 0 && priority < activeCount - 1;
+
+        List<CharSequence> items = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (canRaise) {
+            items.add(getString(R.string.IconPackPriorityUp));
+            actions.add(() -> movePriority(pack, -1));
+        }
+        if (canLower) {
+            items.add(getString(R.string.IconPackPriorityDown));
+            actions.add(() -> movePriority(pack, 1));
+        }
+        items.add(getString(R.string.Edit));
+        actions.add(() -> openEditor(pack));
+        items.add(getString(R.string.IconPackEditIcons));
+        actions.add(() -> startEditing(pack));
+        items.add(getString(R.string.ShareFile));
+        actions.add(() -> sharePack(pack));
+        items.add(getString(R.string.Delete));
+        actions.add(() -> showDeleteDialog(pack));
+
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(pack.getName());
-        builder.setItems(items, (dialog, which) -> {
-            if (which == 0) {
-                openEditor(pack);
-            } else if (which == 1) {
-                startEditing(pack);
-            } else if (which == 2) {
-                sharePack(pack);
-            } else {
-                showDeleteDialog(pack);
+        builder.setItems(items.toArray(new CharSequence[0]), (dialog, which) -> {
+            if (which >= 0 && which < actions.size()) {
+                actions.get(which).run();
             }
         });
         showDialog(builder.create());
+    }
+
+    /**
+     * Сдвинуть пак в списке приоритета.
+     *
+     * Порядок активных паков решает, чья иконка победит при совпадении имён:
+     * берётся первая найденная (IconPackManager). exteraGram двигает паки
+     * перетаскиванием за ручку (IconPacksActivity: allowReorder +
+     * setReorderHandleOnly), но там строка пака — своя ячейка с ручкой, а у нас
+     * обычный TextCheckCell с переключателем; отдельная ячейка с превью — своя
+     * задача, до неё двигаем через меню.
+     */
+    private void movePriority(IconPack pack, int delta) {
+        List<String> order = IconPacksConfig.getActivePackIds();
+        int index = order.indexOf(pack.getId());
+        int target = index + delta;
+        if (index < 0 || target < 0 || target >= order.size()) {
+            return;
+        }
+        Collections.swap(order, index, target);
+        IconPacksConfig.setActivePackIds(order);
+        IconPackManager.getInstance().reload();
+        updateRowsAndNotify();
+        showRestartHint();
     }
 
     /**

@@ -15,6 +15,9 @@ import threading
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
+# Имя разрешения на файлы вне своего каталога (docs/port/PLUGINS-SECURITY.md).
+_PERM_FILES = "files"
+
 
 def _context():
     from java import jclass
@@ -25,6 +28,128 @@ def get_plugins_dir() -> str:
     """Absolute path of the plugin directory (filesDir/plugins)."""
     from app.exteraless.plugins import PythonBridge
     return str(PythonBridge.getPluginsDir())
+
+
+def _mkdirs(path: str) -> str:
+    """Создать каталог без проверки разрешения — для внутренних вызовов SDK."""
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _owner_plugin_id() -> Optional[str]:
+    """Плагин по стеку вызова: работает и там, где plugin_context не выставлен
+    (колбэки из Java), в отличие от _current_plugin_id()."""
+    try:
+        from extera_utils.plugin_loader import caller_plugin_id
+        return caller_plugin_id()
+    except Exception:
+        return None
+
+
+def get_plugin_dir(plugin_id: Optional[str] = None) -> Optional[str]:
+    """Собственный каталог плагина: <plugins_dir>/.data/<id>, создаётся на месте.
+
+    Он и есть «свой каталог» из PLUGINS-SECURITY.md: читать и писать здесь
+    можно без разрешения ``files``. Имя с точки — движок при сканировании
+    берёт только файлы (PluginsController.rescanPlugins: `if (!f.isFile())`),
+    так что подкаталог его не смущает.
+    """
+    plugin_id = plugin_id or _owner_plugin_id()
+    if not plugin_id:
+        return None
+    try:
+        return _mkdirs(os.path.join(get_plugins_dir(), ".data", str(plugin_id)))
+    except Exception:
+        return None
+
+
+def get_plugin_cache_dir(plugin_id: Optional[str] = None) -> Optional[str]:
+    """Свой временный каталог плагина: <cache_dir>/plugins/<id>.
+
+    Тоже «свой»: разрешение ``files`` не нужно. Систему устраивает чистить
+    кэш — постоянные данные класть в get_plugin_dir().
+    """
+    plugin_id = plugin_id or _owner_plugin_id()
+    if not plugin_id:
+        return None
+    cache = get_cache_dir()
+    if not cache:
+        return None
+    try:
+        return _mkdirs(os.path.join(cache, "plugins", str(plugin_id)))
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Разрешение "files": доступ вне своего каталога (PLUGINS-SECURITY.md)
+# ---------------------------------------------------------------------------
+
+_own_roots_cache = {}
+
+
+def _real(path) -> str:
+    # realpath, а не abspath: иначе символьная ссылка из своего каталога
+    # наружу обходила бы проверку.
+    return os.path.normcase(os.path.realpath(str(path)))
+
+
+def _own_roots(plugin_id: str):
+    """Каталоги, которые плагин считает своими (см. get_plugin_dir)."""
+    roots = _own_roots_cache.get(plugin_id)
+    if roots is not None:
+        return roots
+    roots = []
+    try:
+        plugins_dir = get_plugins_dir()
+    except Exception:
+        plugins_dir = None
+    if plugins_dir:
+        for parent in (".data", ".elyx_extracted", "elyx_local_libs"):
+            # .elyx_extracted / elyx_local_libs — распакованный код самого
+            # плагина (elyx_runtime/archive.py:38-39): читать себя он вправе.
+            roots.append(_real(os.path.join(plugins_dir, parent, plugin_id)))
+    cache = get_cache_dir()
+    if cache:
+        roots.append(_real(os.path.join(cache, "plugins", plugin_id)))
+    _own_roots_cache[plugin_id] = roots
+    return roots
+
+
+def _own_files(plugin_id: str):
+    """Файлы самого плагина: читать собственный исходник — не «вне каталога»."""
+    try:
+        from extera_utils.plugin_loader import plugin_files
+        return {_real(path) for path in plugin_files(plugin_id)}
+    except Exception:
+        return set()
+
+
+def _is_own_path(plugin_id: str, path) -> bool:
+    target = _real(path)
+    if target in _own_files(plugin_id):
+        return True
+    for root in _own_roots(plugin_id):
+        if target == root or target.startswith(root + os.sep):
+            return True
+    return False
+
+
+def _require_files(path, what: str) -> None:
+    """PermissionError, если плагин лезет по *path* вне своего каталога.
+
+    Проверка стоит ДО try/except в вызывающей функции: read_file и подобные
+    гасят любые ошибки и возвращают None/False, а отказ должен долететь до
+    safe_call и попасть в лог, а не притвориться «файла нет».
+    """
+    from extera_utils.plugin_loader import caller_plugin_id, require_permission
+
+    plugin_id = caller_plugin_id()
+    if plugin_id is None:
+        return  # не код плагина (SDK, движок) — гейтить нечего
+    if _is_own_path(plugin_id, path):
+        return
+    require_permission(_PERM_FILES, what, detail=str(path), plugin_id=plugin_id)
 
 
 def get_files_dir() -> Optional[str]:
@@ -54,7 +179,7 @@ def _media_dir(constant_name: str, fallback_name: str) -> Optional[str]:
         directory = FileLoader.getDirectory(getattr(FileLoader, constant_name))
         if directory is not None:
             path = str(directory.getAbsolutePath())
-            ensure_dir_exists(path)
+            _mkdirs(path)
             return path
     except Exception:
         pass
@@ -62,7 +187,7 @@ def _media_dir(constant_name: str, fallback_name: str) -> Optional[str]:
     if base is None:
         return None
     path = os.path.join(base, fallback_name)
-    ensure_dir_exists(path)
+    _mkdirs(path)
     return path
 
 
@@ -88,6 +213,7 @@ def get_documents_dir() -> Optional[str]:
 
 def ensure_dir_exists(path: str) -> str:
     """Create *path* (and parents) if missing; returns *path*."""
+    _require_files(path, "create a directory")
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -100,6 +226,7 @@ def list_dir(path: str, recursive: bool = False, include_files: bool = True,
     extensions, when given, filters files by suffix (with or without the dot,
     case-insensitive).
     """
+    _require_files(path, "list a directory")
     result: List[str] = []
     if not path or not os.path.isdir(path):
         return result
@@ -137,6 +264,7 @@ def list_dir(path: str, recursive: bool = False, include_files: bool = True,
 
 def write_file(path: str, content) -> bool:
     """Write str (UTF-8) or bytes to *path*. Does NOT create parent directories."""
+    _require_files(path, "write a file")
     try:
         if isinstance(content, (bytes, bytearray)):
             with open(path, "wb") as handle:
@@ -151,6 +279,7 @@ def write_file(path: str, content) -> bool:
 
 def read_file(path: str) -> Optional[str]:
     """Read *path* as UTF-8 text; None on any error."""
+    _require_files(path, "read a file")
     try:
         with open(path, "r", encoding="utf-8") as handle:
             return handle.read()
@@ -160,6 +289,7 @@ def read_file(path: str) -> Optional[str]:
 
 def delete_file(path: str) -> bool:
     """Delete a single file (not a directory); True on success."""
+    _require_files(path, "delete a file")
     try:
         os.remove(path)
         return True
@@ -169,6 +299,7 @@ def delete_file(path: str) -> bool:
 
 def write_file_bytes(path: str, content: bytes) -> bool:
     """Write bytes to *path*. Does NOT create parent directories."""
+    _require_files(path, "write a file")
     try:
         with open(path, "wb") as handle:
             handle.write(bytes(content))
@@ -179,6 +310,7 @@ def write_file_bytes(path: str, content: bytes) -> bool:
 
 def read_file_bytes(path: str) -> Optional[bytes]:
     """Read *path* as bytes; None on any error."""
+    _require_files(path, "read a file")
     try:
         with open(path, "rb") as handle:
             return handle.read()
@@ -317,6 +449,15 @@ class FilesController(metaclass=_FilesControllerMeta):
             raise RuntimeError(
                 "FilesController.register must be called from a plugin context "
                 "(on_plugin_load / a hook callback)")
+
+        # Перехват открытия файлов закрывается разрешением "files"
+        # (PLUGINS-SECURITY.md, таблица точек проверки). Java-сторона
+        # registerFileHandler проверяет то же самое и возвращает null;
+        # проверяем здесь, чтобы плагин получил внятный текст, а не
+        # "registerFileHandler failed".
+        from extera_utils.plugin_loader import require_permission
+        require_permission(_PERM_FILES, "intercept file opening",
+                           detail=ext, plugin_id=plugin_id)
 
         key = (plugin_id, ext)
         with FilesController._lock:

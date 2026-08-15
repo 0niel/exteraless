@@ -19,23 +19,35 @@ public final class PluginServices {
     private PluginServices() {
     }
 
+    /** Отказ в hookAll*: Python-сторона парсит ответ как JSON-массив unhook id. */
+    private static final String EMPTY_JSON_ARRAY = "[]";
+
     // ---------- Xposed-хуки (делегат: XposedHooks) ----------
 
     /** Хук на один метод/конструктор. @return unhook id или null при ошибке. */
     public static String hookMethod(String pluginId, Object member, PyObject handler,
                                     int priority, String filtersJson) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "hookMethod")) {
+            return null;
+        }
         return XposedHooks.hookMethod(pluginId, member, handler, priority, filtersJson);
     }
 
     /** Хук на все перегрузки метода. @return JSON-массив unhook id. */
     public static String hookAllMethods(String pluginId, Object clazz, String methodName,
                                         PyObject handler, int priority, String filtersJson) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "hookAllMethods")) {
+            return EMPTY_JSON_ARRAY;
+        }
         return XposedHooks.hookAllMethods(pluginId, clazz, methodName, handler, priority, filtersJson);
     }
 
     /** Хук на все конструкторы класса. @return JSON-массив unhook id. */
     public static String hookAllConstructors(String pluginId, Object clazz, PyObject handler,
                                              int priority, String filtersJson) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "hookAllConstructors")) {
+            return EMPTY_JSON_ARRAY;
+        }
         return XposedHooks.hookAllConstructors(pluginId, clazz, handler, priority, filtersJson);
     }
 
@@ -48,11 +60,17 @@ public final class PluginServices {
         return XposedHooks.invokeOriginalMethod(member, thisObject, args);
     }
 
-    public static void deoptimizeMethod(Object member) {
+    public static void deoptimizeMethod(String pluginId, Object member) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "deoptimizeMethod")) {
+            return;
+        }
         XposedHooks.deoptimizeMethod(member);
     }
 
-    public static Object allocateInstance(Object clazz) {
+    public static Object allocateInstance(String pluginId, Object clazz) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "allocateInstance")) {
+            return null;
+        }
         return XposedHooks.allocateInstance(clazz);
     }
 
@@ -60,12 +78,18 @@ public final class PluginServices {
 
     /** Сгенерировать Java-класс по JSON-спецификации. @return classKey или null. */
     public static String generateProxyClass(String pluginId, String specJson) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "generateProxyClass")) {
+            return null;
+        }
         return ClassProxyFactory.generateProxyClass(pluginId, specJson);
     }
 
     /** Создать инстанс сгенерированного класса; python-сторона получает peer. */
     public static Object newProxyInstance(String pluginId, String classKey, String ctorSig,
                                           Object[] args, PyObject peer) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "newProxyInstance")) {
+            return null;
+        }
         return ClassProxyFactory.newProxyInstance(pluginId, classKey, ctorSig, args, peer);
     }
 
@@ -76,7 +100,22 @@ public final class PluginServices {
 
     /** Вызов super-метода из Python-override. */
     public static Object invokeSuper(String classKey, Object proxy, String methodSig, Object[] args) {
+        // pluginId сюда не передаётся (зовётся из сгенерированного байткода), но он
+        // зашит в classKey: ClassProxyFactory.generateInternal собирает ключ как
+        // pluginId + ":" + sha256(spec), а двоеточие в __id__ запрещено валидатором.
+        if (!PluginPermissions.check(pluginIdOfClassKey(classKey), PluginPermissions.HOOKS,
+                "invokeSuper")) {
+            return null;
+        }
         return ClassProxyFactory.invokeSuper(classKey, proxy, methodSig, args);
+    }
+
+    private static String pluginIdOfClassKey(String classKey) {
+        if (classKey == null) {
+            return null;
+        }
+        int sep = classKey.indexOf(':');
+        return sep > 0 ? classKey.substring(0, sep) : null;
     }
 
     // ---------- FilesController (делегат: FilesControllerJava) ----------
@@ -84,14 +123,18 @@ public final class PluginServices {
     /** @return secret хендлера или null. */
     public static String registerFileHandler(String pluginId, String ext, String whitelistJson,
                                              String blacklistJson, boolean hasIcon) {
-        return FilesControllerJava.register(pluginId, ext, whitelistJson, blacklistJson, hasIcon);
+        return registerFileHandler(pluginId, ext, whitelistJson, blacklistJson, hasIcon, null);
     }
 
-    // exteraless plugins: перегрузка с PyObject-колбэком — исходный FilesController.register
+    // exteraless plugins: перегрузка с PyObject-колбэком — FilesController.register
     // принимает on_click внутри FileInfo, а исходная 5-аргументная сигнатура его не несла.
     // Старая сигнатура сохранена и делегирует сюда с onClick == null.
     public static String registerFileHandler(String pluginId, String ext, String whitelistJson,
                                              String blacklistJson, boolean hasIcon, PyObject onClick) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.FILES,
+                "registerFileHandler(." + ext + ")")) {
+            return null;
+        }
         return FilesControllerJava.register(pluginId, ext, whitelistJson, blacklistJson, hasIcon, onClick);
     }
 
@@ -108,6 +151,9 @@ public final class PluginServices {
     /** @return handler id. before=true — before-хендлер (может оборвать обработку). */
     public static String registerIntentHandler(String pluginId, boolean before, String filtersJson,
                                                int priority, PyObject callback) {
+        if (!PluginPermissions.check(pluginId, PluginPermissions.INTENTS, "registerIntentHandler")) {
+            return null;
+        }
         return IntentsDispatcher.registerHandler(pluginId, before, filtersJson, priority, callback);
     }
 

@@ -64,6 +64,21 @@ public class PluginsWatchdog {
     private static final int FREEZE_TIMEOUT_SECONDS = 5;
     /** Задержка очистки файла-маркера после выхода из последнего плагина. */
     private static final long IDLE_CLEAR_DELAY_MS = 2000L;
+    /**
+     * Столько заход должен длиться, прежде чем попадёт в маркер.
+     *
+     * Раньше маркер писался на каждый вход в код плагина. У плагина с хуками
+     * (AdBlock ставит семь) хуки срабатывают постоянно, поэтому маркер стоял
+     * практически всегда — и любая смерть процесса вешалась на него. На
+     * устройстве это выглядело так: два force-stop подряд, и рабочий плагин
+     * выключен с диалогом «Plugin crashed».
+     *
+     * Маркер нужен ровно для одного случая: процесс умер, НЕ ВЕРНУВШИСЬ из
+     * кода плагина. Заход, отработавший за микросекунды, таким свидетельством
+     * не является. Порог отсекает нормальные хуки и оставляет то, ради чего
+     * сторож и написан: загрузку, зависание, долгий вызов.
+     */
+    private static final long MARKER_AFTER_MS = 1000L;
     /** Имя файла-маркера в каталоге плагинов. */
     private static final String MARKER_FILE = ".watchdog";
     /** Столько раз процесс должен умереть на плагине, прежде чем его выключат. */
@@ -143,6 +158,17 @@ public class PluginsWatchdog {
      * задачи в планировщик — никакого ввода-вывода.
      */
     public void notePluginEnter(String pluginId) {
+        notePluginEnter(pluginId, false);
+    }
+
+    /**
+     * @param risky заход, который стоит записать в маркер сразу, не дожидаясь
+     *              {@link #MARKER_AFTER_MS}. Это загрузка плагина: если процесс
+     *              умрёт на ней за доли секунды, отложенная запись не успеет, и
+     *              приложение уйдёт в вечный цикл падений на старте — ровно то,
+     *              ради чего сторож и существует.
+     */
+    public void notePluginEnter(String pluginId, boolean risky) {
         if (pluginId == null) {
             return;
         }
@@ -161,7 +187,9 @@ public class PluginsWatchdog {
             }
         }
 
-        noteMarker(pluginId);
+        if (risky) {
+            noteMarker(pluginId);
+        }
 
         ScheduledFuture<?> previous = scheduledChecks.remove(thread);
         if (previous != null) {
@@ -172,6 +200,15 @@ public class PluginsWatchdog {
             return;
         }
         try {
+            // Маркер ставит отложенная задача: если заход к этому моменту уже
+            // закончился, писать нечего.
+            if (!risky) {
+                executor.schedule(() -> {
+                    if (executingPlugins.get(thread) == info) {
+                        noteMarker(pluginId);
+                    }
+                }, MARKER_AFTER_MS, TimeUnit.MILLISECONDS);
+            }
             scheduledChecks.put(thread, executor.schedule(
                     () -> checkFrozen(thread, info, pluginId),
                     FREEZE_TIMEOUT_SECONDS, TimeUnit.SECONDS));

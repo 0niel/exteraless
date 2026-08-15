@@ -42,7 +42,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import app.exteraless.plugins.Plugin;
+import app.exteraless.plugins.PluginInstallHelper;
 import app.exteraless.plugins.PluginsController;
+import app.exteraless.plugins.PythonPluginsEngine;
 import app.exteraless.plugins.PluginsWatchdog;
 
 /**
@@ -250,8 +252,22 @@ public class PluginsActivity extends BaseFragment {
     private void onItemClick(UItem item, View view, int position, float x, float y) {
         PluginsController controller = PluginsController.getInstance();
         if (item.id == ID_ENGINE_TOGGLE) {
-            controller.setEngineEnabled(!controller.isEngineEnabled());
+            boolean enabling = !controller.isEngineEnabled();
+            controller.setEngineEnabled(enabling);
             update();
+            if (enabling) {
+                // Python поднимается асинхронно (около 240 мс на Pixel 7), а
+                // rescanPlugins до его старта выходит рано. Без обновления по
+                // готовности пользователь видит пустой список при уже лежащих
+                // плагинах, и помогает только выйти и вернуться.
+                PythonPluginsEngine.getInstance().ensureStarted(
+                        org.telegram.messenger.ApplicationLoader.applicationContext,
+                        ok -> AndroidUtilities.runOnUIThread(() -> {
+                            if (getParentActivity() != null) {
+                                update();
+                            }
+                        }));
+            }
             return;
         }
         Plugin plugin = pluginOf(item);
@@ -322,6 +338,10 @@ public class PluginsActivity extends BaseFragment {
             labels.add(getString(R.string.PluginsMenuReload));
             actions.add(1);
         }
+        // Разрешения — рядом с настройками плагина: это второе, что о плагине
+        // хотят узнать после того, что он умеет настраивать.
+        labels.add(getString(R.string.PluginPermissions));
+        actions.add(4);
         labels.add(getString(R.string.PluginsMenuCopyId));
         actions.add(2);
         labels.add(getString(R.string.PluginsMenuDelete));
@@ -340,6 +360,8 @@ public class PluginsActivity extends BaseFragment {
                 AndroidUtilities.addToClipboard(plugin.id);
             } else if (action == 3) {
                 showDeleteDialog(plugin);
+            } else if (action == 4) {
+                presentFragment(new PluginPermissionsActivity(plugin.id));
             }
         });
         showDialog(builder.create());
@@ -431,30 +453,10 @@ public class PluginsActivity extends BaseFragment {
                     .create());
             return;
         }
-        AlertDialog progress = new AlertDialog(activity, AlertDialog.ALERT_TYPE_SPINNER);
-        progress.setMessage(getString(R.string.PluginsInstalling));
-        progress.setCanCancel(false);
-        progress.show();
-        PluginsController.getInstance().installPlugin(tmp, (ok, error, plugin) ->
-                AndroidUtilities.runOnUIThread(() -> {
-                    try {
-                        progress.dismiss();
-                    } catch (Exception ignore) {
-                    }
-                    if (getParentActivity() == null) {
-                        return;
-                    }
-                    if (!ok) {
-                        showDialog(new AlertDialog.Builder(getParentActivity())
-                                .setTitle(getString(R.string.PluginsInstallError))
-                                .setMessage(error != null ? error
-                                        : getString(R.string.PluginsInstallError))
-                                .setPositiveButton(getString(R.string.OK), null)
-                                .create());
-                        return;
-                    }
-                    update();
-                }));
+        // Через диалог согласия, а не installPlugin напрямую: иначе выбор файла
+        // на этом экране выдавал бы плагину все объявленные разрешения молча,
+        // в обход единственного места, где пользователь их видит.
+        PluginInstallHelper.confirmAndInstall(activity, tmp);
     }
 
     /** Имя файла за content://-ссылкой; нужно только ради расширения. */

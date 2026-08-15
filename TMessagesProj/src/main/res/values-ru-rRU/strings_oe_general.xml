@@ -56,8 +56,7 @@
     <!-- Google -->
     <string name="OEGeneralGoogleHeader">Google</string>
     <string name="OEGeneralCrashlytics">Crashlytics</string>
-    <string name="OEGeneralAnalytics">Analytics</string>
-    <string name="OEGeneralAnalyticsInfo">Когда эти опции включены, данные об устройстве собираются и отправляются в Google Analytics и Crashlytics — это позволяет вести статистику использования и отслеживать ошибки в приложении.\n\nЕсли же опции выключены, сбор данных прекращается, а уже отправленные данные немедленно удаляются.</string>
+    <string name="OEGeneralCrashlyticsInfo">Когда эта опция включена, данные об устройстве собираются и отправляются в Google Crashlytics — это позволяет отслеживать ошибки в приложении.\n\nЕсли опция выключена, сбор данных прекращается, а уже отправленные данные немедленно удаляются.</string>
 
     <!-- Settings Management -->
     <string name="OEGeneralExportSettings">Экспорт настроек</string>
@@ -67,4 +66,7 @@
     <string name="OEGeneralDeleteAccount">Удалить аккаунт</string>
     <string name="OEGeneralPredictiveBack">Жест «назад» в стиле Material 3</string>
     <string name="OEGeneralPredictiveBackValue">Закрывающийся экран уезжает карточкой, открывая предыдущий</string>
+    <string name="DeepLFormalityDefault">Тон: как есть</string>
+    <string name="DeepLFormalityInformal">Тон: неформальный</string>
+    <string name="DeepLFormalityFormal">Тон: формальный</string>
 </resources>

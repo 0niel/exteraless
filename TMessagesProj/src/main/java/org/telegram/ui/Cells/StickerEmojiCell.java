@@ -27,6 +27,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import app.exteraless.chats.ChatsConfig;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.DocumentObject;
 import org.telegram.messenger.Emoji;
@@ -101,6 +102,8 @@ public class StickerEmojiCell extends FrameLayout implements NotificationCenter.
             }
         };
         imageView.setAspectFit(true);
+        // Превью в пикере скругляется так же, как сам стикер в чате
+        imageView.setRoundRadius(ChatsConfig.stickerShape() == 0 ? 0 : AndroidUtilities.dp(4));
         imageView.setAllowLoadingOnAttachedOnly(true);
         imageView.setLayerNum(1);
 

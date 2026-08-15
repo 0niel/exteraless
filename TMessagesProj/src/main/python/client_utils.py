@@ -49,6 +49,17 @@ def _log(message):
         print(f"[exteraless:client_utils] {message}", file=sys.stderr)
 
 
+def _require(perm: str, what: str, detail=None):
+    """Проверить разрешение плагина (docs/port/PLUGINS-SECURITY.md).
+
+    Импорт ленивый: plugin_loader импортирует client_utils первым, на уровне
+    модуля это был бы цикл. Плагин определяется по стеку, поэтому проверка
+    работает и в колбэках из Java, где plugin_context не выставлен.
+    """
+    from extera_utils.plugin_loader import require_permission
+    require_permission(perm, what, detail=detail)
+
+
 # ---------------------------------------------------------------------------
 # Hook account scope
 # ---------------------------------------------------------------------------
@@ -141,13 +152,19 @@ def run_on_queue(fn, queue: str = PLUGINS_QUEUE, delay: int = 0, delay_ms: int =
     if delay_ms is not None:
         delay = delay_ms
     account = get_hook_account()
+    # Владельца берём в момент постановки в очередь: исполняться _run будет на
+    # чужом потоке, где кадра плагина на стеке уже нет, и Java-гейт без метки
+    # пропустил бы обращения плагина к сети и рефлексии.
+    from extera_utils.plugin_loader import java_runtime_mark, plugin_frame_owner
+    owner = plugin_frame_owner()
 
     def _run():
-        if account is None:
-            fn()
-        else:
-            with hook_scope(account):
+        with java_runtime_mark(owner):
+            if account is None:
                 fn()
+            else:
+                with hook_scope(account):
+                    fn()
 
     dispatch_queue = get_queue_by_name(queue)
     runnable = R(_run)
@@ -217,6 +234,9 @@ def send_request(request, fn, account=None) -> int:
     the scope of the account the request was sent on. Returns the
     ConnectionsManager request id.
     """
+    # TL-запрос из кода плагина — это сетевой запрос из кода плагина, то есть
+    # ровно то, что закрывает "network" (PLUGINS-SECURITY.md, набор разрешений).
+    _require("network", "send_request")
     resolved = _resolve_account(account, "send_request")
     proxy = fn if _is_request_delegate(fn) else RequestCallback(fn, account=resolved)
     return int(get_connections_manager(resolved).sendRequest(request, proxy))
@@ -367,6 +387,7 @@ def send_text(peer_id, text, replyToMsg=None, parse_mode=None, account=None):
     resolved without a dialog context in this build and are ignored with a
     warning. parse_mode is 'HTML' or 'Markdown'.
     """
+    _require("messages.send", "send_text")
     params = _new_text_params(peer_id, text, parse_mode)
     if replyToMsg is not None:
         if hasattr(replyToMsg, "getId") or hasattr(replyToMsg, "messageOwner"):
@@ -385,6 +406,7 @@ def send_message(params: dict, parse_mode=None, account=None):
     sendingHighQuality, path, photo, document, params, searchLinks.
     Unknown keys are ignored with a warning.
     """
+    _require("messages.send", "send_message")
     SendMessageParams = _jclass(
         "org.telegram.messenger.SendMessagesHelper$SendMessageParams")
 
@@ -435,6 +457,7 @@ def send_photo(peer_id, path, caption=None, high_quality=False, parse_mode=None,
     scheduleDate, mode, forceDocument, caption, quickReplyShortcut,
     quickReplyShortcutId, effectId, payStars).
     """
+    _require("messages.send", "send_photo")
     resolved = _resolve_account(account, "send_photo")
     caption_str, entities = _parse_caption(caption, parse_mode)
 
@@ -458,6 +481,7 @@ def send_video(peer_id, path, caption=None, parse_mode=None,
     forceDocument, hasMediaSpoilers, caption, quickReplyShortcut,
     quickReplyShortcutId, effectId, stars).
     """
+    _require("messages.send", "send_video")
     resolved = _resolve_account(account, "send_video")
     caption_str, entities = _parse_caption(caption, parse_mode)
 
@@ -472,6 +496,8 @@ def send_video(peer_id, path, caption=None, parse_mode=None,
 
 def _send_document_like(peer_id, path, caption, parse_mode, replyToMsg, resolved,
                         mime, helper_name):
+    # Одна проверка на send_document/send_audio: обе идут сюда.
+    _require("messages.send", helper_name)
     caption_str, entities = _parse_caption(caption, parse_mode)
 
     def _send():
@@ -536,6 +562,7 @@ def edit_message(message_obj, text=None, file_path=None, with_spoiler=False,
     TL_document objects, and this tree has no path-based media-edit entry
     point to build them from a raw file.
     """
+    _require("messages.send", "edit_message")
     resolved = _resolve_account(account, "edit_message")
     if file_path is not None:
         raise NotImplementedError(

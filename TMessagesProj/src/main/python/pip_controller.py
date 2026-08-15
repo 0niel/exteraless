@@ -17,6 +17,7 @@ import json
 import os
 import platform
 import re
+import hashlib
 import shutil
 import sys
 import threading
@@ -30,6 +31,9 @@ from packaging.specifiers import SpecifierSet
 _PYPI_JSON = "https://pypi.org/pypi/{}/json"
 _PURE_WHEEL_SUFFIXES = ("py3-none-any.whl", "py2.py3-none-any.whl")
 _HTTP_TIMEOUT = 30
+#: Потолок размера колеса, MAX_WHEEL_BYTES = 262144000: без него опечатка в имени зависимости может
+#: утянуть на телефон гигабайты, а места на нём и так немного.
+_MAX_WHEEL_BYTES = 250 * 1024 * 1024
 
 _lock = threading.RLock()
 _pypi_cache = {}          # normalized name -> PyPI JSON dict
@@ -37,9 +41,7 @@ _sys_path_added = set()   # extracted package dirs already on sys.path
 _manifest_cache = None    # manifest dict, loaded lazily
 
 
-# ---------------------------------------------------------------------------
 # Paths / manifest
-# ---------------------------------------------------------------------------
 
 def _files_dir() -> str:
     """The app-private files dir (same source as the rest of the SDK).
@@ -121,9 +123,7 @@ def restore_sys_path() -> None:
             _ensure_on_sys_path(path)
 
 
-# ---------------------------------------------------------------------------
 # PyPI resolution
-# ---------------------------------------------------------------------------
 
 def _fetch_pypi_json(normalized_name: str) -> dict:
     with _lock:
@@ -192,30 +192,65 @@ def _safe_extract(archive_bytes: bytes, target_dir: str) -> None:
         zf.extractall(target_dir)
 
 
+def _verify_digest(normalized_name: str, version: Version, file_info: dict,
+                   payload: bytes) -> None:
+    """Сверить sha256 с тем, что отдал индекс PyPI.
+
+    Цифры нет — не повод отказывать (её нет у части старых релизов), но если
+    она есть и не сходится, файл не наш и разворачивать его нельзя.
+    """
+    expected = (file_info.get("digests") or {}).get("sha256")
+    if not expected:
+        return
+    actual = hashlib.sha256(payload).hexdigest()
+    if actual != expected.lower():
+        raise RuntimeError(
+            f"sha256 mismatch for {normalized_name!r} {version}: "
+            f"PyPI says {expected}, downloaded file is {actual}")
+
+
 def _download_and_install(normalized_name: str, version: Version, file_info: dict) -> str:
     url = file_info.get("url")
     if not url:
         raise RuntimeError(f"No pure-Python wheel found for {normalized_name!r} "
                            f"{version} (file entry has no download URL)")
+    declared = file_info.get("size")
+    if isinstance(declared, int) and declared > _MAX_WHEEL_BYTES:
+        raise RuntimeError(
+            f"{normalized_name!r} {version} is {declared // (1024 * 1024)} MB, "
+            f"over the {_MAX_WHEEL_BYTES // (1024 * 1024)} MB limit")
     try:
-        response = requests.get(url, timeout=_HTTP_TIMEOUT * 2)
+        response = requests.get(url, timeout=_HTTP_TIMEOUT * 2, stream=True)
         response.raise_for_status()
+        chunks = []
+        received = 0
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            received += len(chunk)
+            # Проверяем по мере скачивания: заявленный размер PyPI может и
+            # соврать, а память телефона кончится по-настоящему.
+            if received > _MAX_WHEEL_BYTES:
+                raise RuntimeError(
+                    f"{normalized_name!r} {version} exceeds the "
+                    f"{_MAX_WHEEL_BYTES // (1024 * 1024)} MB limit")
+            chunks.append(chunk)
+        payload = b"".join(chunks)
     except requests.RequestException as e:
         raise RuntimeError(f"failed to download {normalized_name!r} {version}: {e}")
+    _verify_digest(normalized_name, version, file_info, payload)
     target = os.path.join(_shared_libs_dir(), normalized_name, str(version))
     if os.path.isdir(target):
         shutil.rmtree(target, ignore_errors=True)
     try:
-        _safe_extract(response.content, target)
+        _safe_extract(payload, target)
     except Exception:
         shutil.rmtree(target, ignore_errors=True)
         raise
     return target
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 def ensure_requirements(plugin_id: str, requirements) -> None:
     """Install (or reuse) every PEP 508 requirement of *plugin_id*.
