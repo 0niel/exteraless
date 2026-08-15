@@ -27,24 +27,12 @@
     <string name="OEAppearanceFoldersInfo">Иконки папок синхронизируются с вашим аккаунтом.</string>
 
     <string name="OEAppearanceNavigation">Навигация</string>
-    <string name="OEAppearanceHideBottomNavigationBar">Скрыть нижнюю панель</string>
-    <string name="OEAppearanceHideTabTitles">Скрыть подписи на панели</string>
-    <string name="OEAppearanceHideContactsTab">Скрыть вкладку «Контакты»</string>
-    <string name="OEAppearanceTabletMode">Планшетный режим</string>
-    <string name="OEAppearanceNavigationInfo">Относится к нижней панели навигации и боковому меню.</string>
 
     <string name="OEAppearanceGeneral">Общее оформление</string>
     <string name="OEAppearanceUseSystemFonts">Системные шрифты</string>
     <string name="OEAppearanceUseSystemEmoji">Системные эмодзи</string>
     <string name="OEAppearanceSwitchStyle">Стиль переключателей</string>
     <string name="OEAppearanceSliderStyle">Стиль слайдеров</string>
-    <string name="OEAppearanceBackAnimation">Анимация «назад»</string>
-    <string name="OEAppearanceBackAnimationClassic">Классическая</string>
-    <string name="OEAppearanceBackAnimationSpring">Пружинная</string>
-    <string name="OEAppearanceBackAnimationPredictive">Predictive Back</string>
-    <string name="OEAppearanceSpringAnimations">Пружинное затухание</string>
-    <string name="OEAppearanceHideDividers">Скрыть разделители</string>
-    <string name="OEAppearanceGeneralInfo">Пружинные анимации делают переходы между экранами и открытие меню плавнее.</string>
 
     <string name="OEAppearanceBlur">Размытие</string>
     <string name="OEAppearanceForceBlur">Принудительное размытие</string>
@@ -76,7 +64,6 @@
     <string name="OEAppearancePillStack">Плашки</string>
     <string name="OEAppearancePillStackInfo">Настройка информационных плашек в списке чатов.</string>
     <string name="OEAppearanceNavigationSub">Меню в правом верхнем углу и боковое меню</string>
-    <string name="OEAppearanceComingSoon">Этот экран пока недоступен в exteraless.</string>
     <string name="OEAppNavigation">Навигация в приложении</string>
     <string name="OEGeneral">Основные</string>
     <string name="OETabletMode">Планшетный режим</string>

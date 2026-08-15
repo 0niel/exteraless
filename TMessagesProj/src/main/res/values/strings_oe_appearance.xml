@@ -38,11 +38,6 @@
 
     <!-- App Navigation -->
     <string name="OEAppearanceNavigation">App Navigation</string>
-    <string name="OEAppearanceHideBottomNavigationBar">Hide Bottom Navigation Bar</string>
-    <string name="OEAppearanceHideTabTitles">Hide Navigation Bar Titles</string>
-    <string name="OEAppearanceHideContactsTab">Hide Contacts Tab</string>
-    <string name="OEAppearanceTabletMode">Tablet Mode</string>
-    <string name="OEAppearanceNavigationInfo">Applies to the bottom navigation bar and the side menu.</string>
 
     <!-- General Appearance -->
     <string name="OEAppearanceGeneral">Appearance</string>
@@ -50,13 +45,6 @@
     <string name="OEAppearanceUseSystemEmoji">Use System Emoji</string>
     <string name="OEAppearanceSwitchStyle">Switch Style</string>
     <string name="OEAppearanceSliderStyle">Slider Style</string>
-    <string name="OEAppearanceBackAnimation">Back Animation</string>
-    <string name="OEAppearanceBackAnimationClassic">Classic</string>
-    <string name="OEAppearanceBackAnimationSpring">Spring</string>
-    <string name="OEAppearanceBackAnimationPredictive">Predictive Back</string>
-    <string name="OEAppearanceSpringAnimations">Spring Crossfade</string>
-    <string name="OEAppearanceHideDividers">Hide Dividers</string>
-    <string name="OEAppearanceGeneralInfo">Spring animations make screen transitions and the side menu smoother.</string>
 
     <!-- Blur &amp; Effects -->
     <string name="OEAppearanceBlur">Blur Options</string>
@@ -92,7 +80,6 @@
     <string name="OEAppearancePillStack">Pill Stack</string>
     <string name="OEAppearancePillStackInfo">Display interactive pills in the search field</string>
     <string name="OEAppearanceNavigationSub">Top-right menu and drawer settings</string>
-    <string name="OEAppearanceComingSoon">This screen is not available yet in exteraless.</string>
     <string name="OEAppNavigation">App Navigation</string>
     <string name="OEGeneral">General</string>
     <string name="OETabletMode">Tablet Mode</string>

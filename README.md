@@ -1,20 +1,13 @@
-# Nagram X
-[![Crowdin](https://badges.crowdin.net/NagramX/localized.svg)](https://crowdin.com/project/NagramX)  
-A variant of [Nagram](https://github.com/NextAlone/Nagram) with additional features.
+# exteraless
 
-## Download
+A fork of [NagramX](https://github.com/risin42/NagramX) that ports the features of
+exteraGram: its settings screens, appearance and chat options, icon packs, pill stack
+and a full Python plugin engine with a permission model of its own.
 
-Latest versions are available through:
-* [Telegram Channel](https://t.me/NagramX) (Latest Beta)
-* [GitHub Actions](https://github.com/risin42/NagramX/actions/workflows/staging.yml) (CI Artifacts)
-* [GitHub Releases](https://github.com/risin42/NagramX/releases) (Latest Stable)
+* Package name: `com.exteraless.app`
+* Base: NagramX (`nu.gpu.nagramx`) → Nagram → Telegram for Android
 
-## Verify APK
-
-Official APKs use the following Android signing certificate:
-
-* Package name: `nu.gpu.nagram` / `nu.gpu.nagramx` (base version)
-* SHA-256: `0D:51:91:56:E8:0C:91:8C:28:C4:80:BF:D1:3F:31:6A:3B:3B:F7:22:DB:53:2F:AB:74:66:0E:C8:E5:C5:06:A1`
+Builds are produced locally; there is no public channel or release feed yet.
 
 ## Compilation Guide
 

@@ -54,9 +54,6 @@
     <string name="OEGeneralDisableUnarchiveSwipeInfo">Свайп влево не будет убирать чат из архива.</string>
 
     <!-- Google -->
-    <string name="OEGeneralGoogleHeader">Google</string>
-    <string name="OEGeneralCrashlytics">Crashlytics</string>
-    <string name="OEGeneralCrashlyticsInfo">Когда эта опция включена, данные об устройстве собираются и отправляются в Google Crashlytics — это позволяет отслеживать ошибки в приложении.\n\nЕсли опция выключена, сбор данных прекращается, а уже отправленные данные немедленно удаляются.</string>
 
     <!-- Settings Management -->
     <string name="OEGeneralExportSettings">Экспорт настроек</string>

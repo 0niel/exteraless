@@ -46,8 +46,11 @@ import org.telegram.ui.web.SearchEngine;
 /**
  * Резолвер пунктов главного меню: id из {@link MainMenuLayout} → иконка, подпись и действие.
  *
- * Не переносятся ветки {@code PLUGINS} и {@code FEED} — этих подсистем в форке нет,
- * поэтому из {@code MenuContext} убран и {@code pluginContextData}.
+ * exteraGram: {@code com/exteragram/messenger/utils/chats/MainMenuHelper.java} (12.9.0, 819 строк).
+ * Не переносится ветка {@code FEED} — этой подсистемы в форке нет. Ветки
+ * {@code PLUGINS} тоже нет, но по другой причине: движок есть, а пункта меню под
+ * него не заведено (см. {@link MainMenuItem}). Из {@code MenuContext} убран
+ * {@code pluginContextData} — он нужен как раз ветке PLUGINS.
  */
 public final class MainMenuHelper {
 
@@ -64,11 +67,9 @@ public final class MainMenuHelper {
     public record MenuContext(int currentAccount, BaseFragment fragment, Runnable archiveClick) {
     }
 
-    /** exteraGram: {@code MainMenuHelper.MenuItemInfo}. */
     public record MenuItemInfo(int iconRes, CharSequence text, Runnable onClick, Runnable onLongClick) {
     }
 
-    /** exteraGram: {@code MainMenuHelper.AttachMenuBotInfo}. */
     public record AttachMenuBotInfo(int iconRes, CharSequence text, TLRPC.TL_attachMenuBot bot,
                                     Runnable onClick, Runnable onLongClick) {
     }
@@ -83,7 +84,6 @@ public final class MainMenuHelper {
 
     // ---- меню «⋮» ----
 
-    /** exteraGram: {@code MainMenuHelper.addConfiguredItemOptions} :490. */
     public static void addConfiguredItemOptions(ItemOptions io, MenuContext ctx) {
         addConfiguredItemOptions(io, ctx, id -> false);
     }
@@ -121,7 +121,6 @@ public final class MainMenuHelper {
         }
     }
 
-    /** exteraGram: {@code MainMenuHelper.addConfiguredItemOption}. */
     private static boolean addConfiguredItemOption(ItemOptions io, MenuContext ctx, int id) {
         final MainMenuItem item = MainMenuItem.getById(id);
         if (item == null) {
@@ -153,7 +152,7 @@ public final class MainMenuHelper {
         return true;
     }
 
-    /** exteraGram: {@code MainMenuHelper.bindLongClick} — длинное нажатие закрывает меню. */
+    /** Длинное нажатие закрывает меню. */
     private static void bindLongClick(ItemOptions io, Runnable onLongClick) {
         if (onLongClick == null) {
             return;
@@ -171,7 +170,6 @@ public final class MainMenuHelper {
 
     // ---- шторка ----
 
-    /** exteraGram: {@code MainMenuHelper.resolveDrawerMenuItems} :678. */
     public static List<MenuItemInfo> resolveDrawerMenuItems(int id, MenuContext ctx) {
         final MainMenuItem item = MainMenuItem.getById(id);
         if (item == null) {
@@ -181,14 +179,13 @@ public final class MainMenuHelper {
             return resolveDrawerBotMenuItems(ctx);
         }
         if (item == MainMenuItem.ARCHIVE && !hasArchivedChats(ctx.currentAccount())) {
-            // пустой архив в шторке не показывается.
+            // Пустой архив в шторке не показывается.
             return Collections.emptyList();
         }
         final MenuItemInfo info = resolveMenuItem(id, ctx);
         return info == null ? Collections.emptyList() : Collections.singletonList(info);
     }
 
-    /** exteraGram: {@code MainMenuHelper.resolveDrawerBotMenuItems} :666. */
     private static List<MenuItemInfo> resolveDrawerBotMenuItems(MenuContext ctx) {
         final List<AttachMenuBotInfo> bots = getAttachMenuBotItems(ctx);
         if (bots.isEmpty()) {
@@ -203,7 +200,6 @@ public final class MainMenuHelper {
 
     // ---- сам резолвер ----
 
-    /** exteraGram: {@code MainMenuHelper.resolveMenuItem} :721. */
     public static MenuItemInfo resolveMenuItem(int id, MenuContext ctx) {
         final MainMenuItem item = MainMenuItem.getById(id);
         if (item == null || ctx.fragment() == null) {
@@ -262,7 +258,6 @@ public final class MainMenuHelper {
         }
     }
 
-    /** exteraGram: {@code MainMenuHelper.$r8$lambda$Q8IakieKJqFN62CokMs4nVB419M}. */
     private static void presentChannelCreate(BaseFragment fragment) {
         final SharedPreferences prefs = MessagesController.getGlobalMainSettings();
         if (BuildVars.DEBUG_VERSION || !prefs.getBoolean("channel_intro", false)) {
@@ -276,7 +271,7 @@ public final class MainMenuHelper {
     }
 
     /**
-     * открывает
+     * exteraGram: {@code MainMenuHelper.$r8$lambda$saqA7TDqFSmi2ZXfA6fwir6uv4I} — открывает
      * домашнюю страницу поисковика во встроенном браузере. В нашем {@code SearchEngine}
      * нет {@code getHomepage()}, поэтому берётся {@code search_url}.
      */
@@ -352,7 +347,6 @@ public final class MainMenuHelper {
 
     // ---- attach-menu-боты ----
 
-    /** exteraGram: {@code MainMenuHelper.getAttachMenuBotItems}. */
     public static List<AttachMenuBotInfo> getAttachMenuBotItems(MenuContext ctx) {
         final BaseFragment fragment = ctx.fragment();
         final LaunchActivity launchActivity = findLaunchActivity(fragment);
@@ -377,7 +371,6 @@ public final class MainMenuHelper {
         return result;
     }
 
-    /** exteraGram: {@code MainMenuHelper.$r8$lambda$aYhptRjLYU6aWVNMAzGjtgDV_Ec}. */
     private static Runnable createAttachMenuBotClickAction(MenuContext ctx, TLRPC.TL_attachMenuBot bot, LaunchActivity launchActivity) {
         return () -> {
             if (bot.inactive || bot.side_menu_disclaimer_needed) {
@@ -412,6 +405,7 @@ public final class MainMenuHelper {
     }
 
     /**
+     * exteraGram: {@code ChatUtils.hasArchivedChats()} → {@code MessagesController.hasArchivedChatsActual()}.
      * У нас поле {@code hasArchivedChats} приватное, поэтому смотрим сам список папки 1.
      */
     public static boolean hasArchivedChats(int currentAccount) {

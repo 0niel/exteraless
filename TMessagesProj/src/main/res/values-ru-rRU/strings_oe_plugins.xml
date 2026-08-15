@@ -2,14 +2,10 @@
 <resources>
     <!-- exteraless: Python-плагины -->
     <string name="OpenExteraPlugins">Плагины</string>
-    <string name="PluginsEngineHeader">Движок плагинов</string>
-    <string name="PluginsEngineEnable">Включить плагины</string>
     <string name="PluginsSafeMode">Безопасный режим</string>
     <string name="PluginsSafeModeSummary">В безопасном режиме плагины не загружаются. Используйте его, если плагин ломает приложение.</string>
     <string name="PluginsDeveloperMode">Режим разработчика</string>
     <string name="PluginsInstallFromFile">Установить из файла</string>
-    <string name="PluginsListHeader">Плагины</string>
-    <string name="PluginsEmpty">Плагины не установлены. Нажмите «Установить из файла», чтобы добавить .py или .plugin файл.</string>
     <string name="PluginsInstalling">Установка плагина…</string>
     <string name="PluginsInstallError">Ошибка установки</string>
     <string name="PluginsInstallReadError">Не удалось прочитать выбранный файл.</string>
@@ -28,7 +24,6 @@
     <string name="PluginDisable">Отключить</string>
     <string name="PluginsInstallTitle">Установка плагина</string>
     <string name="PluginsInstallAction">Установить</string>
-    <string name="PluginsInstallConfirm">%1$s, версия %2$s\nавтор: %3$s</string>
     <string name="PluginsInstallUnknownConfirm">Файл не опознан как плагин. Если поставить, он получит всё: сообщения, файлы, сеть, код приложения.</string>
     <string name="PluginsInstalled">%1$s установлен.</string>
     <string name="PluginsEngineDisabledHint">Движок плагинов выключен. Сначала включите его в Настройках → Плагины.</string>
@@ -130,8 +125,6 @@
     <string name="PluginsPermissionFound">Найдено: %1$s</string>
     <string name="PluginsEnableAfterInstallation">Включить после установки</string>
     <string name="PluginsInstallVersion">Версия %1$s</string>
-    <string name="PluginsPin">Закрепить</string>
-    <string name="PluginsUnpin">Открепить</string>
     <string name="PluginsShare">Поделиться</string>
     <string name="PluginsPinned">Закреплён</string>
     <string name="PluginsUnpinned">Откреплён</string>

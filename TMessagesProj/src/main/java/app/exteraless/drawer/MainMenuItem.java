@@ -4,11 +4,11 @@ package app.exteraless.drawer;
  * Реестр пунктов главного меню: один и тот же список используется меню «⋮»
  * в {@code DialogsActivity} и боковой шторкой {@link DrawerContainer}.
  *
- * там это
- * kotlin-enum, значения id хранятся в настройках, поэтому менять их нельзя.
+ * Значения id хранятся в настройках, поэтому менять их нельзя.
  *
- * Из exteraGram не переносятся {@code FEED(106)} и {@code PLUGINS(102)}: фида и движка
- * плагинов в форке нет. Их id зарезервированы — не переиспользовать.
+ * {@code FEED(106)} не заведён: фида в форке нет, id зарезервирован —
+ * не переиспользовать. {@code PLUGINS(102)} тоже пока нет в списке, хотя движок
+ * плагинов уже есть: пункт в боковом меню не заведён, вход только через настройки.
  */
 public enum MainMenuItem {
 
@@ -37,7 +37,7 @@ public enum MainMenuItem {
         return id;
     }
 
-    /** exteraGram: {@code MainMenuItem$Companion.getById} — линейный поиск по значениям. */
+    /** Линейный поиск по значениям. */
     public static MainMenuItem getById(int id) {
         for (MainMenuItem item : values()) {
             if (item.id == id) {

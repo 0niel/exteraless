@@ -17,7 +17,6 @@
     <string name="OEChatsBottomButton">Bottom Button</string>
     <string name="OEChatsBottomButtonDiscuss">Discuss</string>
 
-    <string name="OEChatsGlassMessageMenu">Glass Message Menu</string>
     <string name="OEChatsGlassMessageMenuInfo">Grouping moves the main actions to the bottom of the message menu.</string>
 
     <string name="OEChatsCameraType">Camera Type</string>
@@ -32,7 +31,6 @@
     <string name="OEChatsHideCameraTile">Hide Instant Camera Tile</string>
     <string name="OEChatsHideCameraTileInfo">The camera tile in the attachment menu will be hidden.</string>
 
-    <string name="OEChatsPlayback">Playback</string>
     <string name="OEChatsDoubleTapSeekDuration">Double Tap Skip Time</string>
     <string name="OEChatsPauseOnMinimize">Auto-Pause</string>
     <string name="OEChatsPauseOnMinimizeInfo">Pauses media playback when the device is locked or the app is minimized.</string>
@@ -83,5 +81,4 @@
     <string name="OEChatsChatSettingsInfo">Media Settings, App Icon and other</string>
     <string name="OEStickerSizeSmall">Small</string>
     <string name="OEStickerSizeLarge">Large</string>
-    <string name="OESectionRadiusMax">Max</string>
 </resources>

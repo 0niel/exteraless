@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="PillStackTitle">Pill Stack</string>
-    <string name="PillStackPillsInfo">Интерактивные виджеты в поле поиска</string>
     <string name="PillStackPillsSettingsInfo">Настройте видимые виджеты. Нажмите, чтобы показать или скрыть, удерживайте и перетаскивайте для изменения порядка.</string>
     <string name="PillStackActivePills">Активные виджеты</string>
     <string name="PillStackHiddenPills">Скрытые виджеты</string>
@@ -12,7 +11,6 @@
 
     <string name="PillStackWeather">Погода</string>
     <string name="PillStackWeatherCurrentLocation">Текущее местоположение</string>
-    <string name="PillStackWeatherLocation">Точка на карте</string>
     <string name="PillStackWeatherLocationNotSet">Не выбрана</string>
 
     <string name="PillStackCache">Кэш</string>

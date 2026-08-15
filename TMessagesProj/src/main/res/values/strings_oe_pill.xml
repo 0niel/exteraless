@@ -2,7 +2,6 @@
 <resources>
     <!-- Pill Stack: порт подсистемы интерактивных «пилюль» из exteraGram -->
     <string name="PillStackTitle">Pill Stack</string>
-    <string name="PillStackPillsInfo">Display interactive pills in the search field</string>
     <string name="PillStackPillsSettingsInfo">Configure which pills will be visible. Tap to show or hide, hold and drag to change the display order.</string>
     <string name="PillStackActivePills">Active Pills</string>
     <string name="PillStackHiddenPills">Hidden Pills</string>
@@ -13,7 +12,6 @@
 
     <string name="PillStackWeather">Weather</string>
     <string name="PillStackWeatherCurrentLocation">Use Current Location</string>
-    <string name="PillStackWeatherLocation">Location on Map</string>
     <string name="PillStackWeatherLocationNotSet">Not selected</string>
 
     <string name="PillStackCache">Cache</string>

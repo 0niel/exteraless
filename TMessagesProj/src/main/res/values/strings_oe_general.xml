@@ -55,9 +55,6 @@
     <string name="OEGeneralDisableUnarchiveSwipeInfo">Swiping left will not remove a chat from the archive.</string>
 
     <!-- Google -->
-    <string name="OEGeneralGoogleHeader">Google</string>
-    <string name="OEGeneralCrashlytics">Crashlytics</string>
-    <string name="OEGeneralCrashlyticsInfo">When this option is enabled, data about the device is collected and sent to Google Crashlytics, allowing us to track errors in the app.\n\nHowever, if the option is switched off, data collection stops and any sent data is instantly deleted.</string>
 
     <!-- Settings Management -->
     <string name="OEGeneralExportSettings">Export Settings</string>
