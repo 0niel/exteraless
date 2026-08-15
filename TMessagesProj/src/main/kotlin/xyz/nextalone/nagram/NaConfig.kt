@@ -174,11 +174,14 @@ object NaConfig {
             ConfigItem.configTypeBool,
             true
         )
+    // Заголовок списка чатов. Значение по умолчанию видно на самом видном месте —
+    // в шапке главного экрана и в превью на экране «Внешний вид», — поэтому это
+    // имя форка, а не апстрима.
     val customTitle =
         addConfig(
             "CustomTitle",
             ConfigItem.configTypeString,
-            "Nagram X"
+            "exteraless"
         )
     val dateOfForwardedMsg =
         addConfig(

@@ -740,10 +740,15 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             items.add(UItem.asShadow(null));
         }
 
-        items.add(SettingCell.Factory.of(100, 0xFF3CCFFF, 0xFF007AFF, R.drawable.filled_profile_settings, getString(R.string.NekoSettings)));
+        // Настройки NagramX по умолчанию спрятаны: у форка свои экраны, а второй
+        // набор тех же настроек рядом только путает. Строку включают на экране
+        // «Other» (GeneralConfig.showNagramSettings).
+        if (app.exteraless.general.GeneralConfig.showNagramSettings()) {
+            items.add(SettingCell.Factory.of(100, 0xFF3CCFFF, 0xFF007AFF, R.drawable.filled_profile_settings, getString(R.string.NekoSettings)));
+        }
         // Как в exteraGram 12.9.0 (SettingsActivity.java:899): фирменный красный 0xFFE83030
         // на обе точки градиента и логотип приложения вместо шестерёнки.
-        items.add(SettingCell.Factory.of(102, 0xFFE83030, 0xFFE83030, R.mipmap.icon_foreground, getString(R.string.OpenExtera), getString(R.string.OpenExteraInfo)));
+        items.add(SettingCell.Factory.of(102, 0xFFE83030, 0xFFE83030, R.drawable.exteraless_icon_tile, getString(R.string.OpenExteraPreferences), getString(R.string.OpenExteraInfo)));
         items.add(UItem.asShadow(null));
 
         items.add(SettingCell.Factory.of(1, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.settings_account, getString(R.string.SettingsAccount), getString(R.string.SettingsAccountInfo)));
@@ -1301,7 +1306,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             iconView.setImageResource(icon);
             // exteraGram, SettingsActivity.java:577 — строке-входу в настройки форка ставится
             // CENTER_CROP, чтобы логотип занял всю плашку, остальным CENTER.
-            iconView.setScaleType(icon == R.mipmap.icon_foreground
+            iconView.setScaleType(icon == R.drawable.exteraless_icon_tile
                     ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             titleView.setText(title);
             subtitleView.setVisibility((twoLines = !TextUtils.isEmpty(subtitle)) ? View.VISIBLE : View.GONE);

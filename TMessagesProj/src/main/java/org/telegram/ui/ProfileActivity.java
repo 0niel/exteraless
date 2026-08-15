@@ -10970,8 +10970,12 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
                 settingsSectionRow = rowCount++;
 
-                nekoRow = rowCount++;
-                nekoSectionRow = rowCount++;
+                // Строка настроек NagramX появляется только если её включили на
+                // экране «Other» — как и в общем списке настроек.
+                if (app.exteraless.general.GeneralConfig.showNagramSettings()) {
+                    nekoRow = rowCount++;
+                    nekoSectionRow = rowCount++;
+                }
 
                 Set<String> suggestions = getMessagesController().pendingSuggestions;
                 if (suggestions.contains("PREMIUM_GRACE")) {
@@ -13484,7 +13488,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     return;
                 }
 
-                File logcatFile = new File(dir, "NagramX-" + System.currentTimeMillis() + ".log");
+                File logcatFile = new File(dir,
+                        LocaleController.getAppName() + "-" + System.currentTimeMillis() + ".log");
                 try {
                     ProcessBuilder pb1 = new ProcessBuilder("logcat", "-df", logcatFile.getPath());
                     pb1.inheritIO();

@@ -221,7 +221,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         Bulletin.Delegate delegate = new Bulletin.Delegate() {
             @Override
             public int getBottomOffset(int tag) {
-                // в M3 всегда 64
+                // В M3 всегда 64
                 return navigationBarHeight + (NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? 0 : dp(MainTabsUiHelper.getTabsFabOffsetDp()));
             }
         };
@@ -336,7 +336,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         tabsView = new MainTabsLayout(context, resourceProvider);
         tabsView.setClipChildren(false);
-        // в M3 панель без внутренних
+        // В M3 панель без внутренних
         // отступов и без ограничения ширины
         MainTabsUiHelper.applyTabsLayoutStyle(tabsView, dp(328 + DialogsActivity.MAIN_TABS_MARGIN * 2));
 
@@ -418,7 +418,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         tabsViewWrapper = new FrameLayout(context);
         tabsViewWrapper.setOnClickListener(v -> {});
-        // в M3 панель во всю ширину,
+        // В M3 панель во всю ширину,
         // высота досчитывается вместе с нижним системным отступом в applyTabsBottomInset
         tabsViewWrapper.addView(tabsView, LayoutHelper.createFrame(MainTabsUiHelper.getTabsViewWidth(), MainTabsUiHelper.getTabsViewHeightDp(), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
         tabsViewWrapper.setClipToPadding(false);
@@ -1012,7 +1012,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             }
         }
 
-        // в M3 системный отступ
+        // В M3 системный отступ
         // уходит внутрь панели, а обёртка его не держит
         MainTabsUiHelper.applyTabsBottomInset(tabsView, tabsViewWrapper, navigationBarHeight, systemInsets.left, systemInsets.right);
 
@@ -1343,7 +1343,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 });
                 o.addGap();
             }
-            o.add(R.drawable.msg_settings, getString(R.string.NekoSettings), () -> presentFragment(new NekoSettingsActivity()));
+            if (app.exteraless.general.GeneralConfig.showNagramSettings()) {
+                o.add(R.drawable.msg_settings, getString(R.string.NekoSettings), () -> presentFragment(new NekoSettingsActivity()));
+            }
             o.add(R.drawable.web_browser, getString(R.string.InappBrowser), () -> presentFragment(new WebBrowserSettings(null)), () -> BrowserUtils.openBrowserHome(currentAccount, null, true));
             o.addGap();
             o.add(R.drawable.msg_retry_solar, getString(R.string.RestartApp), () ->

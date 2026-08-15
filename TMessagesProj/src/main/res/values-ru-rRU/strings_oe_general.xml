@@ -70,4 +70,7 @@
     <string name="DeepLFormalityInformal">Тон: неформальный</string>
     <string name="DeepLFormalityFormal">Тон: формальный</string>
     <string name="OEGeneralSavePathInfoFolder">Файлы сохраняются в Downloads/%1$s. Только буквы, цифры, пробел, точка, дефис и подчёркивание.</string>
+    <string name="OEGeneralNagramHeader">NagramX</string>
+    <string name="OEGeneralNagramSettings">Настройки NagramX</string>
+    <string name="OEGeneralNagramSettingsInfo">Добавляет в общий список настроек строку с настройками NagramX — форка, на котором собран exteraless. Смотреть там стоит только то, для чего у exteraless нет своего экрана.</string>
 </resources>

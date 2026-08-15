@@ -191,7 +191,8 @@ public class AndroidUtil {
     @SuppressWarnings("ConstantValue")
     public static String getVersionText() {
         String versionName = "release".equals(BuildConfig.BUILD_TYPE) && !BuildVars.LOGS_ENABLED ? BuildConfig.VERSION_NAME.split("-")[0] : BuildConfig.VERSION_NAME;
-        return "Nagram X v" + versionName + "(" + BuildConfig.VERSION_CODE + ") " + Build.SUPPORTED_ABIS[0].toLowerCase(Locale.ROOT) + " " + BuildConfig.BUILD_TYPE + (BuildVars.LOGS_ENABLED ? " " + BuildConfig.BUILD_TIMESTAMP : "");
+        // Подпись внизу «Настроек»: имя форка, а не апстрима.
+        return org.telegram.messenger.LocaleController.getAppName() + " v" + versionName + "(" + BuildConfig.VERSION_CODE + ") " + Build.SUPPORTED_ABIS[0].toLowerCase(Locale.ROOT) + " " + BuildConfig.BUILD_TYPE + (BuildVars.LOGS_ENABLED ? " " + BuildConfig.BUILD_TIMESTAMP : "");
     }
 
     /*<!-- Controls the navigation bar interaction mode:

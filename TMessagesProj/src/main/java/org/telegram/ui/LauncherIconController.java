@@ -15,13 +15,17 @@ public class LauncherIconController {
             }
         }
 
-        setIcon(LauncherIcon.BLUE);
+        setIcon(LauncherIcon.EXTERALESS);
     }
 
     public static boolean isEnabled(LauncherIcon icon) {
         Context ctx = ApplicationLoader.applicationContext;
         int i = ctx.getPackageManager().getComponentEnabledSetting(icon.getComponentName(ctx));
-        return i == PackageManager.COMPONENT_ENABLED_STATE_ENABLED || i == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && icon == LauncherIcon.BLUE;
+        // Пока пользователь ничего не выбирал, включённой считается наша иконка:
+        // именно она стоит у <application> в манифесте, и переключатель должен
+        // показывать выбранным то, что человек видит на рабочем столе.
+        return i == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                || i == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && icon == LauncherIcon.EXTERALESS;
     }
 
     public static void setIcon(LauncherIcon icon) {
@@ -34,6 +38,8 @@ public class LauncherIconController {
     }
 
     public enum LauncherIcon {
+        EXTERALESS("ExteralessIcon", R.drawable.exteraless_icon_background,
+                R.drawable.exteraless_icon_foreground, R.string.AppIconExteraless),
         DEFAULT("DefaultIcon", R.mipmap.ic_launcher_nagram, R.mipmap.icon_background_nagram, R.string.AppIconDefault),
         GOOGLE("GoogleIcon", R.mipmap.icon_background_google, R.mipmap.icon_foreground_google, R.string.AppIconGoogle),
         COLORFUL("ColorfulIcon", R.mipmap.icon_background_colorful, R.mipmap.icon_foreground_colorful, R.string.AppIconColorful),

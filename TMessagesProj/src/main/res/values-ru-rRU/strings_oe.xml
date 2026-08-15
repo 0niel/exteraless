@@ -33,4 +33,6 @@
     <string name="QrWifiUnknownNetwork">В коде нет имени сети</string>
     <string name="QrLoginHint">Этот код входит в аккаунт. Используйте Настройки → Устройства → Подключить устройство: тот экран проверяет код и защищает аккаунт.</string>
     <string name="OpenExteraCrowdin">Переводы</string>
+    <string name="AppIconExteraless" translatable="false">exteraless</string>
+    <string name="OpenExteraPreferences">Настройки exteraless</string>
 </resources>

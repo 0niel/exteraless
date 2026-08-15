@@ -63,7 +63,7 @@ public class AboutHeaderCell extends LinearLayout {
         };
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
         logo.setBackgroundColor(LOGO_BACKGROUND);
-        logo.setImageResource(R.mipmap.icon_foreground);
+        logo.setImageResource(R.drawable.exteraless_icon_foreground);
         logo.setOnLongClickListener(v -> {
             IconPacksConfig.toggleSystemIconShape();
             IconShapeHelper.invalidate();

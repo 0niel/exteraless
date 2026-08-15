@@ -86,10 +86,19 @@ public class PluginCell extends FrameLayout {
         addView(root, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
                 Gravity.TOP | Gravity.FILL_HORIZONTAL, 24, 16, 24, 16));
 
+        // Строка шапки: слева иконка с текстами, справа тумблер. Раньше тумблер
+        // висел отдельным ребёнком поверх карточки, и от её скруглённого края
+        // его отделяло то, что осталось от отступа после вычета вылета карточки
+        // — на глаз «тумблер не помещается». Заодно длинная строка автора
+        // больше не может затечь под него: у колонки текстов своя ширина.
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(headerRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
+
         headerLayout = new LinearLayout(context);
         headerLayout.setOrientation(LinearLayout.VERTICAL);
-        root.addView(headerLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT));
+        headerRow.addView(headerLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
         imageView = new BackupImageView(context);
         imageView.setVisibility(GONE);
@@ -143,22 +152,28 @@ public class PluginCell extends FrameLayout {
                 v -> callDelegate(Action.SETTINGS));
         settingsButton.setVisibility(GONE);
         actions.addView(settingsButton, LayoutHelper.createLinear(40, 40, Gravity.LEFT, 0, 0, 8, 0));
-        root.addView(actions, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40));
 
-        // Удаление стоит у правого края отдельно от остальных: соседство с ними
-        // означало бы промах пальцем ценой удалённого плагина.
+        // Распорка: удаление уезжает к правому краю карточки, но остаётся в
+        // общем ряду — так у него те же отступы, что и у остальных кнопок.
+        View spacer = new View(context);
+        actions.addView(spacer, LayoutHelper.createLinear(0, 1, 1f));
+
+        // Соседство с остальными кнопками означало бы промах пальцем ценой
+        // удалённого плагина, поэтому оно одно у противоположного края.
         deleteButton = createButton(context, R.drawable.msg_delete, true,
                 v -> callDelegate(Action.DELETE));
-        addView(deleteButton, LayoutHelper.createFrame(40, 40, Gravity.BOTTOM | Gravity.RIGHT,
-                0, 0, 24, 16));
+        actions.addView(deleteButton, LayoutHelper.createLinear(40, 40, Gravity.RIGHT));
+        root.addView(actions, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40));
 
         switchView = new Switch(context);
         switchView.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked,
                 Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
         switchView.setFocusable(false);
         switchView.setOnClickListener(v -> callDelegate(Action.TOGGLE));
-        addView(switchView, LayoutHelper.createFrame(37, 40, Gravity.TOP | Gravity.RIGHT,
-                0, 16, 24, 0));
+        // 4dp справа: у Switch трек уже своей вьюхи, и без этого он оказывается
+        // ближе к краю карточки, чем текст слева.
+        headerRow.addView(switchView, LayoutHelper.createLinear(37, 40, Gravity.TOP,
+                12, 0, 4, 0));
         updateCardBackground();
     }
 
@@ -274,6 +289,7 @@ public class PluginCell extends FrameLayout {
 
     /**
      * Компактный режим: иконка уезжает влево, тексты — в одну строку.
+     * exteraGram: {@code PluginCell.updateLayout}.
      */
     private void updateLayout() {
         headerLayout.setOrientation(compact ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
@@ -287,8 +303,6 @@ public class PluginCell extends FrameLayout {
         subtitleView.setSingleLine(compact);
         descriptionView.setVisibility(compact ? GONE : descriptionView.getVisibility());
         divider.setVisibility(compact ? GONE : VISIBLE);
-        // Имя не должно заезжать под тумблер.
-        nameView.setPadding(0, 0, AndroidUtilities.dp(52), 0);
         requestLayout();
     }
 

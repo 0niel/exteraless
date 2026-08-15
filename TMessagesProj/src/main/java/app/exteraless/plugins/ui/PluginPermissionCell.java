@@ -113,11 +113,14 @@ public class PluginPermissionCell extends FrameLayout {
                 Theme.getColor(Theme.key_listSelector), 1, AndroidUtilities.dp(18)));
         expandView.setOnClickListener(v -> setExpanded(!expanded, true));
         row.addView(expandView, LayoutHelper.createLinear(36, 36, Gravity.CENTER_VERTICAL,
-                4, 0, type == TYPE_SWITCH ? 4 : 12, 0));
+                4, 0, type == TYPE_SWITCH ? 6 : 12, 0));
 
         if (switchView != null) {
+            // 21dp — как у штатного TextCheckCell: тумблер стоит на одной
+            // вертикали с тумблерами остальных экранов, а не впритык к краю
+            // карточки секции.
             row.addView(switchView, LayoutHelper.createLinear(37, 40, Gravity.CENTER_VERTICAL,
-                    0, 0, 19, 0));
+                    0, 0, 21, 0));
         }
 
         evidenceView = new TextView(context);

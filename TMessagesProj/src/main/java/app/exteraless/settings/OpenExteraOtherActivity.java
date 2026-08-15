@@ -11,7 +11,6 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
@@ -35,8 +34,6 @@ import tw.nekomimi.nekogram.helpers.SettingsBackupHelper;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 import tw.nekomimi.nekogram.utils.AlertUtil;
-import tw.nekomimi.nekogram.utils.AndroidUtil;
-import xyz.nextalone.nagram.NaConfig;
 
 /**
  * Экран «Other» раздела openExtera — повторяет Other из exteraGram
@@ -44,12 +41,12 @@ import xyz.nextalone.nagram.NaConfig;
  */
 public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
-    /** exteraGram (OtherPreferencesActivity.java:377) держит кнопку удаления заблокированной 30 секунд. */
+    /** Кнопка удаления остаётся заблокированной 30 секунд. */
     private static final long DELETE_ACCOUNT_DELAY = 30_000L;
 
-    private int googleHeaderRow;
-    private int crashlyticsRow;
-    private int googleDividerRow;
+    private int nagramHeaderRow;
+    private int nagramSettingsRow;
+    private int nagramDividerRow;
 
     private int exportSettingsRow;
     private int resetSettingsRow;
@@ -78,12 +75,14 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     protected void updateRows() {
         super.updateRows();
 
-        googleHeaderRow = addRow("googleHeader");
-        // У exteraGram рядом стоит Analytics (OtherPreferencesActivity.java:443), но он
-        // выключает сбор через FirebaseAnalytics (:203-207). Зависимости
-        // firebase-analytics в сборке нет, выключать нечего — строки нет тоже.
-        crashlyticsRow = addRow("crashlytics");
-        googleDividerRow = addRow();
+        // Секции Google (Analytics + Crashlytics) здесь больше нет. Отправлять
+        // было нечего: shouldEnableCrashlytics требует applicationId
+        // «nu.gpu.nagram», а у нас com.exteraless.app — переключатель стоял
+        // мёртвым. На его месте вход в настройки NagramX, выключенный по
+        // умолчанию.
+        nagramHeaderRow = addRow("nagramHeader");
+        nagramSettingsRow = addRow("nagramSettings");
+        nagramDividerRow = addRow();
 
         exportSettingsRow = addRow("exportSettings");
         resetSettingsRow = addRow("resetSettings");
@@ -108,17 +107,17 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
-        if (position == crashlyticsRow) {
-            // NaConfig.disableCrashlyticsCollection инвертирована относительно подписи «Crashlytics».
-            boolean disabled = NaConfig.INSTANCE.getDisableCrashlyticsCollection().toggleConfigBool();
+        if (position == nagramSettingsRow) {
+            boolean enabled = GeneralConfig.showNagramSettings.toggleConfigBool();
             if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(!disabled);
+                ((TextCheckCell) view).setChecked(enabled);
             }
-            try {
-                FirebaseCrashlytics.getInstance()
-                        .setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
-            } catch (Exception e) {
-                FileLog.e(e);
+            // Строка появляется и исчезает в общем списке настроек, а он уже
+            // построен и на свои уведомления её не пересобирает — поэтому
+            // пересобираем вьюхи стека целиком, как это делают остальные
+            // настройки, меняющие чужие экраны.
+            if (getParentLayout() != null) {
+                getParentLayout().rebuildAllFragmentViews(false, false);
             }
         } else if (position == exportSettingsRow) {
             if (getParentActivity() == null) {
@@ -146,7 +145,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 () -> {
                     GeneralHelper.resetSettings();
                     LocaleController.getInstance().recreateFormatters();
-                    // без этого не подхватываются радиусы и цвета, сброшенные вместе с настройками.
+                    // Ресурсы темы надо перечитать: иначе не подхватятся радиусы и цвета,
+                    // сброшенные вместе с настройками.
                     Theme.reloadAllResources(activity);
                     if (getParentLayout() != null) {
                         getParentLayout().rebuildAllFragmentViews(false, false);
@@ -162,8 +162,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * Удаление аккаунта, 1:1 с exteraGram (OtherPreferencesActivity.java:221–240, 347–377):
-     * подтверждение с обратным отсчётом, затем TL_account.deleteAccount и локальный выход.
+     * Удаление аккаунта: подтверждение с обратным отсчётом, затем
+     * TL_account.deleteAccount и локальный выход.
      */
     private void showDeleteAccountDialog() {
         if (getParentActivity() == null) {
@@ -264,18 +264,18 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    if (position == googleHeaderRow) {
-                        cell.setText(getString(R.string.OEGeneralGoogleHeader));
+                    if (position == nagramHeaderRow) {
+                        cell.setText(getString(R.string.OEGeneralNagramHeader));
                     }
                     break;
                 }
                 case TYPE_CHECK: {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
-                    if (position == crashlyticsRow) {
-                        cell.setTextAndCheck(getString(R.string.OEGeneralCrashlytics),
-                                !NaConfig.INSTANCE.getDisableCrashlyticsCollection().Bool(), false);
+                    if (position == nagramSettingsRow) {
+                        cell.setTextAndCheck(getString(R.string.OEGeneralNagramSettings),
+                                GeneralConfig.showNagramSettings(), false);
                         // setIcon после setTextAndCheck — тот сбрасывает отступы текста.
-                        cell.setIcon(R.drawable.msg_report);
+                        cell.setIcon(R.drawable.msg_settings);
                     } else {
                         cell.setIcon(0);
                     }
@@ -298,8 +298,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     boolean bottom = position == bottomDividerRow;
-                    if (position == googleDividerRow) {
-                        cell.setText(getString(R.string.OEGeneralCrashlyticsInfo));
+                    if (position == nagramDividerRow) {
+                        cell.setText(getString(R.string.OEGeneralNagramSettingsInfo));
                     } else {
                         cell.setText(null);
                     }
@@ -313,9 +313,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == googleHeaderRow) {
+            if (position == nagramHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == googleDividerRow || position == bottomDividerRow) {
+            } else if (position == nagramDividerRow || position == bottomDividerRow) {
                 return TYPE_INFO_PRIVACY;
             } else if (position == exportSettingsRow || position == resetSettingsRow
                     || position == deleteAccountRow) {

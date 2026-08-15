@@ -29,13 +29,30 @@ object GeneralConfig {
      * «Download Speed Boost» — трёхпозиционный выбор (0: обычный, 1: быстрый,
      * 2: максимальный). Применяется в FileLoadOperation.updateParams: уровень 2
      * берёт куски по мегабайту и двенадцать параллельных запросов, уровень 1
-     * совпадает со штатным enhancedFileLoader. Перенос exteraGram, FileLoadOperation:1758.
+     * совпадает со штатным enhancedFileLoader.
      */
     @JvmField
     val downloadSpeedBoost = addConfig("OEGeneralDownloadSpeedBoost", ConfigItem.configTypeInt, 0)
 
     @JvmStatic
     fun downloadSpeedBoost(): Int = downloadSpeedBoost.Int()
+
+    /**
+     * Показывать ли вход в настройки NagramX («N-Settings») в общем списке настроек.
+     *
+     * По умолчанию выключено: форк ведёт свои экраны, а параллельный набор от
+     * апстрима сбивает — те же настройки лежат в двух местах и расходятся.
+     * Кому нужны редкие вещи, которых у нас нет (переводчик, экспериментальное),
+     * включают строку здесь.
+     */
+    @JvmField
+    val showNagramSettings = addConfig("OEGeneralShowNagramSettings", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun showNagramSettings(): Boolean {
+        loadConfig(false)
+        return showNagramSettings.Bool()
+    }
 
     private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
         val item = ConfigItem(key, type, defaultValue)
