@@ -58,8 +58,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         categoriesDividerRow = addRow();
 
         linksHeaderRow = addRow("linksHeader");
-        // Порядок exteraGram (MainPreferencesActivity.java:131–134): канал, переводы, сайт.
-        // Форума у форка нет, вместо сайта — репозиторий, поэтому строк три, а не четыре.
+        // Порядок: канал, переводы, репозиторий.
         channelRow = addRow("channel");
         crowdinRow = addRow("crowdin");
         sourceRow = addRow("source");
@@ -149,7 +148,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         } else if (position == otherRow) {
             presentFragment(new OpenExteraOtherActivity());
         } else if (position == channelRow) {
-            getMessagesController().openByUserName("NagramX", this, 1);
+            getMessagesController().openByUserName("exteraless", this, 1);
         } else if (position == crowdinRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
                     "https://crowdin.com/project/NagramX");
@@ -204,7 +203,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndIcon(getString(R.string.OpenExteraOther), R.drawable.msg_fave, false);
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
-                                "@NagramX", R.drawable.msg_channel, true);
+                                "@exteraless", R.drawable.msg_channel, true);
                     } else if (position == crowdinRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraCrowdin),
                                 "Crowdin", R.drawable.msg_translate, true);

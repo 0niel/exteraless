@@ -7,7 +7,10 @@ and a full Python plugin engine with a permission model of its own.
 * Package name: `com.exteraless.app`
 * Base: NagramX (`nu.gpu.nagramx`) → Nagram → Telegram for Android
 
-Builds are produced locally; there is no public channel or release feed yet.
+## Links
+
+* Channel: [@exteraless](https://t.me/exteraless)
+* Source: [github.com/exteraless/exteraless](https://github.com/exteraless/exteraless)
 
 ## Compilation Guide
 
