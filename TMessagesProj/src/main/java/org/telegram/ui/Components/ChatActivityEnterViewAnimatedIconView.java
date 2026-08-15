@@ -39,8 +39,46 @@ public class ChatActivityEnterViewAnimatedIconView extends RLottieImageView {
         this.sizeDp = sizeDp;
     }
 
+    /**
+     * Иконка из пака вместо анимации Lottie.
+     *
+     * Кнопка эмодзи рисуется анимацией (улыбка перетекает в клавиатуру), а
+     * анимацию иконпаком не подменишь: в паке лежат обычные картинки. exteraGram
+     * ради этого держит отдельный ChatActivityEnterViewStaticIconView и
+     * подставляет его, когда активен не только встроенный набор
+     * (ChatActivityEnterView:5335). У нас то же самое сделано режимом внутри
+     * этого же класса: setImageResource проходит через IconsResources, и
+     * картинка берётся из пака сама.
+     */
+    private boolean useStaticIcons() {
+        try {
+            return app.exteraless.icons.IconPackManager.getInstance().hasReplacements();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static int staticResourceFor(State state) {
+        switch (state) {
+            case VOICE: return R.drawable.input_mic_pressed;
+            case VIDEO: return R.drawable.input_video_pressed;
+            case STICKER: return R.drawable.msg_sticker;
+            case KEYBOARD: return R.drawable.input_keyboard;
+            case GIF: return R.drawable.msg_gif;
+            case MENU: return R.drawable.ic_ab_other;
+            default: return R.drawable.input_smile;
+        }
+    }
+
     public void setState(State state, boolean animate) {
         if (animate && state == currentState) {
+            return;
+        }
+        if (useStaticIcons()) {
+            currentState = state;
+            animatingState = null;
+            stopAnimation();
+            setImageResource(staticResourceFor(state));
             return;
         }
         State fromState = currentState;

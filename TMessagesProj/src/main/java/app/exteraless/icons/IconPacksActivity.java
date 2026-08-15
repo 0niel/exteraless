@@ -237,6 +237,8 @@ public class IconPacksActivity extends BaseNekoSettingsActivity {
             items.add(getString(R.string.IconPackPriorityDown));
             actions.add(() -> movePriority(pack, 1));
         }
+        items.add(getString(R.string.IconPackRename));
+        actions.add(() -> showRenamePackDialog(pack));
         items.add(getString(R.string.Edit));
         actions.add(() -> openEditor(pack));
         items.add(getString(R.string.IconPackEditIcons));
@@ -355,37 +357,130 @@ public class IconPacksActivity extends BaseNekoSettingsActivity {
         });
     }
 
-    /** Создание пустого пака: имя вводит пользователь, id генерируется из имени. */
+    /** Поле ввода в стиле диалогов приложения. */
+    private android.widget.EditText dialogInput(Context context, String hint, String value) {
+        final android.widget.EditText input = new android.widget.EditText(context);
+        input.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        input.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
+        input.setHint(hint);
+        input.setSingleLine();
+        input.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(8),
+                AndroidUtilities.dp(24), AndroidUtilities.dp(8));
+        if (value != null) {
+            input.setText(value);
+        }
+        return input;
+    }
+
+    /**
+     * Создание пака: имя, автор, версия — те же три поля, что в
+     * NewIconPackBottomSheet (icons/ui/components). id генерируется из имени.
+     *
+     * Автор и версия попадают в pack.json и видны тому, кому пак отправят;
+     * раньше они молча записывались пустыми, и любой созданный пак выглядел
+     * безымянным у получателя.
+     */
     private void showCreatePackDialog() {
         Context context = getParentActivity();
         if (context == null) {
             return;
         }
-        final android.widget.EditText input = new android.widget.EditText(context);
-        input.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        input.setHintTextColor(Theme.getColor(Theme.key_dialogTextHint));
-        input.setHint(getString(R.string.IconPackName));
-        input.setSingleLine();
-        input.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(8), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
+        final android.widget.EditText name = dialogInput(context, getString(R.string.IconPackName), null);
+        final android.widget.EditText author = dialogInput(context, getString(R.string.IconPackAuthor), defaultAuthor());
+        final android.widget.EditText version = dialogInput(context, getString(R.string.IconPackVersion), "1.0");
+
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.addView(name);
+        layout.addView(author);
+        layout.addView(version);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(getString(R.string.IconPackCreate));
-        builder.setView(input);
+        builder.setView(layout);
         builder.setPositiveButton(getString(R.string.Create), (dialog, which) -> {
-            String name = input.getText().toString().trim();
-            if (TextUtils.isEmpty(name)) {
+            String packName = name.getText().toString().trim();
+            if (TextUtils.isEmpty(packName)) {
                 return;
             }
-            createPack(name);
+            createPack(packName, author.getText().toString().trim(),
+                    versionOrDefault(version.getText().toString()));
         });
         builder.setNegativeButton(getString(R.string.Cancel), null);
         showDialog(builder.create());
     }
 
-    private void createPack(String name) {
+    /** Переименование и правка автора/версии уже созданного пака. */
+    private void showRenamePackDialog(IconPack pack) {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        final android.widget.EditText name = dialogInput(context, getString(R.string.IconPackName), pack.getName());
+        final android.widget.EditText author = dialogInput(context, getString(R.string.IconPackAuthor), pack.getAuthor());
+        final android.widget.EditText version = dialogInput(context, getString(R.string.IconPackVersion), pack.getVersion());
+
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.addView(name);
+        layout.addView(author);
+        layout.addView(version);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(getString(R.string.IconPackRename));
+        builder.setView(layout);
+        builder.setPositiveButton(getString(R.string.Save), (dialog, which) -> {
+            String packName = name.getText().toString().trim();
+            if (TextUtils.isEmpty(packName)) {
+                return;
+            }
+            // id пака не трогаем: по нему лежат файлы иконок и на него
+            // ссылается список активных паков.
+            IconPack updated = new IconPack(pack.getId(), packName,
+                    author.getText().toString().trim(),
+                    versionOrDefault(version.getText().toString()),
+                    pack.getIcons(), pack.getLocation());
+            org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> {
+                final boolean ok = IconPackStorage.saveIconPackMetadata(updated);
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (!ok) {
+                        if (getParentActivity() != null) {
+                            BulletinFactory.of(IconPacksActivity.this)
+                                    .createErrorBulletin(getString(R.string.IconPackErrorStorage)).show();
+                        }
+                        return;
+                    }
+                    IconPackManager.getInstance().reload();
+                    updateRowsAndNotify();
+                });
+            });
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), null);
+        showDialog(builder.create());
+    }
+
+    /** Пустая версия — «1.0»: у пака без версии получатель не поймёт, что новее. */
+    private static String versionOrDefault(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        return TextUtils.isEmpty(trimmed) ? "1.0" : trimmed;
+    }
+
+    /** Автор по умолчанию — свой @username, если он есть. */
+    private static String defaultAuthor() {
+        try {
+            org.telegram.tgnet.TLRPC.User self = org.telegram.messenger.UserConfig
+                    .getInstance(org.telegram.messenger.UserConfig.selectedAccount).getCurrentUser();
+            String username = self == null ? null : org.telegram.messenger.UserObject.getPublicUsername(self);
+            return TextUtils.isEmpty(username) ? "" : "@" + username;
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
+    private void createPack(String name, String author, String version) {
         String id = generatePackId(name);
         org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> {
-            IconPack created = IconPackManager.getInstance().createPack(id, name, "", "1.0");
+            IconPack created = IconPackManager.getInstance().createPack(id, name, author, version);
             AndroidUtilities.runOnUIThread(() -> {
                 if (created == null) {
                     if (getParentActivity() != null) {

@@ -705,8 +705,8 @@ public class IconPackManager {
     }
 
     /**
-     * Обрабатывает нажатие на файл-пак в чате: парсит архив, спрашивает подтверждение
-     * и устанавливает. Вызывать с UI-потока.
+     * Нажатие на файл-пак в чате: разбор архива в фоне и лист с превью.
+     * Вызывать с UI-потока.
      */
     public void handleIconPack(org.telegram.ui.ActionBar.BaseFragment fragment, File file) {
         if (fragment == null || fragment.getParentActivity() == null || file == null) {
@@ -725,29 +725,9 @@ public class IconPackManager {
                             .show();
                     return;
                 }
-                org.telegram.ui.ActionBar.AlertDialog.Builder builder =
-                        new org.telegram.ui.ActionBar.AlertDialog.Builder(fragment.getParentActivity());
-                builder.setTitle(org.telegram.messenger.LocaleController.getString(org.telegram.messenger.R.string.IconPackInstall));
-                builder.setMessage(org.telegram.messenger.LocaleController.formatString(
-                        org.telegram.messenger.R.string.IconPackInstallConfirm, parsed.getName(), parsed.getIconCount()));
-                builder.setPositiveButton(org.telegram.messenger.LocaleController.getString(org.telegram.messenger.R.string.IconPackInstall), (d, w) ->
-                        installPack(file, error -> {
-                            if (fragment.getParentActivity() == null) {
-                                return;
-                            }
-                            if (error != null) {
-                                org.telegram.ui.Components.BulletinFactory.of(fragment)
-                                        .createErrorBulletin(error.getLocalizedMessage()).show();
-                            } else {
-                                org.telegram.ui.Components.BulletinFactory.of(fragment)
-                                        .createSimpleBulletin(org.telegram.messenger.R.raw.done,
-                                                org.telegram.messenger.LocaleController.getString(
-                                                        org.telegram.messenger.R.string.IconPackInstalledToast))
-                                        .show();
-                            }
-                        }));
-                builder.setNegativeButton(org.telegram.messenger.LocaleController.getString(org.telegram.messenger.R.string.Cancel), null);
-                fragment.showDialog(builder.create());
+                // Лист с превью вместо строки «имя, N иконок»: иконки меняют весь
+                // интерфейс, и до установки надо видеть, что именно ставишь
+                InstallIconPackBottomSheet.show(fragment, file, parsed);
             });
         });
     }

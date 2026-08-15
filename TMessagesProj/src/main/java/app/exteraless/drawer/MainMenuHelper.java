@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.IntPredicate;
 
+import app.exteraless.components.QRCodeSheet;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
@@ -26,6 +28,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionIntroActivity;
+import org.telegram.ui.CameraScanActivity;
 import org.telegram.ui.CallLogActivity;
 import org.telegram.ui.ChannelCreateActivity;
 import org.telegram.ui.ChatActivity;
@@ -287,15 +290,37 @@ public final class MainMenuHelper {
     }
 
     /**
-     * там сразу
-     * открывается {@code CameraScanActivity.showAsSheet} со своим делегатом
-     * ({@code QRCodeSheet} из exteraGram, у нас его нет), а {@code showAsSheet} без делегата
-     * падает на {@code cameraDelegate.getSubtitleText()} (наш {@code CameraScanActivity:212}).
-     * Поэтому открывается стоковый экран привязки устройства — тот же, что у Telegram
-     * по «Link Desktop Device»; он сам просит камеру.
+     * Сканер QR со своим листом результата — как у exteraGram
+     * ({@code MainMenuHelper} → {@code CameraScanActivity.showAsSheet} →
+     * {@code QRCodeSheet}).
+     *
+     * Раньше отсюда открывался стоковый экран привязки устройства: своего листа
+     * не было, а сканер без него бесполезен — результат некуда деть. Делегат
+     * безопасен: {@code getSubtitleText()} у интерфейса объявлен со значением по
+     * умолчанию (CameraScanActivity:174), так что переопределять его не нужно.
      */
     private static void openQrScanner(BaseFragment fragment) {
-        fragment.presentFragment(new ActionIntroActivity(ActionIntroActivity.ACTION_TYPE_QR_LOGIN));
+        if (fragment.getParentActivity() == null) {
+            return;
+        }
+        CameraScanActivity.showAsSheet(fragment, false, CameraScanActivity.TYPE_QR,
+                new CameraScanActivity.CameraScanActivityDelegate() {
+                    @Override
+                    public boolean processQr(String text, Runnable onLoadEnd) {
+                        // Возвращаем true: экран закрывается сам, а лист
+                        // показываем после закрытия, иначе он окажется под ним.
+                        AndroidUtilities.runOnUIThread(() -> {
+                            onLoadEnd.run();
+                            AndroidUtilities.runOnUIThread(() -> {
+                                BaseFragment last = LaunchActivity.getSafeLastFragment();
+                                if (last != null && last.getParentActivity() != null) {
+                                    new QRCodeSheet(last, text).show();
+                                }
+                            }, 150);
+                        }, 600);
+                        return true;
+                    }
+                });
     }
 
     /**

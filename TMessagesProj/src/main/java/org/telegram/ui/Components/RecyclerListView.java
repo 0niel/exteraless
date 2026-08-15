@@ -1591,6 +1591,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
                 backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             }
             backgroundPaint.setColor(color);
+            // Подсветка одиночной строки-таблетки должна
             // повторять её форму, иначе цвет вылезает прямоугольником за скруглённый фон.
             if (fromAdapterPosition != toAdapterPosition || !roundSection) {
                 canvas.drawRect(0, top - topMargin, getWidth(), bottom + bottomMargin, backgroundPaint);
@@ -3281,28 +3282,27 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
      * Ключ keyed-тега «секция-таблетка»: секция, состоящая ровно из одной такой строки,
      * рисуется не радиусом sectionRadius, а полной таблеткой height/2 — так у экстеры
      * выглядят мастер-тумблеры на «Автозагрузке медиа», «Прокси» и universal-экранах.
-     * там ключом служит R.id.round_section_tag;
+     * Там ключом служит R.id.round_section_tag;
      * ресурсный id нам здесь заводить нечем, поэтому ключ — константа рядом с TAG_NOT_SECTION:
      * View.setTag(int, Object) требует лишь (key >>> 24) >= 2, отрицательное значение это
      * условие выполняет и с настоящими R.id (0x7f……) не пересекается.
      */
     public static final int TAG_ROUND_SECTION = -33025;
 
-    /**. */
     public static boolean isRoundSectionView(View view) {
         return view != null && Boolean.TRUE.equals(view.getTag(TAG_ROUND_SECTION));
     }
 
     /**
      * Помечает строку как «таблетку». У exteraGram тег ставится прямо в
-     * чтобы ключ тега знал только этот файл.
+     * Вызов вынесен сюда, чтобы ключ тега знал только этот файл.
      */
     public static void setRoundSectionView(View view, boolean round) {
         if (view == null) return;
         view.setTag(TAG_ROUND_SECTION, round ? Boolean.TRUE : null);
     }
 
-    /**. Дешёвый вызов, потому и годится в onDraw. */
+    /** Дешёвый вызов, потому и годится в onDraw. */
     private float getSingleSectionRadius(RectF rect) {
         return rect.height() / 2.0f;
     }
@@ -3452,6 +3452,15 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
                         if (first) outRect.top = enableTopPadding ? padding : dp(4);
                         if (last) outRect.bottom = padding;
+
+                        // В режиме «Сегменты» между строками одного раздела —
+                        // зазор 2dp, иначе карточки склеятся в одну (exteraGram:
+                        // getItemOffsets, rect.top += dp(2)).
+                        if (!first && this.parent.useSegmentedSections()
+                                && this.parent.isViewTypeSection != null
+                                && this.parent.isViewTypeSection.run(adapter.getItemViewType(position - 1))) {
+                            outRect.top += dp(2);
+                        }
                     }
                 }
             }
@@ -3473,12 +3482,37 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
     }
 
+    /**
+     * Режим «Сегменты»: каждая строка — своя карточка.
+     *
+     * Перенос exteraGram 12.9.0 (RecyclerListView: segmentedSectionsEnabled,
+     * drawSegmentedSections, getSegmentedSectionTop/BottomRadius). Стиль
+     * выбирается в настройках внешнего вида и до сих пор был выбираемым, но
+     * наполовину рабочим: разделители пропадали, а строки оставались одной
+     * общей карточкой.
+     */
+    private boolean useSegmentedSections() {
+        return sectionsItemDecoration != null
+                && app.exteraless.appearance.AppearanceConfig.dividerStyle()
+                        == app.exteraless.appearance.AppearanceConfig.DIVIDER_SEGMENTS;
+    }
+
+    /** Внутренний угол сегмента: у exteraGram min(радиус секции, 4dp). */
+    private float segmentInnerRadius() {
+        return Math.min(sectionRadius, dp(4));
+    }
+
     private void drawSectionBackground(
         Canvas canvas,
         View from, View to,
         boolean hasAbove, boolean hasBelow
     ) {
         if (from == null || to == null) return;
+
+        if (useSegmentedSections()) {
+            drawSegmentedSection(canvas, from, to, hasAbove, hasBelow);
+            return;
+        }
 
         float bottomMargin = 0;
         if (to instanceof JoinToSendSettingsView) {
@@ -3492,11 +3526,42 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
             Math.min(getHeight() - (applyPaddingToSections ? getPaddingBottom() : -sectionRadius), bottom(to) + (hasBelow ? sectionRadius : 0) - bottomMargin)
         );
         if (AndroidUtilities.rectTmp.bottom < AndroidUtilities.rectTmp.top) return;
-        // полукруглые торцы,
+        // Секция из одной строки-таблетки — полукруглые торцы,
         // во всех остальных случаях обычный радиус секции.
         final float radius = (from != to || hasAbove || hasBelow || !isRoundSectionView(from))
             ? sectionRadius : getSingleSectionRadius(AndroidUtilities.rectTmp);
         drawSectionBackground.run(canvas, AndroidUtilities.rectTmp, radius, radius, from.getAlpha());
+    }
+
+    /**
+     * Каждая строка группы рисуется отдельной карточкой. Внешние углы группы
+     * остаются радиусом секции, внутренние — маленькие: так видно, что строки
+     * относятся к одному разделу, но каждая сама по себе.
+     */
+    private void drawSegmentedSection(Canvas canvas, View from, View to,
+                                      boolean hasAbove, boolean hasBelow) {
+        final int fromIndex = indexOfChild(from);
+        final int toIndex = indexOfChild(to);
+        if (fromIndex < 0 || toIndex < 0 || toIndex < fromIndex) return;
+
+        final float inner = segmentInnerRadius();
+        for (int i = fromIndex; i <= toIndex; ++i) {
+            final View child = getChildAt(i);
+            if (child == null || child.getVisibility() != View.VISIBLE || child.getAlpha() <= 0) {
+                continue;
+            }
+            AndroidUtilities.rectTmp.set(child.getLeft(), top(child), child.getRight(), bottom(child));
+            if (AndroidUtilities.rectTmp.bottom <= AndroidUtilities.rectTmp.top) continue;
+
+            float topRadius = (i == fromIndex && !hasAbove) ? sectionRadius : inner;
+            float bottomRadius = (i == toIndex && !hasBelow) ? sectionRadius : inner;
+            if (fromIndex == toIndex && !hasAbove && !hasBelow) {
+                // Одиночная строка — таблетка целиком.
+                topRadius = bottomRadius = AndroidUtilities.rectTmp.height() / 2f;
+            }
+            drawSectionBackground.run(canvas, AndroidUtilities.rectTmp, topRadius, bottomRadius,
+                    child.getAlpha());
+        }
     }
 
     private boolean hasAbove(View view, int index) {
@@ -3699,6 +3764,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
         if (!prev && !next) {
             clipPath.rewind();
+            // Клип по той же форме, иначе ripple вылезет за фон.
             final float radius = isRoundSectionView(child) ? getSingleSectionRadius(AndroidUtilities.rectTmp) : sectionRadius;
             clipPath.addRoundRect(AndroidUtilities.rectTmp, radius, radius, Path.Direction.CW);
             canvas.clipPath(clipPath);
@@ -3762,7 +3828,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         final Path clipPath = new Path();
         if (!prev && !next || forceRound) {
             clipPath.rewind();
-            // та же таблетка, что и в clipChild.
+            // Та же таблетка, что и в clipChild.
             final float radius = isRoundSectionView(child) ? getSingleSectionRadius(rect) : sectionRadius;
             clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW);
         } else if (!prev) {

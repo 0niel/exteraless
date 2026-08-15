@@ -23,4 +23,14 @@
 
     <string name="OpenExteraLinks">Ссылки</string>
     <string name="OpenExteraSource">Исходный код</string>
+    <string name="QrTitleLink">Ссылка</string>
+    <string name="QrTitleWifi">Сеть Wi-Fi</string>
+    <string name="QrTitleLogin">Код входа в Telegram</string>
+    <string name="QrTitleText">Отсканированный текст</string>
+    <string name="QrWifiOpenSettings">Открыть настройки Wi-Fi</string>
+    <string name="QrWifiCopyPassword">Скопировать пароль</string>
+    <string name="QrWifiPasswordCopied">Пароль скопирован</string>
+    <string name="QrWifiUnknownNetwork">В коде нет имени сети</string>
+    <string name="QrLoginHint">Этот код входит в аккаунт. Используйте Настройки → Устройства → Подключить устройство: тот экран проверяет код и защищает аккаунт.</string>
+    <string name="OpenExteraCrowdin">Переводы</string>
 </resources>

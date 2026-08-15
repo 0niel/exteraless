@@ -1265,6 +1265,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
          * счётчик «N/M» рядом с ним.
          */
         private void bindGroupHeader(TextCheckCell2 cell, int position) {
+            // Третий аргумент setTextAndCheck — разделитель. У свёрнутой группы
+            // заголовок оказывается последней строкой карточки, и линия под ним
+            // висела бы в воздухе; поэтому разделитель = «группа раскрыта».
             if (position == repliesGroupRow) {
                 int selected = repliesSelectedCount();
                 cell.setTextAndCheck(getString(R.string.OEChatsReplies), selected > 0, repliesExpanded);
@@ -1277,17 +1280,17 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                         OpenExteraChatsActivity.this::toggleAllHideReactions);
             } else if (position == quickTransitionGroupRow) {
                 int selected = quickTransitionsSelectedCount();
-                cell.setTextAndCheck(getString(R.string.OEChatsQuickTransitions), selected > 0, true);
+                cell.setTextAndCheck(getString(R.string.OEChatsQuickTransitions), selected > 0, quickTransitionExpanded);
                 cell.setCollapseArrow(ratio(selected, QUICK_TRANSITIONS_TOTAL), !quickTransitionExpanded,
                         OpenExteraChatsActivity.this::toggleAllQuickTransitions);
             } else if (position == messageMenuGroupRow) {
                 int selected = messageMenuSelectedCount();
-                cell.setTextAndCheck(getString(R.string.MessageMenu), selected > 0, true);
+                cell.setTextAndCheck(getString(R.string.MessageMenu), selected > 0, messageMenuExpanded);
                 cell.setCollapseArrow(ratio(selected, MESSAGE_MENU_TOTAL), !messageMenuExpanded,
                         OpenExteraChatsActivity.this::toggleAllMessageMenu);
             } else if (position == extendedSettingsGroupRow) {
                 int selected = cameraSettingsSelected();
-                cell.setTextAndCheck(getString(R.string.OEChatsExtendedSettings), selected > 0, true);
+                cell.setTextAndCheck(getString(R.string.OEChatsExtendedSettings), selected > 0, extendedSettingsExpanded);
                 cell.setCollapseArrow(ratio(selected, cameraSettingsTotal()), !extendedSettingsExpanded,
                         OpenExteraChatsActivity.this::toggleAllCameraSettings);
             } else if (position == pauseGroupRow) {

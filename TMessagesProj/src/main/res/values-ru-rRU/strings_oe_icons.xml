@@ -34,7 +34,6 @@
     <string name="IconPackName">Название пака</string>
     <string name="IconPackEditIcons">Заменить иконки</string>
     <string name="IconPackEditIconsHint">Откройте любой экран и нажмите плавающую кнопку, чтобы заменить видимые иконки.</string>
-    <string name="IconPackInstallConfirm">Установить пак иконок «%1$s» (иконок: %2$d)?</string>
     <string name="IconPickerFinish">Готово</string>
     <string name="IconPickerReplaceIcon">Замена иконки</string>
     <string name="IconPickerOriginal">Оригинал</string>
@@ -43,4 +42,8 @@
     <string name="IconPickerClipboardEmpty">В буфере обмена нет изображения.</string>
     <string name="IconPackPriorityUp">Выше приоритет</string>
     <string name="IconPackPriorityDown">Ниже приоритет</string>
+    <string name="IconPackAuthor">Автор</string>
+    <string name="IconPackVersion">Версия</string>
+    <string name="IconPackRename">Переименовать</string>
+    <string name="IconPackIconsCount">иконок: %1$d</string>
 </resources>

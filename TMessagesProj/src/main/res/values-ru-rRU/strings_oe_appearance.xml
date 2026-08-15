@@ -100,4 +100,18 @@
     <string name="OEMainMenuAddDivider">Добавить разделитель</string>
     <string name="OEMainMenuDivider">Разделитель</string>
     <string name="OEMainMenuRemoveSettingsInfo">Настройки нельзя скрыть, если отключена нижняя панель навигации.</string>
+    <string name="OEAppearanceForceSnowInfo">Снежинки будут падать в шапке, боковом меню и на фоне чатов.</string>
+    <string name="OEAppearanceTitleText">Текст заголовка</string>
+    <string name="OEAppearanceTitleTextApp">@string/AppName</string>
+    <string name="OEAppearanceTitleTextUsername">Имя пользователя</string>
+    <string name="OEAppearanceTitleTextName">Имя</string>
+    <string name="OEAppearanceGlassMessageMenuInfo">Меню сообщения и панель реакций становятся матовым стеклом.</string>
+    <string name="OEAppearanceGlassMessageMenuBlurOff">Стеклянным меню нужно размытие, а оно сейчас выключено.</string>
+    <string name="OEBottomNavigationBarMode">Нижняя панель навигации</string>
+    <string name="OEBottomNavigationModeShow">Показывать</string>
+    <string name="OEBottomNavigationModeHide">Скрывать</string>
+    <string name="OEBackAnimationInfo">Плавнее переключает экраны и открывает боковое меню.</string>
+    <string name="OEAppearanceNewLoadingStyle">Стиль загрузки</string>
+    <string name="OEAppearanceNewChatHeaderStyle">Шапка чата</string>
+    <string name="OEAppearanceNewNavigationBarStyle">Нижняя панель навигации</string>
 </resources>

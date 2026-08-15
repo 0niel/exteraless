@@ -2071,28 +2071,41 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
     }
 
+    /** Кисть и путь онлайн-точки. Метод зовётся на каждую отрисовку списка сообщений. */
+    private static Paint onlineStatusPaint;
+    private static Path onlineStatusPath;
+
     public void drawStatusWithImage(Canvas canvas, ImageReceiver imageReceiver, int radius) {
         int onlineColor = AndroidUtil.getOnlineColor(currentUser, resourcesProvider);
         if (onlineColor == 0) {
             imageReceiver.draw(canvas);
             return;
         }
-        int x = Math.round(imageReceiver.getImageX2());
-        int y = Math.round(imageReceiver.getImageY2());
-        int circleRadius = radius - AndroidUtilities.dp(2.25f);
-        int spaceLeft = radius - circleRadius;
-        int xCenterRegion = x - spaceLeft;
-        int yCenterRegion = y - spaceLeft;
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(onlineColor);
+        float x = imageReceiver.getImageX2();
+        float y = imageReceiver.getImageY2();
+        float circleRadius = radius - AndroidUtilities.dp(2.25f);
+        // У круглой аватарки точка сидит на радиусе от угла картинки, у
+        // квадратной так она наползала бы на саму картинку — exteraGram уводит её
+        // по диагонали (ExteraConfig.getOnlineDotOffset). При круглых
+        // аватарках (значение по умолчанию) выражение даёт прежний radius.
+        float offset = app.exteraless.appearance.AppearanceConfig.onlineDotOffset(radius, radius);
+
+        if (onlineStatusPaint == null) {
+            onlineStatusPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        }
+        if (onlineStatusPath == null) {
+            onlineStatusPath = new Path();
+        }
+        onlineStatusPaint.setColor(onlineColor);
+        onlineStatusPath.rewind();
+        onlineStatusPath.addCircle(x - offset, y - offset, radius, Path.Direction.CW);
+        onlineStatusPath.toggleInverseFillType();
+
         canvas.save();
-        Path p = new Path();
-        p.addCircle(x - radius, y - radius, radius, Path.Direction.CW);
-        p.toggleInverseFillType();
-        canvas.clipPath(p);
+        canvas.clipPath(onlineStatusPath);
         imageReceiver.draw(canvas);
         canvas.restore();
-        canvas.drawCircle(xCenterRegion - circleRadius, yCenterRegion - circleRadius, circleRadius, paint);
+        canvas.drawCircle(x - offset, y - offset, circleRadius, onlineStatusPaint);
     }
 
     public void setResourcesProvider(Theme.ResourcesProvider resourcesProvider) {

@@ -73,7 +73,7 @@ object AppearanceConfig {
         return squareFab.Bool()
     }
 
-    /** Радиус скругления кнопки со стороной [size] dp. exteraGram: UIUtil.java:112. */
+    /** Радиус скругления кнопки со стороной [size] dp. */
     @JvmStatic
     fun fabCornerRadius(size: Int): Int =
         if (squareFab()) Math.ceil((size * 16) / 56.0).toInt() else size / 2
@@ -252,6 +252,26 @@ object AppearanceConfig {
     /** true, если аватарки должны остаться обычными кругами — быстрый выход из хот-пути. */
     @JvmStatic
     fun avatarCornersDefault(): Boolean = avatarCorners() >= AVATAR_CORNERS_MAX
+
+    /**
+     * Квадратность аватарки: 0 — круг, 1 — квадрат.
+     *
+     * Обратная величина к [avatarCorners] и ровно то, что exteraGram зовёт
+     * `getAvatarSquareness()`. Нужна там, где геометрия зависит от формы —
+     * например, онлайн-точку на квадратной аватарке надо уводить в угол,
+     * иначе она наползает на картинку.
+     */
+    @JvmStatic
+    fun avatarSquareness(): Float =
+        1f - (avatarCorners().coerceIn(0, AVATAR_CORNERS_MAX).toFloat() / AVATAR_CORNERS_MAX)
+
+    /**
+     * Смещение онлайн-точки от края аватарки.
+     * У круга — заданное значение, у квадрата — по диагонали от угла.
+     */
+    @JvmStatic
+    fun onlineDotOffset(base: Float, radius: Float): Float =
+        base + ((radius / Math.sqrt(2.0)).toFloat() - base) * avatarSquareness()
 
     // ---- Секции настроек ----
 

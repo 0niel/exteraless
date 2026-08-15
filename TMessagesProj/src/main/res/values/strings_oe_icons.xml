@@ -34,7 +34,6 @@
     <string name="IconPackName">Pack name</string>
     <string name="IconPackEditIcons">Replace Icons</string>
     <string name="IconPackEditIconsHint">Open any screen and tap the floating button to replace the icons you see.</string>
-    <string name="IconPackInstallConfirm">Install icon pack \"%1$s\" with %2$d icons?</string>
     <string name="IconPickerFinish">Finish</string>
     <string name="IconPickerReplaceIcon">Replace Icon</string>
     <string name="IconPickerOriginal">Original</string>
@@ -43,4 +42,8 @@
     <string name="IconPickerClipboardEmpty">There\'s no image in the clipboard.</string>
     <string name="IconPackPriorityUp">Higher priority</string>
     <string name="IconPackPriorityDown">Lower priority</string>
+    <string name="IconPackAuthor">Author</string>
+    <string name="IconPackVersion">Version</string>
+    <string name="IconPackRename">Rename</string>
+    <string name="IconPackIconsCount">%1$d icons</string>
 </resources>
