@@ -28,4 +28,5 @@
     <string name="OpenExteraDesignSection">Дизайн</string>
     <string name="OpenExteraDesigner">Иконки и дизайн</string>
     <string name="OpenExteraDesignStudio">Студия дизайна</string>
+    <string name="OEDownloadEmojiPacks">Загружать наборы эмодзи</string>
 </resources>

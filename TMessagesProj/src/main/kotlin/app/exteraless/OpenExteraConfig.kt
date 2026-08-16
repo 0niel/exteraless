@@ -36,7 +36,21 @@ object OpenExteraConfig {
     @JvmField
     val addCommaAfterMention = addConfig("OEAddCommaAfterMention", ConfigItem.configTypeBool, true)
 
+    // ---- Эмодзи ----
+
+    /**
+     * Загружать список эмодзи-паков из канала метаданных NagramX.
+     *
+     * Свой канал метаданных у нас не заведён, а паки живут в чужом, поэтому
+     * по умолчанию выключено: без спроса клиент в чужой канал не ходит.
+     */
+    @JvmField
+    val downloadEmojiPacks = addConfig("OEDownloadEmojiPacks", ConfigItem.configTypeBool, false)
+
     // ---- Статические геттеры для вызова из Java в горячих местах ----
+
+    @JvmStatic
+    fun downloadEmojiPacks(): Boolean = downloadEmojiPacks.Bool()
 
     @JvmStatic
     fun relativeLastSeen(): Boolean = relativeLastSeen.Bool()

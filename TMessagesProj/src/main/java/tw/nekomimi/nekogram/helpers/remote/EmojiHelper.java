@@ -118,6 +118,16 @@ public class EmojiHelper extends BaseRemoteHelper implements NotificationCenter.
         emojiPack = preferences.getString("emoji_pack", "");
     }
 
+    @Override
+    protected long getMetadataChannelId() {
+        return app.exteraless.OpenExteraConfig.downloadEmojiPacks() ? NAGRAMX_METADATA_ID : CHANNEL_METADATA_ID;
+    }
+
+    @Override
+    protected String getMetadataChannelName() {
+        return app.exteraless.OpenExteraConfig.downloadEmojiPacks() ? NAGRAMX_METADATA_NAME : CHANNEL_METADATA_NAME;
+    }
+
     public static EmojiHelper getInstance() {
         EmojiHelper localInstance = Instance;
         if (localInstance == null) {
@@ -798,7 +808,7 @@ public class EmojiHelper extends BaseRemoteHelper implements NotificationCenter.
     private void getNewVersionMessagesCallback(Delegate delegate, ArrayList<EmojiPackInfo> packs, TLObject response) {
         if (response != null) {
             var res = (TLRPC.messages_Messages) response;
-            getMessagesController().removeDeletedMessagesFromArray(CHANNEL_METADATA_ID, res.messages);
+            getMessagesController().removeDeletedMessagesFromArray(getMetadataChannelId(), res.messages);
             var documents = new HashMap<Integer, TLRPC.Document>();
             for (var message : res.messages) {
                 if (message.media == null || message.media.document == null) {
@@ -862,7 +872,7 @@ public class EmojiHelper extends BaseRemoteHelper implements NotificationCenter.
             }
 
             var req = new TLRPC.TL_channels_getMessages();
-            req.channel = getMessagesController().getInputChannel(CHANNEL_METADATA_ID);
+            req.channel = getMessagesController().getInputChannel(getMetadataChannelId());
             req.id.addAll(previews.values());
             req.id.addAll(files.values());
             getConnectionsManager().sendRequest(req, (response1, error1) -> {
