@@ -22,6 +22,9 @@
     <string name="OEChatsCameraType">Camera Type</string>
     <string name="OEChatsCameraTypeCamera2">Camera2</string>
     <string name="OEChatsCameraStabilization">Stabilization</string>
+    <string name="OEChatsCameraTypeCameraX">CameraX</string>
+    <string name="OEChatsCameraMirrorMode">Mirror Mode</string>
+    <string name="OEChatsStartWithWideAngle">Start with Wide Angle</string>
     <string name="OEChatsExtendedFps">Extended FPS Range</string>
     <string name="OEChatsStaticZoom">Static Zoom</string>
     <string name="OEChatsStaticZoomInfo">When recording video messages, the zoom level will not reset if you release your fingers.</string>

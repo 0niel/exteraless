@@ -170,6 +170,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int seamlessSwitchingRow;
     private int extendedFpsRow;
     private int cameraStabilizationRow;
+    private int cameraMirrorModeRow;
+    private int startWithWideAngleRow;
     private int videoMessagesCameraRow;
     private int rememberLastUsedCameraRow;
     private int staticZoomRow;
@@ -286,7 +288,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         cameraHeaderRow = addRow("cameraHeader");
         cameraTypeRow = addRow("cameraType");
         seamlessSwitchingRow = extendedFpsRow = cameraStabilizationRow = -1;
-        // расширенные настройки относятся только к Camera2 (у exteraGram ещё к CameraX).
+        cameraMirrorModeRow = startWithWideAngleRow = -1;
+        // При системной камере вся группа скрыта: расширенные настройки
+        // относятся только к Camera2 и CameraX.
         if (cameraTypeIndex() != CAMERA_TYPE_SYSTEM) {
             extendedSettingsGroupRow = addRow("extendedSettings");
             if (extendedSettingsExpanded) {
@@ -296,16 +300,21 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 }
                 extendedFpsRow = addRow();
                 cameraStabilizationRow = addRow();
+                // Зеркало и широкий угол умеет только CameraX.
+                if (cameraTypeIndex() == CAMERA_TYPE_CAMERA_X) {
+                    cameraMirrorModeRow = addRow();
+                    startWithWideAngleRow = addRow();
+                }
             }
             if (!isSeamlessSwitchingAvailable() && isSeamlessSwitchingEnabled()) {
-                // на устройстве без второй камеры флаг гасится принудительно.
+                // На устройстве без второй камеры флаг гасится принудительно.
                 setSeamlessSwitching(false);
             }
         } else {
             extendedSettingsGroupRow = -1;
         }
         videoMessagesCameraRow = addRow("videoMessagesCamera");
-        // запоминать нечего, пока камера спрашивается каждый раз.
+        // Запоминать нечего, пока камера спрашивается каждый раз.
         if (NaConfig.INSTANCE.getCameraInVideoMessages().Int() != VIDEO_CAMERA_ASK) {
             rememberLastUsedCameraRow = addRow("rememberLastUsedCamera");
         } else {
@@ -357,7 +366,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    /** exteraGram зовёт parentLayout.rebuildFragments(0) после настроек, видимых в открытых чатах. */
+    /** Пересобрать открытые чаты: часть настроек видна прямо в них. */
     private void rebuildChats() {
         if (parentLayout != null) {
             parentLayout.rebuildFragments(0);
@@ -367,8 +376,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     @Override
     public View createView(Context context) {
         View view = super.createView(context);
-        // Кнопка сброса размера стикеров в шапке:
-        // появляется, как только размер отличается от стандартного.
+        // Кнопка сброса размера стикеров в шапке: появляется, как только
+        // размер отличается от стандартного.
         if (actionBar != null) {
             resetItem = actionBar.createMenu().addItem(0, R.drawable.msg_reset);
             resetItem.setContentDescription(getString(R.string.Reset));
@@ -383,7 +392,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         return view;
     }
 
-    /** exteraGram :646-657 — плавный возврат слайдера к стандартному размеру за 200 мс. */
+    /** Плавный возврат слайдера к стандартному размеру за 200 мс. */
     private void resetStickerSize() {
         if (resetItem != null) {
             AndroidUtilities.updateViewVisibilityAnimated(resetItem, false, 0.5f, true);
@@ -400,7 +409,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         animator.start();
     }
 
-    /** exteraGram :628-635 — кнопка возвращается при первом же движении слайдера. */
+    /** Кнопка возвращается при первом же движении слайдера. */
     private void showResetItem() {
         if (resetItem != null && resetItem.getVisibility() != View.VISIBLE) {
             AndroidUtilities.updateViewVisibilityAnimated(resetItem, true, 0.5f, true);
@@ -440,19 +449,25 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * Знаменатель «N/M» считается по реально показанным строкам, как у exteraGram (:403-417).
-     * У exteraGram в группе ещё зеркалирование и широкоугольная камера, но обе строки он
-     * показывает только при CameraType.CAMERA_X (:884, :887) и применяет только в
-     * CameraXSession (:321, :755) — CameraX в форке нет, поэтому их здесь нет тоже.
+     * Знаменатель «N/M» считается по реально показанным строкам. Зеркалирование и
+     * широкоугольная камера считаются только при CameraX: обе настройки применяет
+     * CameraXSession, другим движкам их передать некуда.
      */
     private static int cameraSettingsTotal() {
-        return isSeamlessSwitchingAvailable() ? 3 : 2;
+        int total = isSeamlessSwitchingAvailable() ? 3 : 2;
+        if (ChatsConfig.cameraType() == CAMERA_TYPE_CAMERA_X) {
+            total += 2;  // зеркало и широкий угол
+        }
+        return total;
     }
 
     private static int cameraSettingsSelected() {
         int selected = count(ChatsConfig.extendedFramesPerSecond.Bool(), ChatsConfig.cameraStabilization.Bool());
         if (isSeamlessSwitchingAvailable() && isSeamlessSwitchingEnabled()) {
             selected++;
+        }
+        if (ChatsConfig.cameraType() == CAMERA_TYPE_CAMERA_X) {
+            selected += count(ChatsConfig.cameraMirrorMode.Bool(), ChatsConfig.startWithWideAngleCamera.Bool());
         }
         return selected;
     }
@@ -500,7 +515,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
     private void toggleAllCameraSettings() {
         boolean enable = cameraSettingsSelected() == 0;
-        // при недоступном железе флаг всегда гасится.
+        // При недоступном железе флаг всегда гасится.
         setSeamlessSwitching(enable && isSeamlessSwitchingAvailable());
         ChatsConfig.extendedFramesPerSecond.setConfigBool(enable);
         ChatsConfig.cameraStabilization.setConfigBool(enable);
@@ -517,10 +532,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
     // ---- Настройки, которые лежат не в ConfigItem ----
 
-    /**
-     * «Быстрый свайп-переход» exteraGram — это рабочие ключи NagramX, только наоборот:
-     * NekoConfig.disableSwipeToNext* читает ChatsHelper.allowSwipeToNext (:505).
-     */
+    /** «Быстрый свайп-переход» — это ключи NekoConfig.disableSwipeToNext*, только наоборот. */
     private static boolean quickTransitionForChannels() {
         return !NekoConfig.disableSwipeToNext.Bool();
     }
@@ -541,8 +553,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * Настройка живёт в глобальных префах, а не в ChatsConfig: этот же ключ читает
-     * InstantCameraView (:850). exteraGram пишет туда же (case 44).
+     * Настройка живёт в глобальных префах, а не в ChatsConfig: этот же ключ
+     * читает InstantCameraView.
      */
     private static void setSeamlessSwitching(boolean value) {
         MessagesController.getGlobalMainSettings().edit().putBoolean("rounddual_available", value).apply();
@@ -550,29 +562,28 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
     private static final int CAMERA_TYPE_SYSTEM = 0;
     private static final int CAMERA_TYPE_CAMERA2 = 1;
+    private static final int CAMERA_TYPE_CAMERA_X = 2;
     /** Индекс варианта «спрашивать каждый раз» в NaConfig.cameraInVideoMessages. */
     private static final int VIDEO_CAMERA_ASK = 2;
 
     /**
-     * У exteraGram три типа камеры, у нас два: CameraX в дереве нет. Единственный источник
-     * правды — SharedConfig.useCamera2Force, его читает InstantCameraView (:1235 exteraGram).
-     * Отдельного ключа под тип камеры не держим: второе хранилище того же факта неизбежно
-     * разъезжается с первым, а прочитать его было некому.
+     * Тип камеры для кружков. Системный вариант оставлен за SharedConfig — там же, где
+     * его переключает отладочное меню Telegram; два других выбираются явно и живут в
+     * своём ключе, потому что булевым флагом три состояния не выразить.
      */
     private int cameraTypeIndex() {
-        return SharedConfig.isUsingCamera2(currentAccount) ? CAMERA_TYPE_CAMERA2 : CAMERA_TYPE_SYSTEM;
+        return ChatsConfig.cameraType();
     }
 
     private void setCameraTypeIndex(int index) {
         if (cameraTypeIndex() != index) {
-            SharedConfig.toggleUseCamera2(currentAccount);
+            ChatsConfig.cameraType.setConfigInt(index);
         }
     }
 
     /**
-     * Иконка строки AI-чата. Базовая ai_chat взята из ресурсов exteraGram; варианты
-     * под иконпаки остаются, потому что BaseIconPacks подменяет иконки по всему
-     * приложению и здесь должно быть так же.
+     * Иконка строки AI-чата. Варианты под иконпаки нужны потому, что BaseIconPacks
+     * подменяет иконки по всему приложению — здесь должно быть так же.
      */
     private static int aiChatIcon() {
         switch (BaseIconPacks.getSelected()) {
@@ -596,10 +607,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     private CharSequence[] cameraTypeOptions() {
-        // Третьего варианта (CameraX) в форке нет — реализации тоже, поэтому его не показываем.
         return new CharSequence[]{
                 getString(R.string.Default),
-                getString(R.string.OEChatsCameraTypeCamera2)
+                getString(R.string.OEChatsCameraTypeCamera2),
+                getString(R.string.OEChatsCameraTypeCameraX)
         };
     }
 
@@ -676,7 +687,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     };
 
     /**
-     * Набор действий наш, из NagramX: у exteraGram нет TRANSLATE_LLM и REPEAT_AS_COPY.
+     * Список с заголовком и иконками действий, а не голый попап. Набор действий
+     * наш, из NagramX: TRANSLATE_LLM и REPEAT_AS_COPY.
      */
     private void showDoubleTapOptions(int position, boolean outgoing) {
         if (getParentActivity() == null) {
@@ -894,7 +906,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == hideTimeOnStickersRow && stickerSizeCell != null) {
             stickerSizeCell.invalidate();
         } else if (position == removeMessageTailRow) {
-            // пузырь рисуется закешированным drawable, без сброса эффекта не видно.
+            // Пузырь рисуется закешированным drawable — без сброса эффекта не видно.
             // Обнуление и пересоздание — строго вместе: Theme.createChatResources
             // восстанавливает весь блок именно по условию chat_msgInDrawable == null.
             // Обнулить без активити означало бы оставить статик null и уронить
@@ -927,7 +939,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             }
             rebuildChats();
         } else if (header == messageMenuGroupRow) {
-            // меню сообщения собирается при создании фрагмента чата.
+            // Меню сообщения собирается при создании фрагмента чата.
             rebuildChats();
         }
     }
@@ -949,7 +961,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 || position == menuDetailsRow) {
             return messageMenuGroupRow;
         } else if (position == seamlessSwitchingRow || position == extendedFpsRow
-                || position == cameraStabilizationRow) {
+                || position == cameraStabilizationRow || position == cameraMirrorModeRow
+                || position == startWithWideAngleRow) {
             return extendedSettingsGroupRow;
         } else if (position == pauseVideoRow || position == pauseVoiceRow || position == pauseRoundRow) {
             return pauseGroupRow;
@@ -1011,6 +1024,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == groupedMessageMenuRow) return NaConfig.INSTANCE.getGroupedMessageMenu();
         if (position == extendedFpsRow) return ChatsConfig.extendedFramesPerSecond;
         if (position == cameraStabilizationRow) return ChatsConfig.cameraStabilization;
+        if (position == cameraMirrorModeRow) return ChatsConfig.cameraMirrorMode;
+        if (position == startWithWideAngleRow) return ChatsConfig.startWithWideAngleCamera;
         if (position == rememberLastUsedCameraRow) return ChatsConfig.rememberLastUsedCamera;
         if (position == staticZoomRow) return ChatsConfig.staticZoom;
         if (position == hideCameraTileRow) return ChatsConfig.hideCameraTile;
@@ -1028,7 +1043,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
      * Слайдер размера стикеров. Оформление перенесено из exteraGram 12.9.0
      * (AltSeekbar): синий жирный заголовок 15sp, рядом плашка со значением
      * (12sp bold, фон — тот же цвет с alpha 0.15, скругление 4dp), под слайдером
-     * серые подписи краёв 13sp. Диапазон 4..20, как у exteraGram.
+     * серые подписи краёв 13sp. Диапазон 4..20.
      */
     private class StickerSizeCell extends FrameLayout {
 
@@ -1169,8 +1184,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                     view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
                     break;
                 case TYPE_ROUND_CHECK: {
-                    // Тип 4 — круглая галочка с отступом под вложенный пункт,
-                    // ровно как у exteraGram в UniversalAdapter (view type 35).
+                    // Тип 4 — круглая галочка с отступом под вложенный пункт.
                     CheckBoxCell checkBoxCell = new CheckBoxCell(mContext, 4, 21, resourcesProvider);
                     checkBoxCell.getCheckBoxRound().setColor(Theme.key_switch2TrackChecked,
                             Theme.key_radioBackground, Theme.key_checkboxCheck);
@@ -1341,6 +1355,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setText(getString(R.string.OEChatsExtendedFps), "", ChatsConfig.extendedFramesPerSecond.Bool(), true, true);
             } else if (position == cameraStabilizationRow) {
                 cell.setText(getString(R.string.OEChatsCameraStabilization), "", ChatsConfig.cameraStabilization.Bool(), true, true);
+            } else if (position == cameraMirrorModeRow) {
+                cell.setText(getString(R.string.OEChatsCameraMirrorMode), "", ChatsConfig.cameraMirrorMode.Bool(), true, true);
+            } else if (position == startWithWideAngleRow) {
+                cell.setText(getString(R.string.OEChatsStartWithWideAngle), "", ChatsConfig.startWithWideAngleCamera.Bool(), true, true);
             } else if (position == pauseVideoRow) {
                 cell.setText(getString(R.string.OEChatsPauseVideo), "", NekoConfig.autoPauseVideo.Bool(), true, true);
             } else if (position == pauseVoiceRow) {
@@ -1349,8 +1367,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setText(getString(R.string.OEChatsPauseRound), "", ChatsConfig.pauseOnMinimizeRound.Bool(), false, true);
             }
             cell.setPad(1);
-            // По умолчанию ячейка этого типа красит текст серым; у exteraGram вложенные
-            // пункты того же цвета, что и обычные строки.
+            // По умолчанию ячейка этого типа красит текст серым; вложенные пункты
+            // должны быть того же цвета, что и обычные строки.
             cell.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         }
 
@@ -1372,11 +1390,13 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == removeMessageTailRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsRemoveMessageTail), ChatsConfig.removeMessageTail.Bool(), true);
             } else if (position == replaceEditedRow) {
+                // В подпись подставляется локализованное «edited».
                 cell.setTextAndCheck(LocaleController.formatString(R.string.OEChatsReplaceEditedWithIcon,
                         getString(R.string.EditedMessage)), ChatsConfig.replaceEditedWithIcon.Bool(), true);
             } else if (position == showOnlineStatusRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsShowOnlineStatus), NaConfig.INSTANCE.getShowOnlineStatus().Bool(), true);
             } else if (position == hideShareButtonRow) {
+                // В подпись подставляется название кнопки «Share».
                 cell.setTextAndCheck(LocaleController.formatString(R.string.OEChatsHideShareButton,
                         getString(R.string.ShareFile)), NaConfig.INSTANCE.getHideShareButtonInChannel().Bool(), true);
             } else if (position == showResultsBeforeVotingRow) {
@@ -1414,7 +1434,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setTextAndIcon(getString(R.string.OEChatsChatSettings), R.drawable.msg_discussion, false);
                 cell.setSubtitle(getString(R.string.OEChatsChatSettingsInfo));
             }
-            // высота 64, отступ текста от иконки 60. Ставится после setTextAndIcon —
+            // Обе строки двухстрочные: подпись под заголовком, высота 64,
+            // отступ текста от иконки 60. Ставится после setTextAndIcon —
             // тот сбрасывает offsetFromImage.
             cell.heightDp = 64;
             cell.offsetFromImage = 60;

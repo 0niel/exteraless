@@ -49,6 +49,26 @@ object ChatsConfig {
 
     // ---- Камера ----
 
+    /**
+     * Чем снимать круглые видеосообщения: 0 — системная (Camera1/Camera2 по решению
+     * приложения), 1 — Camera2, 2 — CameraX ([app.exteraless.camera.CameraXSession]).
+     *
+     * exteraGram держит здесь enum CameraType и по умолчанию ставит CameraX на быстрых
+     * устройствах. У нас по умолчанию 0: движок CameraX новый, и менять им камеру
+     * всем сразу — без спроса — неправильно.
+     */
+    @JvmField
+    val cameraType = addConfig("OEChatsCameraType", ConfigItem.configTypeInt, 0)
+
+    /** Зеркалить фронтальную камеру. Применяется только на CameraX. */
+    @JvmField
+    val cameraMirrorMode = addConfig("OEChatsCameraMirrorMode", ConfigItem.configTypeBool, true)
+
+    /** Начинать с широкоугольной линзы. Только CameraX. */
+    @JvmField
+    val startWithWideAngleCamera =
+        addConfig("OEChatsStartWithWideAngleCamera", ConfigItem.configTypeBool, false)
+
     /** Стабилизация видео. */
     @JvmField
     val cameraStabilization = addConfig("OEChatsCameraStabilization", ConfigItem.configTypeBool, false)
@@ -157,6 +177,10 @@ object ChatsConfig {
     @JvmField
     val SEEK_DURATIONS = intArrayOf(5, 10, 15, 30)
 
+    const val CAMERA_TYPE_SYSTEM = 0
+    const val CAMERA_TYPE_CAMERA_2 = 1
+    const val CAMERA_TYPE_CAMERA_X = 2
+
     // ---- Статические геттеры для горячих мест в Java ----
 
     /** Кнопки громкости снимают немоту с видео вместо изменения громкости. */
@@ -178,6 +202,14 @@ object ChatsConfig {
     fun pauseOnMinimizeRound(): Boolean {
         ensureLoaded()
         return pauseOnMinimizeRound.Bool()
+    }
+
+    /** Тип камеры для кружков: 0 системная, 1 Camera2, 2 CameraX. */
+    @JvmStatic
+    fun cameraType(): Int {
+        ensureLoaded()
+        val type = cameraType.Int()
+        return if (type in CAMERA_TYPE_SYSTEM..CAMERA_TYPE_CAMERA_X) type else CAMERA_TYPE_SYSTEM
     }
 
     @JvmStatic

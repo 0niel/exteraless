@@ -88,6 +88,8 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.VideoEditedInfo;
+import androidx.camera.core.Preview;
+
 import org.telegram.messenger.camera.Camera2Session;
 import org.telegram.messenger.camera.CameraController;
 import org.telegram.messenger.camera.CameraInfo;
@@ -189,14 +191,30 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private Size aspectRatio = SharedConfig.roundCamera16to9 ? new Size(16, 9) : new Size(4, 3);
     private TextureView textureView;
     private BackupImageView textureOverlayView;
-    private final boolean useCamera2 = SharedConfig.isUsingCamera2(currentAccount);
+    /**
+     * Чем снимаем кружок. exteraGram держит здесь трёхпозиционный CameraType
+     * (InstantCameraView.java:1235); у нас системный вариант остаётся за
+     * SharedConfig, как было, а два других выбираются явно в настройках.
+     */
+    private final int cameraType = app.exteraless.chats.ChatsConfig.cameraType();
+    private final boolean useCameraX = cameraType == app.exteraless.chats.ChatsConfig.CAMERA_TYPE_CAMERA_X;
+    private final boolean useCamera2 = !useCameraX
+            && (cameraType == app.exteraless.chats.ChatsConfig.CAMERA_TYPE_CAMERA_2
+                || SharedConfig.isUsingCamera2(currentAccount));
+    /** Зум у Camera2 и CameraX — кратность (min..max), у Camera1 — доля 0..1. */
+    private final boolean useRatioZoom = useCamera2 || useCameraX;
     private CameraSession cameraSession;
     private boolean bothCameras;
     private Camera2Session[] camera2Sessions = new Camera2Session[2];
     private Camera2Session camera2SessionCurrent;
+    private volatile app.exteraless.camera.CameraXSession cameraXSession;
+    private app.exteraless.camera.CameraXSession.CameraLifecycle camLifecycle;
     private boolean needDrawFlickerStub;
 
     private boolean isCameraSessionInitiated() {
+        if (useCameraX) {
+            return cameraXSession != null && cameraXSession.isReady();
+        }
         if (useCamera2) {
             return camera2SessionCurrent != null && camera2SessionCurrent.isInitiated();
         } else {
@@ -299,8 +317,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         rect = new RectF();
 
         flashViews = new FlashViews(getContext(), null, this, null);
-        // Тёплость и яркость фронтальной вспышки берём из настроек, а не константой:
-        // на случай раннего вызова до init().
+        // Тёплость и яркость фронтальной вспышки берём из настроек, а не константой.
+        // ensureLoaded — на случай раннего вызова до init().
         app.exteraless.chats.ChatsConfig.ensureLoaded();
         flashViews.setWarmth(app.exteraless.chats.ChatsConfig.flashWarmth());
         flashViews.setIntensity(app.exteraless.chats.ChatsConfig.flashIntensity());
@@ -516,7 +534,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             }
         }
 
-        if (useCamera2) {
+        if (useCameraX) {
+            // Подсветку гасит сама сессия, когда снимает фронталка.
+            if (isCameraSessionInitiated() && cameraXSession != null) {
+                cameraXSession.setTorchEnabled(flashing && recording);
+            }
+        } else if (useCamera2) {
             if (camera2Sessions[!initialCameraFront ? 0 : 1] != null) {
                 camera2Sessions[!initialCameraFront ? 0 : 1].setFlash(flashing && !isFrontface && recording);
             }
@@ -660,6 +683,14 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void destroy(boolean async) {
+        if (useCameraX) {
+            releaseCameraXSession();
+            if (camLifecycle != null) {
+                camLifecycle.stop();
+                camLifecycle = null;
+            }
+            return;
+        }
         if (useCamera2) {
             for (int a = 0; a < camera2Sessions.length; ++a) {
                 if (camera2Sessions[a] != null) {
@@ -772,6 +803,11 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         if (textureView != null) {
             return;
         }
+        if (useCameraX && camLifecycle == null) {
+            // CameraX привязывается к чужому жизненному циклу, а у кружка своей
+            // Activity нет — держим собственный.
+            camLifecycle = new app.exteraless.camera.CameraXSession.CameraLifecycle();
+        }
 
         if (switchCameraDrawable == null) {
             switchCameraDrawable = new RLottieDrawable(R.raw.roundcamera_flip, "roundcamera_flip", buttonsSizePx, buttonsSizePx);
@@ -846,7 +882,20 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             FileLog.d("InstantCamera show round camera " + cameraFile.getAbsolutePath());
         }
 
-        if (useCamera2) {
+        if (useCameraX) {
+            bothCameras = app.exteraless.camera.CameraXSession.isRoundDualAvailable(getContext());
+            surfaceIndex = (!bothCameras || isFrontface) ? 0 : 1;
+            // Размер превью CameraX сообщает уже после привязки, а GL-потоку он нужен
+            // сразу — до первого кадра ставим квадрат по размеру кружка.
+            if (previewSize[0] == null) {
+                final int side = app.exteraless.utils.AppUtils.getRoundVideoResolution(
+                        MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize);
+                previewSize[0] = new Size(side, side);
+            }
+            if (previewSize[1] == null) {
+                previewSize[1] = previewSize[0];
+            }
+        } else if (useCamera2) {
             bothCameras = DualCameraView.roundDualAvailableStatic(getContext());
             if (bothCameras) {
                 for (int a = 0; a < 2; ++a) {
@@ -905,7 +954,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                     cameraThread.shutdown(0, true, 0, 0, 0, 0);
                     cameraThread = null;
                 }
-                if (useCamera2) {
+                if (useCameraX) {
+                    releaseCameraXSession();
+                } else if (useCamera2) {
                     for (int a = 0; a < camera2Sessions.length; ++a) {
                         if (camera2Sessions[a] != null) {
                             camera2Sessions[a].destroy(false);
@@ -1215,7 +1266,63 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         cameraContainer.setImageReceiver(null);
     }
 
+    /**
+     * Переключение камеры на CameraX. При двух привязанных линзах (бесшовный режим)
+     * сессия не пересобирается — меняется активная камера и порядок поверхностей,
+     * поэтому картинка не гаснет.
+     */
+    private void switchCameraX() {
+        if (!useCameraX) {
+            return;
+        }
+        cancelZoomAnimations();
+        final boolean dual = cameraXSession != null && cameraXSession.isDualMode();
+        isFrontface = !isFrontface;
+        app.exteraless.chats.ChatsConfig.ensureLoaded();
+        if (app.exteraless.chats.ChatsConfig.rememberLastUsedCamera.Bool()
+                && NaConfig.INSTANCE.getCameraInVideoMessages().Int() != 2) {
+            NaConfig.INSTANCE.getCameraInVideoMessages().setConfigInt(isFrontface ? 0 : 1);
+        }
+        updateFlash();
+        if (dual) {
+            if (cameraThread != null) {
+                cameraThread.flipSurfaces();
+            }
+            if (cameraXSession != null) {
+                cameraXSession.switchCamera();
+                applyLockedZoomToCamera();
+            }
+            return;
+        }
+        cameraReady = false;
+        if (cameraXSession == null) {
+            if (cameraThread != null) {
+                cameraThread.reinitForNewCamera();
+            }
+        } else {
+            cameraXSession.switchCamera();
+            applyLockedZoomToCamera();
+        }
+    }
+
+    private void releaseCameraXSession() {
+        final app.exteraless.camera.CameraXSession session = cameraXSession;
+        if (session == null) {
+            return;
+        }
+        cameraXSession = null;
+        try {
+            session.closeCamera();
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
     private void switchCamera() {
+        if (useCameraX) {
+            switchCameraX();
+            return;
+        }
         if (!(useCamera2 && bothCameras)) {
             saveLastCameraBitmap();
             if (lastBitmap != null) {
@@ -1268,7 +1375,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     // Old Camera1 API
     @Deprecated
     private boolean initCamera() {
-        if (useCamera2) {
+        if (useCamera2 || useCameraX) {
             return true;
         }
         ArrayList<CameraInfo> cameraInfos = CameraController.getInstance().getCameras();
@@ -1427,7 +1534,40 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 FileLog.d("InstantCamera create camera session " + index);
             }
 
-            if (useCamera2) {
+            if (useCameraX) {
+                final Preview.SurfaceProvider surfaceProvider =
+                        app.exteraless.camera.CameraXSession.createSurfaceProvider(
+                                getContext(), surfaceTexture,
+                                (width, height) -> {
+                                    if (cameraThread != null) {
+                                        cameraThread.setCameraXPreviewSize(index, width, height);
+                                    }
+                                });
+                if (index == 0) {
+                    final app.exteraless.camera.CameraXSession session =
+                            new app.exteraless.camera.CameraXSession(camLifecycle, surfaceProvider);
+                    cameraXSession = session;
+                    session.initCamera(getContext(), isFrontface, bothCameras, () -> {
+                        if (cameraXSession != session) {
+                            return;
+                        }
+                        // Железо могло не дать две линзы разом — тогда вторая поверхность
+                        // не нужна, и порядок надо вернуть к одиночному.
+                        final boolean dual = session.isDualMode();
+                        if (!dual && bothCameras && surfaceIndex != 0 && cameraThread != null) {
+                            cameraThread.flipSurfaces();
+                        }
+                        bothCameras = dual;
+                        if (cameraThread != null) {
+                            cameraThread.setOrientation();
+                        }
+                        applyLockedZoomToCamera();
+                    });
+                    updateFlash();
+                } else if (bothCameras && cameraXSession != null) {
+                    cameraXSession.setSecondSurfaceProvider(surfaceProvider);
+                }
+            } else if (useCamera2) {
                 if (bothCameras) {
                     if (camera2Sessions[index] != null) {
                         camera2Sessions[index].open(surfaceTexture);
@@ -1585,6 +1725,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private final int DO_REINIT_MESSAGE = 2;
         private final int DO_SETSESSION_MESSAGE = 3;
         private final int DO_FLIP = 4;
+        private final int DO_SETORIENTATION_MESSAGE = 5;
+        private final int DO_SETPREVIEWSIZE_MESSAGE = 6;
 
         private int drawProgram;
         private int vertexMatrixHandle;
@@ -1873,6 +2015,41 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             }
         }
 
+        public void setOrientation() {
+            Handler handler = getHandler();
+            if (handler != null) {
+                sendMessage(handler.obtainMessage(DO_SETORIENTATION_MESSAGE), 0);
+            }
+        }
+
+        /** Размер превью CameraX приезжает уже после привязки — и может ещё уточниться. */
+        public void setCameraXPreviewSize(int index, int width, int height) {
+            if (index < 0 || index >= previewSize.length || width <= 0 || height <= 0) {
+                return;
+            }
+            Handler handler = getHandler();
+            if (handler != null) {
+                sendMessage(handler.obtainMessage(DO_SETPREVIEWSIZE_MESSAGE, index, 0, new Size(width, height)), 0);
+            }
+        }
+
+        private void updateTextureBuffer() {
+            updateScale();
+
+            float tX = 1.0f / scaleX / 2.0f;
+            float tY = 1.0f / scaleY / 2.0f;
+
+            float[] texData = {
+                    0.5f - tX, 0.5f - tY,
+                    0.5f + tX, 0.5f - tY,
+                    0.5f - tX, 0.5f + tY,
+                    0.5f + tX, 0.5f + tY
+            };
+
+            textureBuffer = ByteBuffer.allocateDirect(texData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            textureBuffer.put(texData).position(0);
+        }
+
         private void onDraw(Integer cameraId, boolean updateTexImage1, boolean updateTexImage2) {
             if (!initied || !this.cameraId.equals(cameraId)) {
                 return;
@@ -2075,21 +2252,25 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 }
                 case DO_FLIP: {
                     surfaceIndex = 1 - surfaceIndex;
-
-                    updateScale();
-
-                    float tX = 1.0f / scaleX / 2.0f;
-                    float tY = 1.0f / scaleY / 2.0f;
-
-                    float[] texData = {
-                            0.5f - tX, 0.5f - tY,
-                            0.5f + tX, 0.5f - tY,
-                            0.5f - tX, 0.5f + tY,
-                            0.5f + tX, 0.5f + tY
-                    };
-
-                    textureBuffer = ByteBuffer.allocateDirect(texData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-                    textureBuffer.put(texData).position(0);
+                    updateTextureBuffer();
+                    break;
+                }
+                case DO_SETORIENTATION_MESSAGE: {
+                    // У CameraX нет getWorldAngle(): поворот берём с дисплея.
+                    final app.exteraless.camera.CameraXSession session = cameraXSession;
+                    final int rotationAngle = session != null ? session.getDisplayOrientation() : 0;
+                    android.opengl.Matrix.setIdentityM(mMVPMatrix, 0);
+                    if (rotationAngle != 0) {
+                        android.opengl.Matrix.rotateM(mMVPMatrix, 0, rotationAngle, 0, 0, 1);
+                    }
+                    break;
+                }
+                case DO_SETPREVIEWSIZE_MESSAGE: {
+                    final int index = inputMessage.arg1;
+                    previewSize[index] = (Size) inputMessage.obj;
+                    if (index == surfaceIndex) {
+                        updateTextureBuffer();
+                    }
                     break;
                 }
             }
@@ -2238,6 +2419,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         private int resolveEncoderFrameRate() {
             if (!app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool()) {
                 return FRAME_RATE;
+            }
+            if (useCameraX) {
+                final app.exteraless.camera.CameraXSession session = cameraXSession;
+                return session != null ? session.getRecordingFrameRate() : FRAME_RATE;
             }
             if (useCamera2) {
                 final Camera2Session session = camera2SessionCurrent;
@@ -3937,10 +4122,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 return false;
             }
             float scale = (float) Math.hypot(ev.getX(index2) - ev.getX(index1), ev.getY(index2) - ev.getY(index1)) / pinchStartDistance;
-            if (useCamera2) {
-                if (camera2SessionCurrent != null) {
-                    float zoom = Utilities.clamp(pinchStartZoom * scale, camera2SessionCurrent.getMaxZoom(), camera2SessionCurrent.getMinZoom());
-                    camera2SessionCurrent.setZoom(zoom);
+            if (useRatioZoom) {
+                if (hasRatioZoomSession()) {
+                    float zoom = Utilities.clamp(pinchStartZoom * scale, zoomMaxRatio(), zoomMinRatio());
+                    setCameraZoomRatio(zoom);
                     pinchScale = zoom;
                     syncZoomControlView(pinchScale);
                 }
@@ -3995,13 +4180,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
         final float from;
         final float target;
-        if (useCamera2) {
-            final Camera2Session session = camera2SessionCurrent;
-            if (session == null) {
+        if (useRatioZoom) {
+            if (!hasRatioZoomSession()) {
                 return;
             }
-            final float minZoom = session.getMinZoom();
-            final float maxZoom = session.getMaxZoom();
+            final float minZoom = zoomMinRatio();
+            final float maxZoom = zoomMaxRatio();
             if (maxZoom <= minZoom) {
                 return;
             }
@@ -4027,10 +4211,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         volumeZoomAnimator.setInterpolator(CubicBezierInterpolator.DEFAULT);
         volumeZoomAnimator.addUpdateListener(animator -> {
             final float zoom = (float) animator.getAnimatedValue();
-            if (useCamera2) {
-                if (camera2SessionCurrent != null) {
-                    camera2SessionCurrent.setZoom(zoom);
-                }
+            if (useRatioZoom) {
+                setCameraZoomRatio(zoom);
             } else if (cameraSession != null) {
                 cameraSession.setZoom(zoom);
             }
@@ -4046,7 +4228,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         volumeZoomAnimator.start();
     }
 
-    /** Отменяет и шаговый зум, и откат после щипка — exteraGram :1565-1576. */
+    /** Отменяет и шаговый зум, и откат после щипка. */
     private void cancelZoomAnimations() {
         if (volumeZoomAnimator != null) {
             volumeZoomAnimator.cancel();
@@ -4067,10 +4249,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
         float fromZoom;
         float toZoom;
-        if (useCamera2) {
-            if (camera2SessionCurrent == null) return;
-            fromZoom = Utilities.clamp(pinchScale, camera2SessionCurrent.getMaxZoom(), camera2SessionCurrent.getMinZoom());
-            toZoom = getLockedZoomForCamera2();
+        if (useRatioZoom) {
+            if (!hasRatioZoomSession()) return;
+            fromZoom = Utilities.clamp(pinchScale, zoomMaxRatio(), zoomMinRatio());
+            toZoom = getLockedZoomRatio();
         } else {
             fromZoom = Utilities.clamp(pinchScale, 1f, 0f);
             toZoom = lockedZoom;
@@ -4080,10 +4262,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             finishZoomTransition = ValueAnimator.ofFloat(fromZoom, toZoom);
             finishZoomTransition.addUpdateListener(valueAnimator -> {
                 final float zoom = (float) valueAnimator.getAnimatedValue();
-                if (useCamera2) {
-                    if (camera2SessionCurrent != null) {
-                        camera2SessionCurrent.setZoom(zoom);
-                    }
+                if (useRatioZoom) {
+                    setCameraZoomRatio(zoom);
                 } else {
                     if (cameraSession != null) {
                         cameraSession.setZoom(zoom);
@@ -4124,31 +4304,73 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private float getCurrentZoom() {
-        if (useCamera2) {
-            return camera2SessionCurrent == null ? 1f : camera2SessionCurrent.getZoom();
+        if (useRatioZoom) {
+            return hasRatioZoomSession() ? currentCameraZoomRatio() : 1f;
         }
         return lockedZoom;
     }
 
-    private float getLockedZoomForCamera2() {
-        if (camera2SessionCurrent == null) {
+    // ---- Зум-кратность: одинаково для Camera2 и CameraX ----
+
+    private boolean hasRatioZoomSession() {
+        return useCameraX ? cameraXSession != null : camera2SessionCurrent != null;
+    }
+
+    private float zoomMinRatio() {
+        if (useCameraX) {
+            final app.exteraless.camera.CameraXSession session = cameraXSession;
+            return session == null ? 1f : session.getMinZoomRatio();
+        }
+        return camera2SessionCurrent == null ? 1f : camera2SessionCurrent.getMinZoom();
+    }
+
+    private float zoomMaxRatio() {
+        if (useCameraX) {
+            final app.exteraless.camera.CameraXSession session = cameraXSession;
+            return session == null ? 1f : session.getMaxZoomRatio();
+        }
+        return camera2SessionCurrent == null ? 1f : camera2SessionCurrent.getMaxZoom();
+    }
+
+    private float currentCameraZoomRatio() {
+        if (useCameraX) {
+            final app.exteraless.camera.CameraXSession session = cameraXSession;
+            return session == null ? 1f : session.getZoomRatio();
+        }
+        return camera2SessionCurrent == null ? 1f : camera2SessionCurrent.getZoom();
+    }
+
+    private void setCameraZoomRatio(float zoom) {
+        if (useCameraX) {
+            final app.exteraless.camera.CameraXSession session = cameraXSession;
+            if (session != null) {
+                session.setZoomRatio(zoom);
+            }
+            return;
+        }
+        if (camera2SessionCurrent != null) {
+            camera2SessionCurrent.setZoom(zoom);
+        }
+    }
+
+    private float getLockedZoomRatio() {
+        if (!hasRatioZoomSession()) {
             return 1f;
         }
-        float min = camera2SessionCurrent.getMinZoom();
-        float max = camera2SessionCurrent.getMaxZoom();
+        final float min = zoomMinRatio();
+        final float max = zoomMaxRatio();
         if (max <= min) {
             return min;
         }
         return min + lockedZoom * (max - min);
     }
 
-    private float getZoomControlValueFromCamera2(float zoom) {
-        final Camera2Session session = camera2SessionCurrent;
-        if (session == null) {
+    private float getZoomControlValueFromRatio(float zoom) {
+        if (!hasRatioZoomSession()) {
             return lockedZoom;
         }
-        final float min = session.getMinZoom();
-        final float max = session.getMaxZoom();
+        final float min = zoomMinRatio();
+        final float max = zoomMaxRatio();
         if (max <= min) {
             return 0f;
         }
@@ -4159,7 +4381,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         if (zoomControlView == null || zoomControlView.isTouch()) {
             return;
         }
-        final float value = useCamera2 ? getZoomControlValueFromCamera2(currentZoom) : Utilities.clamp01(currentZoom);
+        final float value = useRatioZoom ? getZoomControlValueFromRatio(currentZoom) : Utilities.clamp01(currentZoom);
         zoomControlView.setZoom(value, false);
     }
 
@@ -4179,6 +4401,18 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private void applyLockedZoomToCamera() {
+        if (useCameraX) {
+            final app.exteraless.camera.CameraXSession session = cameraXSession;
+            if (session == null) {
+                return;
+            }
+            // Широкий угол на старте — это зум меньше единицы, и его ставит сама
+            // сессия; трогаем зум, только когда пользователь сам его двигал.
+            if (lockedZoom > 0f) {
+                session.setZoomRatio(getLockedZoomRatio());
+            }
+            return;
+        }
         if (useCamera2) {
             final Camera2Session session = camera2SessionCurrent;
             if (session == null) {
