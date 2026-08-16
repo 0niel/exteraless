@@ -39,7 +39,6 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
 
     private int linksHeaderRow;
     private int channelRow;
-    private int crowdinRow;
     private int sourceRow;
     private int linksDividerRow;
 
@@ -58,9 +57,8 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         categoriesDividerRow = addRow();
 
         linksHeaderRow = addRow("linksHeader");
-        // Порядок: канал, переводы, репозиторий.
+        // Порядок: канал, репозиторий.
         channelRow = addRow("channel");
-        crowdinRow = addRow("crowdin");
         sourceRow = addRow("source");
         linksDividerRow = addRow();
     }
@@ -149,9 +147,6 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             presentFragment(new OpenExteraOtherActivity());
         } else if (position == channelRow) {
             getMessagesController().openByUserName("exteraless", this, 1);
-        } else if (position == crowdinRow) {
-            org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
-                    "https://crowdin.com/project/NagramX");
         } else if (position == sourceRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
                     "https://github.com/exteraless/exteraless");
@@ -204,9 +199,6 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (position == channelRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.ProfileChannel),
                                 "@exteraless", R.drawable.msg_channel, true);
-                    } else if (position == crowdinRow) {
-                        cell.setTextAndValueAndIcon(getString(R.string.OpenExteraCrowdin),
-                                "Crowdin", R.drawable.msg_translate, true);
                     } else if (position == sourceRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraSource),
                                 "GitHub", R.drawable.msg_language, false);
@@ -220,7 +212,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    if (position == categoriesDividerRow || position == linksDividerRow) {
+                    if (position == linksDividerRow) {
                         cell.setText(null);
                         cell.setBackground(Theme.getThemedDrawable(mContext,
                                 R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
@@ -241,7 +233,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 return TYPE_ABOUT;
             } else if (position == categoriesHeaderRow || position == linksHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == categoriesDividerRow || position == linksDividerRow) {
+            } else if (position == categoriesDividerRow) {
+                // Промежуток между секциями — тень фиксированной высоты. TextInfoPrivacyCell
+                // здесь держал высоту под подпись, которой нет, и оставлял пустое поле.
+                return TYPE_SHADOW;
+            } else if (position == linksDividerRow) {
                 return TYPE_INFO_PRIVACY;
             }
             return TYPE_TEXT;
