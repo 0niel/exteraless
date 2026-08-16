@@ -212,10 +212,12 @@ public final class MenuInjector {
     public static final class SwipeBackMenu {
         public final PluginsMenuWrapper wrapper;
         public final ActionBarMenuItem.Item item;
+        final ActionBarMenuItem headerItem;
 
-        SwipeBackMenu(PluginsMenuWrapper wrapper, ActionBarMenuItem.Item item) {
+        SwipeBackMenu(PluginsMenuWrapper wrapper, ActionBarMenuItem.Item item, ActionBarMenuItem headerItem) {
             this.wrapper = wrapper;
             this.item = item;
+            this.headerItem = headerItem;
         }
 
         /** Пересобрать и спрятать пункт, если плагины не дали ни одного. */
@@ -244,22 +246,26 @@ public final class MenuInjector {
             // Экраны, которые пересобирают меню (ProfileActivity зовёт
             // removeAllSubItems на каждом createActionBarMenu), теряют пункт,
             // но не слой swipe-back: обёртку переиспользуем, иначе слои копятся.
-            PluginsMenuWrapper wrapper = previous != null ? previous.wrapper : new PluginsMenuWrapper(
+            final boolean sameHost = previous != null && previous.headerItem == headerItem;
+            PluginsMenuWrapper wrapper = sameHost ? previous.wrapper : new PluginsMenuWrapper(
                     popupLayout.getSwipeBack(), menuType, contextData, resourcesProvider) {
                 @Override
                 public void closeMenu() {
                     headerItem.toggleSubMenu();
                 }
             };
-            if (previous != null) {
+            ActionBarMenuItem.Item item;
+            if (sameHost) {
                 wrapper.rebuildMenu(null);
+                item = headerItem.lazilyReuseItem(previous.item);
+            } else {
+                item = headerItem.lazilyAddSwipeBackItem(
+                        R.drawable.msg_settings_old, null,
+                        LocaleController.getString(R.string.OpenExteraPlugins), wrapper.getSwipeBack());
+                item.setOnClickListener(v -> item.openSwipeBack());
             }
-            ActionBarMenuItem.Item item = headerItem.lazilyAddSwipeBackItem(
-                    R.drawable.msg_settings_old, null,
-                    LocaleController.getString(R.string.OpenExteraPlugins), wrapper.getSwipeBack());
-            item.setOnClickListener(v -> item.openSwipeBack());
             item.setVisibility(wrapper.hasItems() ? View.VISIBLE : View.GONE);
-            return new SwipeBackMenu(wrapper, item);
+            return new SwipeBackMenu(wrapper, item, headerItem);
         } catch (Throwable t) {
             FileLog.e("MenuInjector: cannot attach " + menuType + " submenu", t);
             return previous;

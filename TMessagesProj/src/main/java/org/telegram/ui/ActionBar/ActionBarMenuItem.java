@@ -2747,6 +2747,20 @@ public class ActionBarMenuItem extends FrameLayout {
     public Item lazilyAddSwipeBackItem(int icon, Drawable iconDrawable, String text, View viewToSwipeBack) {
         return putLazyItem(Item.asSwipeBackItem(icon, iconDrawable, text, viewToSwipeBack));
     }
+
+    public Item lazilyReuseItem(Item item) {
+        if (item == null) {
+            return null;
+        }
+        if (lazyList != null && lazyList.contains(item)) {
+            return item;
+        }
+        AndroidUtilities.removeFromParent(item.view);
+        if (item.view == null) {
+            AndroidUtilities.removeFromParent(item.viewToSwipeBack);
+        }
+        return putLazyItem(item);
+    }
     public Item lazilyAddSubItem(int id, int icon, CharSequence text) {
         return lazilyAddSubItem(id, icon, null, text, true, false);
     }
