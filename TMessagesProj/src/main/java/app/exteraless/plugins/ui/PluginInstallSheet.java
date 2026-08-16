@@ -121,6 +121,7 @@ public class PluginInstallSheet extends BottomSheet {
                     PluginPermissionsActivity.infoOf(permission),
                     PluginCapabilityScan.evidenceOf(capabilities, permission),
                     i < permissions.size() - 1);
+            cell.setChecked(true, false);
             cell.setOnToggle(() -> cell.setChecked(!cell.isChecked(), true));
             cells.add(cell);
             content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,

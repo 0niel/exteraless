@@ -35,8 +35,10 @@ from ui import settings as ui_settings
 
 try:
     import pip_controller
-except Exception:  # requests/packaging unavailable — pip support disabled
+    _pip_import_error = None
+except Exception as _e:  # requests/packaging unavailable — pip support disabled
     pip_controller = None
+    _pip_import_error = _e
 
 from .metadata_parser import read_metadata  # noqa: F401
 from .metadata_parser import read_metadata_json as _read_metadata_json_py
@@ -287,7 +289,7 @@ _GATED_ROOTS = frozenset(key.partition(".")[0] for key in _IMPORT_RULES)
 _JAVA_CLASS_RULES = {
     "org.telegram.messenger.SendMessagesHelper": "messages.send",
     "org.telegram.messenger.MessagesStorage": "messages.read",
-    "org.telegram.tgnet.ConnectionsManager": "messages.read",
+    "org.telegram.tgnet.ConnectionsManager": ("messages.read", "messages.send"),
     "android.content.ContentResolver": "files",
     "android.provider.MediaStore": "files",
     "de.robv.android.xposed.": "hooks",
@@ -334,8 +336,10 @@ def guard_java_class(name):
     pid = plugin_frame_owner()
     if pid is None:
         return True
-    if has_permission(perm, pid):
+    wanted = perm if isinstance(perm, tuple) else (perm,)
+    if any(has_permission(single, pid) for single in wanted):
         return True
+    perm = " или ".join(wanted)
     _log_once(f"{pid}|jclass|{name}",
               f"plugin {pid!r}: class {name!r} refused, missing {perm!r}")
     try:
@@ -763,7 +767,12 @@ def _install_jclass_guard() -> None:
         def jclass(name, *args, **kwargs):
             try:
                 if isinstance(name, str) and not guard_java_class(name):
-                    raise ClassNotFoundError(name)
+                    needed = java_class_permission(name)
+                    if isinstance(needed, tuple):
+                        needed = " или ".join(needed)
+                    raise ClassNotFoundError(
+                        f"{name} — плагину не выдано разрешение {needed}"
+                        if needed else name)
             except ClassNotFoundError:
                 raise
             except Exception:
@@ -859,6 +868,34 @@ def _find_plugin_class(module, path: str):
     raise RuntimeError(f"no BasePlugin subclass defined in {path!r}")
 
 
+def _ensure_requirements(plugin_id: str, requirements) -> None:
+    """Поставить зависимости плагина и убедиться, что они импортируются."""
+    if pip_controller is None:
+        raise RuntimeError(
+            "механизм зависимостей недоступен, поставить "
+            + ", ".join(str(r) for r in requirements)
+            + " нечем" + (f": {_pip_import_error}" if _pip_import_error else ""))
+    try:
+        pip_controller.ensure_requirements(plugin_id, requirements)
+    except Exception as e:
+        raise RuntimeError(f"не удалось поставить зависимости плагина: {e}")
+
+    import importlib.util
+    for raw in requirements:
+        name = re.split(r"[\s\[<>=!~;]", str(raw).strip(), 1)[0]
+        module = name.replace("-", "_")
+        if not module:
+            continue
+        try:
+            found = importlib.util.find_spec(module) is not None
+        except Exception:
+            found = False
+        if not found:
+            raise RuntimeError(
+                f"зависимость {name!r} поставлена, но не импортируется — "
+                "проверьте, что пакет чисто питоновский")
+
+
 def load_plugin(path: str, plugin_id: str) -> str:
     """Validate metadata, install requirements, import and start the plugin."""
     _install_sandbox()  # идемпотентно; на случай, если импорт модуля не прошёл
@@ -874,8 +911,8 @@ def load_plugin(path: str, plugin_id: str) -> str:
         if plugin_id in plugins:
             _unload_record(plugin_id, quiet=True)
 
-        if pip_controller is not None and meta.get("requirements"):
-            pip_controller.ensure_requirements(plugin_id, meta["requirements"])
+        if meta.get("requirements"):
+            _ensure_requirements(plugin_id, meta["requirements"])
 
         module = _import_module(path, plugin_id)
         plugin_class = _find_plugin_class(module, path)
