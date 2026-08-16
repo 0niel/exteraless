@@ -94,9 +94,9 @@ class Custom:
 class SimpleSettingFactory:
     """Declarative factory for Custom settings items.
 
-    The actual Android view bridging requires the class-proxy subsystem,
-    which is not available in this build of exteraless; the factory still
-    stores its callbacks so plugin code stays source-compatible.
+    ``create_view(context)`` and ``bind_view(view, item, divider)`` are called
+    by the settings renderer when the row is drawn; ``java``/``instance`` still
+    require the class-proxy subsystem, which this build does not have.
     """
 
     def __init__(self, create_view=None, bind_view=None, is_clickable: bool = False,

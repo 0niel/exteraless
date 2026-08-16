@@ -68,7 +68,7 @@ __all__ = [
     # песочница
     "caller_plugin_id", "has_permission", "require_permission", "plugin_files",
     "PERM_UI", "PERM_MESSAGES_READ", "PERM_MESSAGES_SEND", "PERM_NETWORK",
-    "PERM_FILES", "PERM_INTENTS", "PERM_SETTINGS", "PERM_HOOKS",
+    "PERM_FILES", "PERM_INTENTS", "PERM_SETTINGS", "PERM_HOOKS", "PERM_NATIVE",
 ]
 
 
@@ -81,6 +81,7 @@ class PluginRecord:
     # Settings callback registry, rebuilt on every get_settings_json() call:
     click_callbacks: Dict[str, Callable] = field(default_factory=dict)  # callback_id -> on_click
     change_callbacks: Dict[str, Callable] = field(default_factory=dict)  # setting key -> on_change
+    custom_views: Dict[str, Any] = field(default_factory=dict)  # view_id -> ui.settings.Custom
 
 
 plugins: Dict[str, PluginRecord] = {}
@@ -202,10 +203,11 @@ PERM_FILES = "files"
 PERM_INTENTS = "intents"
 PERM_SETTINGS = "settings"
 PERM_HOOKS = "hooks"
+PERM_NATIVE = "native"
 
 _OUT_OF_SYNC = [p for p in (PERM_UI, PERM_MESSAGES_READ, PERM_MESSAGES_SEND,
                             PERM_NETWORK, PERM_FILES, PERM_INTENTS,
-                            PERM_SETTINGS, PERM_HOOKS)
+                            PERM_SETTINGS, PERM_HOOKS, PERM_NATIVE)
                 if p not in KNOWN_PERMISSIONS]
 if _OUT_OF_SYNC:  # набор разошёлся с metadata_parser/PluginPermissions — это баг
     print(f"[exteraless:plugin_loader] unknown permission keys {_OUT_OF_SYNC}",
@@ -250,8 +252,8 @@ _MAX_FRAMES = 60
 _IMPORT_RULES = {
     "subprocess": None,
     "_posixsubprocess": None,
-    "ctypes": None,
-    "_ctypes": None,
+    "ctypes": PERM_NATIVE,
+    "_ctypes": PERM_NATIVE,
     "multiprocessing": None,
     "socket": PERM_NETWORK,
     "socketserver": PERM_NETWORK,
@@ -1253,9 +1255,24 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
         return data
 
     if isinstance(item, s.Custom):
-        # Custom views/factories cannot cross the JSON settings bridge;
-        # skipped in this build (requires the class-proxy subsystem).
-        return None
+        view_id = f"cv_{next(counter)}"
+        record.custom_views[view_id] = item
+        data = {"type": "custom", "view_id": view_id}
+        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        if item.create_sub_fragment is not None:
+            try:
+                sub_items = item.create_sub_fragment()
+            except Exception as e:
+                instance.log(f"create_sub_fragment() failed: {type(e).__name__}: {e}")
+                sub_items = None
+            if sub_items:
+                sub_page = []
+                for sub_item in sub_items:
+                    entry = _serialize_setting_item(sub_item, record, counter)
+                    if entry is not None:
+                        sub_page.append(entry)
+                data["sub_page"] = sub_page
+        return data
 
     return None  # unknown item type: skip defensively
 
@@ -1276,6 +1293,7 @@ def get_settings_json(plugin_id: str) -> str:
 
     record.click_callbacks = {}
     record.change_callbacks = {}
+    record.custom_views = {}
     counter = itertools.count(1)
 
     out = []
@@ -1342,6 +1360,60 @@ def dispatch_setting_click(plugin_id: str, callback_id: str) -> None:
             _call_with_optional_arg(callback, None)
         except PermissionError as e:  # отказ разрешения — не поломка плагина
             _log_permission_error(plugin_id, e)
+    return None
+
+
+def _build_custom_view(item, context):
+    """Готовая Android-вьюха элемента Custom или None.
+
+    Три источника, в порядке того, как это пишут плагины: явная вьюха
+    (`Custom(view=...)`), она же под именем `item`, и фабрика
+    SimpleSettingFactory с `create_view`/`bind_view`.
+    """
+    view = getattr(item, "view", None)
+    if view is None:
+        view = getattr(item, "item", None)
+    if view is not None:
+        return view
+    factory = getattr(item, "factory", None)
+    if factory is None:
+        return None
+    create = getattr(factory, "create_view", None)
+    if not callable(create):
+        return None
+    try:
+        view = create(context)
+    except TypeError:
+        view = create()
+    if view is None:
+        return None
+    bind = getattr(factory, "bind_view", None)
+    if callable(bind):
+        try:
+            bind(view, item, False)
+        except TypeError:
+            try:
+                bind(view)
+            except TypeError:
+                pass
+    return view
+
+
+def get_custom_setting_view(plugin_id: str, view_id: str, context=None):
+    """Вьюха для строки `{"type": "custom"}` — зовётся с UI-потока Java."""
+    record = plugins.get(plugin_id)
+    if record is None:
+        return None
+    item = record.custom_views.get(view_id)
+    if item is None:
+        return None
+    try:
+        with plugin_context(plugin_id):
+            return _build_custom_view(item, context)
+    except PermissionError as e:
+        _log_permission_error(plugin_id, e)
+    except Exception as e:
+        record.instance.log(f"custom settings view failed: {type(e).__name__}: {e}")
     return None
 
 

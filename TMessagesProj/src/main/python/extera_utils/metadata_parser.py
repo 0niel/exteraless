@@ -35,6 +35,7 @@ KNOWN_PERMISSIONS = (
     "intents",
     "settings",
     "hooks",
+    "native",
 )
 
 _ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{1,31}$")

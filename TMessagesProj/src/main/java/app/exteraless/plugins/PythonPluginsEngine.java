@@ -280,6 +280,31 @@ public class PythonPluginsEngine {
         }
     }
 
+    /**
+     * Вьюха строки {@code {"type": "custom"}}: её собирает сам плагин на Python,
+     * Java получает готовый {@link android.view.View} через Chaquopy.
+     *
+     * @return null, если плагин ничего не вернул или вернул не вьюху — строка
+     *         тогда просто не рисуется, а экран остаётся живым.
+     */
+    public android.view.View getSettingsCustomView(String pluginId, String viewId,
+                                                   android.content.Context context) {
+        if (!started) {
+            return null;
+        }
+        PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
+        watchdog.notePluginEnter(pluginId);
+        try {
+            PyObject result = loader.callAttr("get_custom_setting_view", pluginId, viewId, context);
+            return result == null ? null : result.toJava(android.view.View.class);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: getSettingsCustomView failed for " + pluginId, t);
+            return null;
+        } finally {
+            watchdog.notePluginExit(pluginId);
+        }
+    }
+
     public void notifySettingChanged(String pluginId, String key, String jsonValue) {
         callSimple(pluginId, "notify_setting_changed", key, jsonValue);
     }

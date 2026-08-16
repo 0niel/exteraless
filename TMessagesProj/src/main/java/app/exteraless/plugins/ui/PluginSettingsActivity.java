@@ -9,8 +9,11 @@ import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONArray;
@@ -25,6 +28,8 @@ import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
+import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +46,9 @@ import tw.nekomimi.nekogram.ui.cells.HeaderCell;
  * без обращения к движку.
  */
 public class PluginSettingsActivity extends BaseNekoSettingsActivity {
+
+    /** Строка, которую рисует сам плагин ({@code ui.settings.Custom}). */
+    private static final int TYPE_CUSTOM = 100;
 
     private String pluginId;
     private String subPageJson;
@@ -193,7 +201,8 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             return false;
         }
         String nextType = next.optString("type");
-        return !"header".equals(nextType) && !"divider".equals(nextType);
+        return !"header".equals(nextType) && !"divider".equals(nextType)
+                && !"custom".equals(nextType);
     }
 
     /** Иконки приезжают именем drawable («msg_settings»); неизвестные молча пропускаем. */
@@ -252,6 +261,15 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             case "edittext":
                 showInputDialog(position, item, key, callbackId, true);
                 break;
+            case "custom": {
+                JSONArray customSubPage = item.optJSONArray("sub_page");
+                if (customSubPage != null) {
+                    presentFragment(newSubPage(pluginId, customSubPage.toString(), getActionBarTitle()));
+                } else if (callbackId != null) {
+                    controller.dispatchSettingClick(pluginId, callbackId);
+                }
+                break;
+            }
             case "text": {
                 JSONArray subPage = item.optJSONArray("sub_page");
                 if (subPage != null) {
@@ -430,6 +448,27 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     }
                     break;
                 }
+                case TYPE_CUSTOM: {
+                    FrameLayout container = (FrameLayout) holder.itemView;
+                    container.removeAllViews();
+                    JSONObject item = itemAt(position);
+                    String viewId = item == null ? null : optNonEmpty(item, "view_id");
+                    if (viewId == null) {
+                        break;
+                    }
+                    View custom = PluginsController.getInstance()
+                            .getPluginSettingsCustomView(pluginId, viewId, mContext);
+                    if (custom == null) {
+                        break;
+                    }
+                    // Вьюха живёт в объекте плагина и переживает переработку
+                    // строки: тот же экземпляр может ещё висеть в прошлом
+                    // контейнере, и addView без этого бросит IllegalState.
+                    AndroidUtilities.removeFromParent(custom);
+                    container.addView(custom, LayoutHelper.createFrame(
+                            LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                    break;
+                }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     if (position == notLoadedRow) {
@@ -450,6 +489,29 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     break;
                 }
             }
+        }
+
+        @NonNull
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            if (viewType == TYPE_CUSTOM) {
+                FrameLayout container = new FrameLayout(mContext);
+                container.setLayoutParams(new RecyclerView.LayoutParams(
+                        RecyclerView.LayoutParams.MATCH_PARENT,
+                        RecyclerView.LayoutParams.WRAP_CONTENT));
+                return new RecyclerListView.Holder(container);
+            }
+            return super.onCreateViewHolder(parent, viewType);
+        }
+
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            if (holder.getItemViewType() == TYPE_CUSTOM) {
+                JSONObject item = itemAt(holder.getAdapterPosition());
+                return item != null && (optNonEmpty(item, "callback_id") != null
+                        || item.optJSONArray("sub_page") != null);
+            }
+            return super.isEnabled(holder);
         }
 
         @Override
@@ -478,6 +540,8 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 case "input":
                 case "edittext":
                     return TYPE_SETTINGS;
+                case "custom":
+                    return TYPE_CUSTOM;
                 default:
                     return TYPE_TEXT;
             }

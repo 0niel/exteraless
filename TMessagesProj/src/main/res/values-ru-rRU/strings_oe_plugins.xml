@@ -46,7 +46,7 @@
     <string name="PluginPermissionsHeader">Разрешения</string>
     <string name="PluginPermissionsNothing">Ничего, кроме своих меню и экрана настроек.</string>
     <string name="PluginPermissionsUnenforcedInfo">Ещё объявлено: %1$s — это приложение пока не может ограничить.</string>
-    <string name="PluginPermissionsHooksWarning">Хуки перекрывают переключатели выше. Давайте их только авторам, которым доверяете.</string>
+    <string name="PluginPermissionsHooksWarning">Хуки и нативные библиотеки перекрывают переключатели выше. Давайте их только авторам, которым доверяете.</string>
     <string name="PluginPermissionsApplied">Плагин перезапущен, изменение действует.</string>
     <string name="PluginPermissionsGone">Этот плагин больше не установлен.</string>
     <string name="PluginPermUi">Свои меню и настройки</string>
@@ -63,6 +63,8 @@
     <string name="PluginPermIntentsInfo">Ссылки, по которым вы нажимаете, и открываемые файлы.</string>
     <string name="PluginPermSettings">Менять настройки</string>
     <string name="PluginPermSettingsInfo">Включает и выключает настройки приложения.</string>
+    <string name="PluginPermNative">Загрузка нативных библиотек</string>
+    <string name="PluginPermNativeInfo">Исполняет машинный код внутри приложения; проверки выше после этого не держат.</string>
     <string name="PluginPermHooks">Хуки и правка приложения</string>
     <string name="PluginPermHooksInfo">Переписывает код приложения на ходу; всё выше становится возможным.</string>
     <string name="PluginActivityHeader">Поведение</string>
@@ -103,7 +105,7 @@
     <string name="PluginActivityDidFile">Файл: %1$s</string>
     <string name="PluginActivityDidReach">Обратился к %1$s</string>
     <string name="PluginActivityDidProcess">Пытался запустить программу</string>
-    <string name="PluginActivityDidNative">Пытался загрузить нативный код</string>
+    <string name="PluginActivityDidNative">Нативный код: %1$s</string>
     <string name="PluginActivityDidIntrospect">Пытался прочитать состояние чужого модуля</string>
     <string name="PluginActivityDidCode">Собрал код на ходу</string>
     <string name="PluginActivityRepeat">× %1$d</string>
@@ -121,6 +123,7 @@
     <string name="PluginPermShortFiles">Действия с вашими файлами</string>
     <string name="PluginPermShortIntents">Открывать ссылки от вас</string>
     <string name="PluginPermShortSettings">Менять настройки приложения</string>
+    <string name="PluginPermShortNative">Загружать нативные библиотеки</string>
     <string name="PluginPermShortHooks">Переписывать код приложения</string>
     <string name="PluginsPermissionFound">Найдено: %1$s</string>
     <string name="PluginsEnableAfterInstallation">Включить после установки</string>

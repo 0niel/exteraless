@@ -85,6 +85,7 @@ public class PluginPermissionsActivity extends BaseFragment {
             case PluginPermissions.INTENTS: return getString(R.string.PluginPermIntents);
             case PluginPermissions.SETTINGS: return getString(R.string.PluginPermSettings);
             case PluginPermissions.HOOKS: return getString(R.string.PluginPermHooks);
+            case PluginPermissions.NATIVE: return getString(R.string.PluginPermNative);
             // Неизвестный ключ до интерфейса не доходит (метапарсер бракует такие
             // метаданные), но пусть строка будет хоть какая-то, а не пустая.
             default: return PluginPermissions.describe(perm);
@@ -111,6 +112,7 @@ public class PluginPermissionsActivity extends BaseFragment {
             case PluginPermissions.INTENTS: return getString(R.string.PluginPermShortIntents);
             case PluginPermissions.SETTINGS: return getString(R.string.PluginPermShortSettings);
             case PluginPermissions.HOOKS: return getString(R.string.PluginPermShortHooks);
+            case PluginPermissions.NATIVE: return getString(R.string.PluginPermShortNative);
             default: return titleOf(perm);
         }
     }
@@ -129,6 +131,7 @@ public class PluginPermissionsActivity extends BaseFragment {
             case PluginPermissions.INTENTS: return getString(R.string.PluginPermIntentsInfo);
             case PluginPermissions.SETTINGS: return getString(R.string.PluginPermSettingsInfo);
             case PluginPermissions.HOOKS: return getString(R.string.PluginPermHooksInfo);
+            case PluginPermissions.NATIVE: return getString(R.string.PluginPermNativeInfo);
             default: return "";
         }
     }
@@ -162,9 +165,18 @@ public class PluginPermissionsActivity extends BaseFragment {
         if (plugin == null) {
             return new ArrayList<>();
         }
-        return plugin.permissionsDeclared
+        List<String> requested = plugin.permissionsDeclared
                 ? PluginPermissions.getRequested(plugin)
                 : new ArrayList<>(PluginPermissions.REQUESTABLE);
+        // Объявленному верить целиком нельзя: диалог установки спрашивает по
+        // уликам разбора, и без этого объединения выданное там разрешение
+        // потом негде было бы увидеть и отозвать.
+        for (String perm : PluginCapabilityScan.ordered(PluginCapabilityScan.load(plugin.id))) {
+            if (!requested.contains(perm)) {
+                requested.add(perm);
+            }
+        }
+        return PluginPermissions.sanitize(requested);
     }
 
     // ---------- экран ----------
@@ -412,6 +424,7 @@ public class PluginPermissionsActivity extends BaseFragment {
                 return R.string.PluginLevelIsolatedFooter;
             case PluginTrustLevel.TRUSTED:
                 return PluginPermissions.has(pluginId, PluginPermissions.HOOKS)
+                        || PluginPermissions.has(pluginId, PluginPermissions.NATIVE)
                         ? R.string.PluginLevelTrustedFooter
                         : R.string.PluginLevelTrustedFooterIdle;
             default:
@@ -450,7 +463,7 @@ public class PluginPermissionsActivity extends BaseFragment {
         } else {
             PluginPermissions.grant(pluginId, perm);
         }
-        if (PluginPermissions.HOOKS.equals(perm) && listView != null) {
+        if (PluginPermissions.isDangerous(perm) && listView != null) {
             // Единственное разрешение, от которого меняется текст под уровнем:
             // с выданными хуками остальные переключатели уже не соблюсти.
             listView.adapter.update(true);

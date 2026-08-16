@@ -180,7 +180,8 @@ public class PluginActivityLogActivity extends BaseFragment {
             case "process":
                 return getString(R.string.PluginActivityDidProcess);
             case "native":
-                return getString(R.string.PluginActivityDidNative);
+                return LocaleController.formatString(R.string.PluginActivityDidNative,
+                        detail.isEmpty() ? entry.event : shortPath(detail));
             case "introspection":
                 return getString(R.string.PluginActivityDidIntrospect);
             case "code":

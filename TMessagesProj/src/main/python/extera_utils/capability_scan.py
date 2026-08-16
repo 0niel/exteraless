@@ -30,6 +30,7 @@ PERM_FILES = "files"
 PERM_INTENTS = "intents"
 PERM_SETTINGS = "settings"
 PERM_HOOKS = "hooks"
+PERM_NATIVE = "native"
 
 #: Признак -> (разрешение, человеческое имя улики).
 #: Ключ ищется как подстрока исходника; порядок не важен, дубли схлопываются.
@@ -89,6 +90,13 @@ _MARKERS = (
     ("DexClassLoader", PERM_HOOKS, "DexClassLoader"),
     ("generate_proxy_class", PERM_HOOKS, "class proxy"),
     ("deoptimize", PERM_HOOKS, "deoptimize"),
+    # ---- нативный код ----
+    ("import ctypes", PERM_NATIVE, "ctypes"),
+    ("ctypes.CDLL", PERM_NATIVE, "ctypes"),
+    ("CDLL(", PERM_NATIVE, "ctypes"),
+    ("loadLibrary", PERM_NATIVE, "loadLibrary"),
+    (".so\"", PERM_NATIVE, "native library"),
+    (".so'", PERM_NATIVE, "native library"),
 )
 
 #: Файл больше этого не разбираем: плагины такого размера не встречаются,

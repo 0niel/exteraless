@@ -48,7 +48,7 @@
     <string name="PluginPermissionsHeader">Permissions</string>
     <string name="PluginPermissionsNothing">Nothing beyond its own menus and settings screen.</string>
     <string name="PluginPermissionsUnenforcedInfo">Also declared: %1$s — the app cannot enforce that yet.</string>
-    <string name="PluginPermissionsHooksWarning">Hooks override the switches above. Grant them only to authors you trust.</string>
+    <string name="PluginPermissionsHooksWarning">Hooks and native libraries override the switches above. Grant them only to authors you trust.</string>
     <string name="PluginPermissionsApplied">Plugin restarted, the change is in effect.</string>
     <string name="PluginPermissionsGone">This plugin is no longer installed.</string>
 
@@ -66,6 +66,8 @@
     <string name="PluginPermIntentsInfo">Links you tap and files you open.</string>
     <string name="PluginPermSettings">Change app settings</string>
     <string name="PluginPermSettingsInfo">Turns the app\'s own options on and off.</string>
+    <string name="PluginPermNative">Load native libraries</string>
+    <string name="PluginPermNativeInfo">Runs machine code inside the app; the checks above no longer hold.</string>
     <string name="PluginPermHooks">Hook / rewrite the app</string>
     <string name="PluginPermHooksInfo">Rewrites the app\'s code as it runs; everything above becomes possible.</string>
 
@@ -108,7 +110,7 @@
     <string name="PluginActivityDidFile">File: %1$s</string>
     <string name="PluginActivityDidReach">Reached %1$s</string>
     <string name="PluginActivityDidProcess">Tried to run a program</string>
-    <string name="PluginActivityDidNative">Tried to load native code</string>
+    <string name="PluginActivityDidNative">Native code: %1$s</string>
     <string name="PluginActivityDidIntrospect">Tried to read another module\'s state</string>
     <string name="PluginActivityDidCode">Built code at runtime</string>
     <string name="PluginActivityRepeat">× %1$d</string>
@@ -126,6 +128,7 @@
     <string name="PluginPermShortFiles">Interact with your files</string>
     <string name="PluginPermShortIntents">Open links as you</string>
     <string name="PluginPermShortSettings">Change app settings</string>
+    <string name="PluginPermShortNative">Load native libraries</string>
     <string name="PluginPermShortHooks">Hook / rewrite the app</string>
     <string name="PluginsPermissionFound">Found: %1$s</string>
     <string name="PluginsEnableAfterInstallation">Enable after installation</string>

@@ -272,7 +272,8 @@ public final class PluginInstallHelper {
         final int level;
         if (granted.isEmpty()) {
             level = PluginTrustLevel.ISOLATED;
-        } else if (granted.contains(PluginPermissions.HOOKS)) {
+        } else if (granted.contains(PluginPermissions.HOOKS)
+                || granted.contains(PluginPermissions.NATIVE)) {
             // Хуки живут только на доверенном уровне: там про это и сказано.
             level = PluginTrustLevel.TRUSTED;
         } else {

@@ -768,6 +768,11 @@ public class PluginsController {
         return PythonPluginsEngine.getInstance().getSettingsJson(pluginId);
     }
 
+    public android.view.View getPluginSettingsCustomView(String pluginId, String viewId,
+                                                         android.content.Context context) {
+        return PythonPluginsEngine.getInstance().getSettingsCustomView(pluginId, viewId, context);
+    }
+
     /** Из UI: пользователь изменил значение. */
     public void notifySettingChanged(String pluginId, String key, String jsonValue) {
         PythonPluginsEngine.getInstance().notifySettingChanged(pluginId, key, jsonValue);

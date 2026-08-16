@@ -59,16 +59,6 @@ _local = threading.local()
 # Никогда и никому: обход всей модели (нативный код, свой процесс, подмена
 # наблюдения). Совпадает с правилами None в plugin_loader._IMPORT_RULES.
 _DENY_ALWAYS = {
-    "ctypes.dlopen": "load a native library",
-    "ctypes.dlsym": "resolve a native symbol",
-    "ctypes.dlsym/handle": "resolve a native symbol",
-    "ctypes.dlclose": "unload a native library",
-    "ctypes.call_function": "call a native function",
-    "ctypes.cdata": "cast a raw memory address",
-    "ctypes.cdata/buffer": "wrap raw memory",
-    "ctypes.string_at": "read raw memory",
-    "ctypes.wstring_at": "read raw memory",
-    "ctypes.set_exception": "hijack native error handling",
     "os.system": "run a shell command",
     "os.exec": "replace the process image",
     "os.spawn": "spawn a process",
@@ -81,6 +71,40 @@ _DENY_ALWAYS = {
     "sys.settrace": "trace other code",
     "sys.setprofile": "profile other code",
     "sys._current_frames": "read other threads' stacks",
+}
+
+# Разрешение native: загрузка .so и работа с его памятью.
+#
+# Исключение — библиотеки самого рантайма. Chaquopy подгружает зависимости
+# своих же расширений через ctypes: java/android/importer.py, load_needed()
+# читает DT_NEEDED у .so и зовёт CDLL на каждую запись. Из-за этого `import PIL`
+# в плагине падал с «dlopen failed: library "libjpeg_chaquopy.so" not found»:
+# гейт видел плагина в стеке и отказывал интерпретатору. Путь к такой
+# библиотеке лежит внутри каталогов рантайма, по нему их и отличаем — своё .so
+# плагина оно не пропустит.
+#
+# Дробить этот набор бессмысленно. Кто получил dlopen и dlsym, тот исполняет
+# в нашем процессе произвольный код, и запрет на string_at после этого ничего
+# не защищает — он лишь ломает нормальные привязки, которые читают char* из
+# ответа библиотеки. Поэтому разрешение одно на всю группу.
+_NATIVE = {
+    "ctypes.dlopen": "load a native library",
+    "ctypes.dlsym": "resolve a native symbol",
+    "ctypes.dlsym/handle": "resolve a native symbol",
+    "ctypes.dlclose": "unload a native library",
+    "ctypes.call_function": "call a native function",
+    "ctypes.cdata": "cast a raw memory address",
+    "ctypes.cdata/buffer": "wrap raw memory",
+    "ctypes.string_at": "read raw memory",
+    "ctypes.wstring_at": "read raw memory",
+    "ctypes.set_exception": "hijack native error handling",
+    "ctypes.addressof": "take the address of an object",
+    "ctypes.create_string_buffer": "allocate a raw buffer",
+    "ctypes.create_unicode_buffer": "allocate a raw buffer",
+    "ctypes.get_errno": "read the native error code",
+    "ctypes.set_errno": "set the native error code",
+    "ctypes.get_last_error": "read the native error code",
+    "ctypes.set_last_error": "set the native error code",
 }
 
 # Разрешение network.
@@ -148,14 +172,15 @@ _JOURNAL_ONLY = frozenset({
     "code.__new__", "builtins.input",
 })
 
-_WATCHED = (set(_DENY_ALWAYS) | set(_NETWORK) | set(_FILES) | set(_DATABASE)
-            | set(_JOURNAL_ONLY) | {"object.__getattr__"})
+_WATCHED = (set(_DENY_ALWAYS) | set(_NATIVE) | set(_NETWORK) | set(_FILES)
+            | set(_DATABASE) | set(_JOURNAL_ONLY) | {"object.__getattr__"})
 
 # Категория для профиля плагина (что он вообще делал).
 _CATEGORY = {}
 for _e in _DENY_ALWAYS:
-    _CATEGORY[_e] = "process" if _e.startswith(("os.", "subprocess")) else (
-        "native" if _e.startswith("ctypes") else "introspection")
+    _CATEGORY[_e] = "process" if _e.startswith(("os.", "subprocess")) else "introspection"
+for _e in _NATIVE:
+    _CATEGORY[_e] = "native"
 for _e in _NETWORK:
     _CATEGORY[_e] = "network"
 for _e in _FILES:
@@ -453,6 +478,17 @@ def _check(event, args):
         raise _denial(PermissionError(
             f"plugin {plugin_id!r} cannot {what}: this is never available to "
             f"plugins ({event})"))
+
+    what = _NATIVE.get(event)
+    if what is not None:
+        detail = _as_text(_arg(args, 0))
+        if _is_runtime_file(detail):
+            return  # рантайм грузит зависимость своего же модуля, а не плагин лезет в FFI
+        allowed = _loader.has_permission(_loader.PERM_NATIVE, plugin_id)
+        _record(plugin_id, event, detail, allowed)
+        _loader.require_permission(_loader.PERM_NATIVE, what,
+                                   detail=detail, plugin_id=plugin_id)
+        return
 
     what = _NETWORK.get(event)
     if what is not None:

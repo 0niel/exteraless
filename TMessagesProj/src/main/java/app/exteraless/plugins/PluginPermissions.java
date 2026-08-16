@@ -50,10 +50,12 @@ public final class PluginPermissions {
     public static final String SETTINGS = "settings";
     /** Xposed-хуки, Class Proxy, деоптимизация, allocateInstance. */
     public static final String HOOKS = "hooks";
+    /** Загрузка нативных библиотек через ctypes и работа с их памятью. */
+    public static final String NATIVE = "native";
 
     /** Все ключи в порядке спецификации; первый — {@link #UI}. */
     public static final List<String> ALL = Collections.unmodifiableList(Arrays.asList(
-            UI, MESSAGES_READ, MESSAGES_SEND, NETWORK, FILES, INTENTS, SETTINGS, HOOKS));
+            UI, MESSAGES_READ, MESSAGES_SEND, NETWORK, FILES, INTENTS, SETTINGS, HOOKS, NATIVE));
 
     /** Ключи, которые спрашиваются у пользователя (всё, кроме {@link #UI}). */
     public static final List<String> REQUESTABLE = Collections.unmodifiableList(
@@ -79,7 +81,7 @@ public final class PluginPermissions {
      * Помечается в интерфейсе особо (отдельное предупреждение в диалоге установки).
      */
     public static boolean isDangerous(String perm) {
-        return HOOKS.equals(perm);
+        return HOOKS.equals(perm) || NATIVE.equals(perm);
     }
 
     /** Короткий английский текст для логов и как fallback, если строки локали ещё нет. */
@@ -96,6 +98,7 @@ public final class PluginPermissions {
             case INTENTS: return "intercept links and intents";
             case SETTINGS: return "app settings";
             case HOOKS: return "Java hooks (full control)";
+            case NATIVE: return "load native libraries (full control)";
             default: return perm;
         }
     }
@@ -237,6 +240,7 @@ public final class PluginPermissions {
         }
         if (level != PluginTrustLevel.TRUSTED) {
             raw.remove(HOOKS);
+            raw.remove(NATIVE);
         }
         return raw;
     }

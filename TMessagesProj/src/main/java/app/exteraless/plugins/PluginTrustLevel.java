@@ -73,7 +73,8 @@ public final class PluginTrustLevel {
     /** Уровень для плагина, установленного до появления рычага. */
     private static int migrate(String pluginId) {
         List<String> effective = PluginPermissions.getEffectiveRaw(pluginId);
-        if (effective.contains(PluginPermissions.HOOKS)) {
+        if (effective.contains(PluginPermissions.HOOKS)
+                || effective.contains(PluginPermissions.NATIVE)) {
             return TRUSTED;
         }
         for (String perm : effective) {
@@ -100,6 +101,7 @@ public final class PluginTrustLevel {
             PluginPermissions.setGranted(pluginId, new ArrayList<>());
         } else if (value == GATED) {
             PluginPermissions.revoke(pluginId, PluginPermissions.HOOKS);
+            PluginPermissions.revoke(pluginId, PluginPermissions.NATIVE);
         }
         FileLog.d("PluginTrustLevel: " + pluginId + " -> " + name(value));
     }
@@ -112,7 +114,7 @@ public final class PluginTrustLevel {
         if (level == ISOLATED) {
             return false;
         }
-        return level == TRUSTED || !PluginPermissions.HOOKS.equals(perm);
+        return level == TRUSTED || !PluginPermissions.isDangerous(perm);
     }
 
     public static boolean allows(String pluginId, String perm) {
