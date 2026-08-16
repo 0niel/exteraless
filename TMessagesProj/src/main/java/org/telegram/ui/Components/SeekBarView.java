@@ -14,6 +14,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -431,7 +432,19 @@ public class SeekBarView extends FrameLayout {
             setProgress(progressToSet);
             progressToSet = -100;
         }
+        // Тянуть ползунок у края экрана мешает системный жест «назад»: он
+        // перехватывает касание раньше приложения, и вместо перетаскивания
+        // начинается выход из экрана. Стоковый SlideIntChooseView отдаёт
+        // системе те же 80dp с обеих сторон (SlideIntChooseView:301).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            gestureExclusionRects.clear();
+            gestureExclusionRects.add(new Rect(0, 0, dp(80), getMeasuredHeight()));
+            gestureExclusionRects.add(new Rect(getMeasuredWidth() - dp(80), 0, getMeasuredWidth(), getMeasuredHeight()));
+            setSystemGestureExclusionRects(gestureExclusionRects);
+        }
     }
+
+    private final java.util.ArrayList<Rect> gestureExclusionRects = new java.util.ArrayList<>();
 
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {

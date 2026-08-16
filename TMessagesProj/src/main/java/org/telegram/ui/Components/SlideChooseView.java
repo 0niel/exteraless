@@ -1,7 +1,9 @@
 package org.telegram.ui.Components;
 
 import android.content.Context;
+import android.os.Build;
 import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -222,7 +224,17 @@ public class SlideChooseView extends View {
         gapSize = AndroidUtilities.dp(2);
         sideSide = AndroidUtilities.dp(22);
         lineSize = (getMeasuredWidth() - circleSize * optionsStr.length - gapSize * 2 * (optionsStr.length - 1) - sideSide * 2) / Math.max(1, optionsStr.length - 1);
+        // См. SeekBarView.onMeasure: у краёв экрана системный жест «назад»
+        // забирает касание себе, и ползунок вместо перетаскивания закрывает экран.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            gestureExclusionRects.clear();
+            gestureExclusionRects.add(new Rect(0, 0, AndroidUtilities.dp(80), getMeasuredHeight()));
+            gestureExclusionRects.add(new Rect(getMeasuredWidth() - AndroidUtilities.dp(80), 0, getMeasuredWidth(), getMeasuredHeight()));
+            setSystemGestureExclusionRects(gestureExclusionRects);
+        }
     }
+
+    private final java.util.ArrayList<android.graphics.Rect> gestureExclusionRects = new java.util.ArrayList<>();
 
     /**
      * Material-слайдер включается только для
