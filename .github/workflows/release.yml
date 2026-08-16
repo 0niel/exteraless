@@ -70,8 +70,7 @@ jobs:
         with:
           name: Release
           path: |
-            TMessagesProj/build/outputs/apk/release/*-arm64-v8a.apk
-            TMessagesProj/build/outputs/apk/release/*-universal.apk
+            TMessagesProj/build/outputs/apk/release/*.apk
   upload:
     name: Upload release
     if: github.event.inputs.upload != 'y' && !contains(github.event.head_commit.message, '[skip upload]')

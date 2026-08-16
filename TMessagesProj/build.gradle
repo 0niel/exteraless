@@ -65,9 +65,14 @@ android {
 
     // Целевые ABI. Ограничение живёт в ndk.abiFilters — этого требует Chaquopy;
     // см. комментарий у splits ниже.
+    // 32-битных ABI в списке нет намеренно: Chaquopy собирает Python 3.12 только
+    // под arm64-v8a и x86_64, и на armeabi-v7a конфигурация падает ещё до сборки
+    // («Python 3.12 is not available for the ABI»). Вернуть их можно только вместе
+    // с откатом Python до 3.11 — тогда та же минорная версия понадобится и на
+    // машине сборки, включая CI.
     def targetAbis
     if (nativeTarget == 'universal') {
-        targetAbis = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
+        targetAbis = ['arm64-v8a', 'x86_64']
     } else if (nativeTarget == 'SKIP') {
         targetAbis = ['arm64-v8a']
     } else if (!nativeTarget.isBlank()) {
