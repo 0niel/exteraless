@@ -80,7 +80,7 @@ public class AppIconsSelectorCell extends RecyclerListView implements Notificati
                 holderView.bind(icon);
                 holderView.iconView.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(ICONS_ROUND_RADIUS), Color.TRANSPARENT, Theme.getColor(Theme.key_listSelector), Color.BLACK));
                 holderView.iconView.setForeground(icon.foreground);
-                holderView.iconView.setIsNekoXIcon(icon.isNekoX());
+                holderView.iconView.setIsNekoXIcon(false);
             }
 
             @Override
