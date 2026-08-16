@@ -5,6 +5,8 @@ import static org.telegram.messenger.LocaleController.getString;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.CountDownTimer;
 import android.view.View;
 import android.widget.TextView;
@@ -14,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -26,11 +29,17 @@ import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.BulletinFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Locale;
+import java.util.UUID;
 
+import app.exteraless.backup.EtgBackup;
+import app.exteraless.backup.EtgBackupUi;
 import app.exteraless.general.GeneralConfig;
 import app.exteraless.general.GeneralHelper;
-import tw.nekomimi.nekogram.helpers.SettingsBackupHelper;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 import tw.nekomimi.nekogram.utils.AlertUtil;
@@ -44,11 +53,15 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     /** Кнопка удаления остаётся заблокированной 30 секунд. */
     private static final long DELETE_ACCOUNT_DELAY = 30_000L;
 
+    private static final int ETG_IMPORT_REQUEST_CODE = 22;
+
     private int nagramHeaderRow;
     private int nagramSettingsRow;
     private int nagramDividerRow;
 
-    private int exportSettingsRow;
+    private int exportEtgRow;
+    private int importEtgRow;
+    private int etgDividerRow;
     private int resetSettingsRow;
     private int deleteAccountRow;
     private int bottomDividerRow;
@@ -84,7 +97,10 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         nagramSettingsRow = addRow("nagramSettings");
         nagramDividerRow = addRow();
 
-        exportSettingsRow = addRow("exportSettings");
+        exportEtgRow = addRow("exportEtgSettings");
+        importEtgRow = addRow("importEtgSettings");
+        etgDividerRow = addRow();
+
         resetSettingsRow = addRow("resetSettings");
         deleteAccountRow = addRow("deleteAccount");
         bottomDividerRow = addRow();
@@ -119,16 +135,65 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             if (getParentLayout() != null) {
                 getParentLayout().rebuildAllFragmentViews(false, false);
             }
-        } else if (position == exportSettingsRow) {
-            if (getParentActivity() == null) {
-                return;
-            }
-            SettingsBackupHelper.backupSettings(getParentActivity(), resourcesProvider);
+        } else if (position == exportEtgRow) {
+            exportEtgSettings();
+        } else if (position == importEtgRow) {
+            openEtgFilePicker();
         } else if (position == resetSettingsRow) {
             showResetSettingsDialog();
         } else if (position == deleteAccountRow) {
             showDeleteAccountDialog();
         }
+    }
+
+    private void exportEtgSettings() {
+        EtgBackupUi.export(this);
+    }
+
+    private void openEtgFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(intent, ETG_IMPORT_REQUEST_CODE);
+        } catch (Exception e) {
+            AlertUtil.showSimpleAlert(getParentActivity(), e);
+        }
+    }
+
+    /**
+     * Выбранный файл копируется в кэш под своим расширением: провайдер отдаёт content://,
+     * а читать бэкап удобнее обычным файлом.
+     */
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != ETG_IMPORT_REQUEST_CODE) {
+            super.onActivityResultFragment(requestCode, resultCode, data);
+            return;
+        }
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        File file = new File(AndroidUtilities.getCacheDir(),
+                UUID.randomUUID().toString().replace("-", "") + EtgBackup.EXTENSION);
+        try (InputStream input = ApplicationLoader.applicationContext.getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                return;
+            }
+            try (OutputStream output = new FileOutputStream(file)) {
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                }
+                output.flush();
+            }
+        } catch (Exception e) {
+            AlertUtil.showSimpleAlert(getParentActivity(), e);
+            return;
+        }
+        EtgBackupUi.confirmImport(this, file);
     }
 
     private void showResetSettingsDialog() {
@@ -283,9 +348,12 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_TEXT: {
                     TextCell cell = (TextCell) holder.itemView;
-                    if (position == exportSettingsRow) {
+                    if (position == exportEtgRow) {
                         cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon, Theme.key_windowBackgroundWhiteBlackText);
-                        cell.setTextAndIcon(getString(R.string.OEGeneralExportSettings), R.drawable.msg_settings, true);
+                        cell.setTextAndIcon(getString(R.string.OEGeneralExportEtgSettings), R.drawable.msg_shareout, true);
+                    } else if (position == importEtgRow) {
+                        cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon, Theme.key_windowBackgroundWhiteBlackText);
+                        cell.setTextAndIcon(getString(R.string.OEGeneralImportEtgSettings), R.drawable.msg_download, false);
                     } else if (position == resetSettingsRow) {
                         cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon, Theme.key_windowBackgroundWhiteBlackText);
                         cell.setTextAndIcon(getString(R.string.OEGeneralResetSettings), R.drawable.msg_reset, true);
@@ -300,6 +368,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     boolean bottom = position == bottomDividerRow;
                     if (position == nagramDividerRow) {
                         cell.setText(getString(R.string.OEGeneralNagramSettingsInfo));
+                    } else if (position == etgDividerRow) {
+                        cell.setText(getString(R.string.OEGeneralEtgSettingsInfo));
                     } else {
                         cell.setText(null);
                     }
@@ -315,10 +385,11 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         public int getItemViewType(int position) {
             if (position == nagramHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == nagramDividerRow || position == bottomDividerRow) {
+            } else if (position == nagramDividerRow || position == etgDividerRow
+                    || position == bottomDividerRow) {
                 return TYPE_INFO_PRIVACY;
-            } else if (position == exportSettingsRow || position == resetSettingsRow
-                    || position == deleteAccountRow) {
+            } else if (position == exportEtgRow || position == importEtgRow
+                    || position == resetSettingsRow || position == deleteAccountRow) {
                 return TYPE_TEXT;
             }
             return TYPE_CHECK;

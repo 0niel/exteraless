@@ -56,7 +56,12 @@
     <!-- Google -->
 
     <!-- Settings Management -->
-    <string name="OEGeneralExportSettings">Экспорт настроек</string>
+    <string name="OEGeneralExportEtgSettings">Экспорт для exteraGram</string>
+    <string name="OEGeneralImportEtgSettings">Импорт из exteraGram</string>
+    <string name="OEGeneralEtgSettingsInfo">exteraGram обменивается настройками через файлы .extera. Переносится только то, что есть в обоих приложениях, остальное остаётся как было.</string>
+    <string name="OEGeneralImportEtgConfirm">Настроек в файле: %1$d. Текущие значения будут заменены.</string>
+    <string name="OEGeneralImportEtgEmpty">В файле нет настроек exteraGram.</string>
+    <string name="OEGeneralImportEtgDone">Импортировано настроек: %1$d</string>
     <string name="OEGeneralResetSettings">Сброс настроек</string>
     <string name="OEGeneralResetSettingsInfo">Все настройки exteraless вернутся к значениям по умолчанию.</string>
     <string name="OEGeneralResetSettingsDone">Настройки exteraless сброшены.</string>

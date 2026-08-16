@@ -35122,6 +35122,9 @@ public class ChatActivity extends BaseFragment implements
                     } else if (locFile.getName().toLowerCase().endsWith(".nekox-settings.json") || fileName.endsWith(".nekox-settings.json")) {
                         File finalLocFile = locFile;
                         SettingsBackupHelper.importSettings(getParentActivity(), finalLocFile);
+                    } else if (locFile.getName().toLowerCase().endsWith(app.exteraless.backup.EtgBackup.EXTENSION)
+                            || fileName.endsWith(app.exteraless.backup.EtgBackup.EXTENSION)) {
+                        app.exteraless.backup.EtgBackupUi.confirmImport(this, locFile);
                     } else if (getMessageType(selectedObject) == MESSAGE_TYPE_FONT) {
                         AlertDialog progressDialog = new AlertDialog(getParentActivity(), 3);
                         File finalLocFile = locFile;
@@ -43467,6 +43470,8 @@ public class ChatActivity extends BaseFragment implements
                 } else if (message.getDocumentName().toLowerCase().endsWith(".nekox-settings.json")) {
                     File finalLocFile = locFile;
                     SettingsBackupHelper.importSettings(getParentActivity(), finalLocFile);
+                } else if (message.getDocumentName().toLowerCase().endsWith(app.exteraless.backup.EtgBackup.EXTENSION)) {
+                    app.exteraless.backup.EtgBackupUi.confirmImport(ChatActivity.this, locFile);
                 } else {
                     // exteraless plugins: файл плагина ставится, а не открывается
                     // в подсветке кода (.plugin зарегистрирован как Python

@@ -57,7 +57,12 @@
     <!-- Google -->
 
     <!-- Settings Management -->
-    <string name="OEGeneralExportSettings">Export Settings</string>
+    <string name="OEGeneralExportEtgSettings">Export for exteraGram</string>
+    <string name="OEGeneralImportEtgSettings">Import from exteraGram</string>
+    <string name="OEGeneralEtgSettingsInfo">exteraGram exchanges settings through .extera files. Only settings that both apps have are transferred; the rest is left as is.</string>
+    <string name="OEGeneralImportEtgConfirm">%1$d settings from this file will replace the current ones.</string>
+    <string name="OEGeneralImportEtgEmpty">No exteraGram settings found in this file.</string>
+    <string name="OEGeneralImportEtgDone">Settings imported: %1$d</string>
     <string name="OEGeneralResetSettings">Reset Settings</string>
     <string name="OEGeneralResetSettingsInfo">All exteraless settings will be reset to their default values.</string>
     <string name="OEGeneralResetSettingsDone">exteraless preferences have been reset.</string>
