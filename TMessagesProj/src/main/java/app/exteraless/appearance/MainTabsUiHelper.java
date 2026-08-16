@@ -47,14 +47,12 @@ public final class MainTabsUiHelper {
                 : AndroidUtilities.dp(MainTabsHelper.getMainTabsHeightWithMargins());
     }
 
-    /** В M3 внутреннего вертикального паддинга нет. */
     public static int getTabsInnerPaddingVertical() {
-        return isMaterial3NavigationBar() ? 0 : AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
+        return AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
     }
 
-    /** По горизонтали в M3 паддинга нет. */
     public static int getTabsInnerPaddingHorizontal() {
-        return isMaterial3NavigationBar() ? 0 : AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
+        return AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
     }
 
     /** В M3 подложка без отступа от краёв. */
