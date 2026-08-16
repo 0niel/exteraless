@@ -33,6 +33,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+      - name: Set up Ccache
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          append-timestamp: false
+          max-size: 3G
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Set up Android SDK Tools
