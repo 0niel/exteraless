@@ -48,11 +48,11 @@ public final class MainTabsUiHelper {
     }
 
     public static int getTabsInnerPaddingVertical() {
-        return AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
+        return isMaterial3NavigationBar() ? 0 : AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
     }
 
     public static int getTabsInnerPaddingHorizontal() {
-        return AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
+        return isMaterial3NavigationBar() ? 0 : AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin() + 4);
     }
 
     /** В M3 подложка без отступа от краёв. */
@@ -122,8 +122,8 @@ public final class MainTabsUiHelper {
             bottom = view.getMeasuredHeight();
             top = bottom - AndroidUtilities.dp(64) - bottomInset;
         } else {
-            bottom = view.getMeasuredHeight() - bottomInset - AndroidUtilities.dp(8);
-            top = bottom - AndroidUtilities.dp(56);
+            bottom = view.getMeasuredHeight() - bottomInset - AndroidUtilities.dp(MainTabsHelper.getMainTabsMargin());
+            top = bottom - AndroidUtilities.dp(MainTabsHelper.getMainTabsHeight());
         }
         rectF.set(0, top, view.getMeasuredWidth(), bottom);
     }

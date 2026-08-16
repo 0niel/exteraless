@@ -51,10 +51,8 @@ public final class ChatHeaderUiHelper {
      * (21 / 16 / 11 — ChatAvatarContainer.java:1510, 1618, 1626).
      */
     public static int getChatAvatarRadius(int sizeDp, boolean forum, boolean hasStories) {
-        if (!forum) {
-            return AndroidUtilities.dp(sizeDp / 2f);
-        }
-        return AndroidUtilities.dp(sizeDp * (hasStories ? 11f : 16f) / 42f);
+        return AppearanceConfig.getAvatarCorners(AndroidUtilities.dp(sizeDp),
+                forum ? AppearanceConfig.CORNER_TYPE_FORUM : AppearanceConfig.CORNER_TYPE_DEFAULT, hasStories);
     }
 
     /** Dp(m3 ? 78 : 48). */

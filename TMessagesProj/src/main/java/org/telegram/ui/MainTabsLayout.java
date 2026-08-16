@@ -26,6 +26,8 @@ import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.glass.GlassTabView;
 
+import app.exteraless.appearance.MainTabsUiHelper;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -65,8 +67,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             width = maxWidthPx;
         }
 
+        final boolean fillWidth = MainTabsUiHelper.isMaterial3NavigationBar();
         final int maxTotalWidthForTabs = width - getPaddingLeft() - getPaddingRight();
-        final int minTotalWidthForTabs = Math.min(dp(320), maxTotalWidthForTabs);
+        final int minTotalWidthForTabs = fillWidth
+                ? maxTotalWidthForTabs
+                : Math.min(dp(320), maxTotalWidthForTabs);
 
         int chosenPass = PASS_TEXT_SIZES_DP.length - 1;
         float lastMeasuredTextSize = -1;
@@ -312,12 +317,18 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         if (drawCustomSelector) {
             final float x = animatedLongSelectedViewCenterX + animatedLongSelectedViewOffsetX;
             final float sWidth = getInterpolatedWidthByX(x, this);
-            final float sHeight = getHeight() - getPaddingTop() - getPaddingBottom();
-
-            canvas.drawRoundRect(
-                    x - sWidth / 2f, (getHeight() - sHeight) / 2f,
-                    x + sWidth / 2f, (getHeight() + sHeight) / 2f,
-                    sHeight / 2f, sHeight / 2f, selectorPaint);
+            if (MainTabsUiHelper.isMaterial3NavigationBar()) {
+                MainTabsUiHelper.setMainTabSelectedIndicatorBounds(selectorRect, sWidth, getHeight());
+                selectorRect.offset(x - sWidth / 2f, 0);
+                final float r = selectorRect.height() / 2f;
+                canvas.drawRoundRect(selectorRect, r, r, selectorPaint);
+            } else {
+                final float sHeight = getHeight() - getPaddingTop() - getPaddingBottom();
+                canvas.drawRoundRect(
+                        x - sWidth / 2f, (getHeight() - sHeight) / 2f,
+                        x + sWidth / 2f, (getHeight() + sHeight) / 2f,
+                        sHeight / 2f, sHeight / 2f, selectorPaint);
+            }
         }
 
         super.dispatchDraw(canvas);
@@ -325,6 +336,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
 
     final Paint selectorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.RectF selectorRect = new android.graphics.RectF();
     final SpringAnimation scaleX = new SpringAnimation(this, DynamicAnimation.SCALE_X, 1f);
     final SpringAnimation scaleY = new SpringAnimation(this, DynamicAnimation.SCALE_Y, 1f);
 

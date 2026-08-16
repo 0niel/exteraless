@@ -61,6 +61,13 @@ public final class UIUtil {
      * @param size сторона кнопки в dp
      */
     public static Drawable createFabSelectorDrawable(int size, int color, int pressedColor) {
+        if (size == 40) {
+            final int background = org.telegram.ui.ActionBar.Theme.getColor(
+                    org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite);
+            color = androidx.core.graphics.ColorUtils.blendARGB(background, 0xFFFFFFFF, 0.1f);
+            pressedColor = org.telegram.ui.ActionBar.Theme.blendOver(background,
+                    org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_listSelector));
+        }
         return org.telegram.ui.ActionBar.Theme.createSimpleSelectorRoundRectDrawable(
                 org.telegram.messenger.AndroidUtilities.dp(
                         app.exteraless.appearance.AppearanceConfig.fabCornerRadius(size)),

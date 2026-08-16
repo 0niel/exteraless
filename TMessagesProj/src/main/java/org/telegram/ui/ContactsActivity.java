@@ -254,8 +254,8 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         getContactsController().checkInviteText();
         getContactsController().reloadContactsStatusesMaybe(false);
 
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         return true;
     }
@@ -284,8 +284,8 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         searching = false;
         searchWas = false;
 
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         actionBar.setAllowOverlayTitle(true);
         if (destroyAfterSelect) {
@@ -1704,11 +1704,9 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         final int additionalList = dp(48);
         final int additionalSearch = dp(DialogsActivity.SEARCH_FIELD_HEIGHT);
 
-        final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(MainTabsHelper.getMainTabsMargin());
-        final int mainTabTop = mainTabBottom - dp(MainTabsHelper.getMainTabsHeight());
 
         iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), actionBar.getMeasuredHeight() + additionalList + additionalSearch );
-        iBlur3PositionMainTabs.set(0, mainTabTop, fragmentView.getMeasuredWidth(), mainTabBottom);
+        app.exteraless.appearance.MainTabsUiHelper.setBlurBounds(iBlur3PositionMainTabs, fragmentView, navigationBarHeight);
         iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
         scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, hasMainTabs ? 2 : 1);

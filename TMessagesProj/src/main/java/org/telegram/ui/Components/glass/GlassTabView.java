@@ -48,6 +48,8 @@ import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.MainTabsLayout;
 
+import app.exteraless.appearance.MainTabsUiHelper;
+
 import me.vkryl.android.AnimatorUtils;
 import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
@@ -63,10 +65,12 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     private static final int ANIMATOR_ID_IS_SELECTED = 0;
     private static final int ANIMATOR_ID_COUNTER_VISIBLE = 1;
     private static final int ANIMATOR_ID_COUNTER_ERROR = 2;
+    private static final int ANIMATOR_ID_SELECTED_INDICATOR_ALPHA = 3;
 
     private final BoolAnimator isSelectedAnimator = new BoolAnimator(ANIMATOR_ID_IS_SELECTED, this, AnimatorUtils.DECELERATE_INTERPOLATOR, 320);
     private final BoolAnimator isHasCounterAnimator = new BoolAnimator(ANIMATOR_ID_COUNTER_VISIBLE, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
     private final BoolAnimator isHasCounterErrorAnimator = new BoolAnimator(ANIMATOR_ID_COUNTER_ERROR, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
+    private final BoolAnimator selectedIndicatorAlphaAnimator = new BoolAnimator(ANIMATOR_ID_SELECTED_INDICATOR_ALPHA, this, AnimatorUtils.DECELERATE_INTERPOLATOR, 0L);
     private int colorSelected;
     private int colorSelectedText;
     private int colorDefault;
@@ -133,10 +137,23 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     private boolean hasGestureSelectedOverride;
     private float gestureSelectedOverride;
     private boolean skipDrawSelector;
+    private boolean mainTabMaterial3;
+
+    private void applyMainTabsMaterial3() {
+        mainTabMaterial3 = true;
+        MainTabsUiHelper.applyMaterial3MainTabStyle(textView, isSelectedAnimator);
+        if (backupImageView != null) {
+            backupImageView.setLayoutParams(LayoutHelper.createFrame(22, 22,
+                    Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, MainTabsUiHelper.getMaterial3MainTabAvatarTopDp(), 0, 0));
+        } else {
+            imageView.setLayoutParams(LayoutHelper.createFrame(24, 24,
+                    Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, MainTabsUiHelper.getMaterial3MainTabIconTopDp(), 0, 0));
+        }
+    }
 
     public void setGestureSelectedOverride(float gestureSelectedOverride, boolean allow) {
         this.gestureSelectedOverride = gestureSelectedOverride;
-        this.hasGestureSelectedOverride = allow;
+        this.hasGestureSelectedOverride = allow && !mainTabMaterial3;
         invalidate();
     }
 
@@ -152,14 +169,26 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         final float viewWidth = hasVisualWidth ? visualWidth : getWidth();
         final float selectedFactor = hasGestureSelectedOverride ? gestureSelectedOverride : isSelectedAnimator.getFloatValue();
         if (selectedFactor > 0 && !skipDrawSelector) {
-            final float alpha = AnimatorUtils.DECELERATE_INTERPOLATOR.getInterpolation(selectedFactor);
+            final float alpha = mainTabMaterial3
+                    ? selectedIndicatorAlphaAnimator.getFloatValue()
+                    : AnimatorUtils.DECELERATE_INTERPOLATOR.getInterpolation(selectedFactor);
 
-            paintCounterBackground.setColor(Theme.multAlpha(colorSelected, 0.09f * alpha));
-            tmpRectF.set(0, 0, viewWidth, getHeight());
-            final float r = Math.min(tmpRectF.width(), tmpRectF.height()) / 2f;
-            final float s = lerp(0.6f, 1, selectedFactor) * MathUtils.clamp(attachScale, 0, 1);
+            final float r;
+            if (mainTabMaterial3) {
+                MainTabsUiHelper.setMainTabSelectedIndicatorBounds(tmpRectF, viewWidth, getHeight());
+                paintCounterBackground.setColor(MainTabsUiHelper.getMainTabSelectedIndicatorColor(colorSelected, alpha));
+                r = tmpRectF.height() / 2f;
+            } else {
+                paintCounterBackground.setColor(Theme.multAlpha(colorSelected, 0.09f * alpha));
+                tmpRectF.set(0, 0, viewWidth, getHeight());
+                r = Math.min(tmpRectF.width(), tmpRectF.height()) / 2f;
+            }
+            final float scale = MathUtils.clamp(attachScale, 0, 1);
             canvas.save();
-            canvas.scale(s, s, tmpRectF.centerX(), tmpRectF.centerY());
+            canvas.scale(
+                    MainTabsUiHelper.getSelectedBackgroundScaleX(mainTabMaterial3, selectedFactor) * scale,
+                    MainTabsUiHelper.getSelectedBackgroundScaleY(mainTabMaterial3, selectedFactor) * scale,
+                    tmpRectF.centerX(), tmpRectF.centerY());
             canvas.drawRoundRect(tmpRectF, r, r, paintCounterBackground);
             canvas.restore();
         }
@@ -177,7 +206,7 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
 
             final float gap = dpf2(1.33f);
             final float cx = viewWidth / 2f + dpf2(11);
-            final float cy = dpf2(10);
+            final float cy = MainTabsUiHelper.getMainTabCounterCenterY(mainTabMaterial3);
             final float height = dpf2(16);
             final float width = Math.max(height, counter.getCurrentWidth() + dp(8));
             final float rOuter = dpf2(9.333f);
@@ -231,10 +260,16 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     }
 
     public void setSelected(boolean selected, boolean animated) {
-        isSelectedAnimator.setValue(selected, animated);
+        if (mainTabMaterial3) {
+            MainTabsUiHelper.setMaterial3MainTabSelected(isSelectedAnimator, selectedIndicatorAlphaAnimator, selected, animated);
+        } else {
+            isSelectedAnimator.setValue(selected, animated);
+        }
         checkPlayAnimation(animated);
 
-        textView.setTypeface(selected ? AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_EXTRA_BOLD) : AndroidUtilities.bold());
+        textView.setTypeface(!selected || mainTabMaterial3
+                ? AndroidUtilities.bold()
+                : AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_EXTRA_BOLD));
     }
 
     public boolean isTabSelected() {
@@ -404,6 +439,9 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         tab.textView.setText(LocaleController.getString(stringRes));
         tab.checkPlayAnimation(false);
         tab.imageView.setLayoutParams(LayoutHelper.createFrame(24, 24, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 4, 0, 0));
+        if (MainTabsUiHelper.isMaterial3NavigationBar()) {
+            tab.applyMainTabsMaterial3();
+        }
         tab.colorDefault = Theme.getColor(Theme.key_glass_tabUnselected, resourcesProvider);
         tab.colorSelected = Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider);
         tab.colorSelectedText = Theme.getColor(Theme.key_glass_tabSelectedText, resourcesProvider);
@@ -425,6 +463,9 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         tab.backupImageView = backupImageView;
 
         tab.addView(backupImageView, LayoutHelper.createFrame(22, 22, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 5, 0, 0));
+        if (MainTabsUiHelper.isMaterial3NavigationBar()) {
+            tab.applyMainTabsMaterial3();
+        }
         tab.colorDefault = Theme.getColor(Theme.key_glass_tabUnselected, resourcesProvider);
         tab.colorSelected = Theme.getColor(Theme.key_glass_tabSelected, resourcesProvider);
         tab.colorSelectedText = Theme.getColor(Theme.key_glass_tabSelectedText, resourcesProvider);
@@ -693,11 +734,13 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         if (backupImageView != null) {
             backupImageView.setLayoutParams(compact ?
                     LayoutHelper.createFrame(22, 22, Gravity.CENTER) :
-                    LayoutHelper.createFrame(22, 22, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 5, 0, 0));
+                    LayoutHelper.createFrame(22, 22, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0,
+                            mainTabMaterial3 ? MainTabsUiHelper.getMaterial3MainTabAvatarTopDp() : 5f, 0, 0));
         } else {
             imageView.setLayoutParams(compact ?
                     LayoutHelper.createFrame(24, 24, Gravity.CENTER) :
-                    LayoutHelper.createFrame(24, 24, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 4, 0, 0));
+                    LayoutHelper.createFrame(24, 24, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0,
+                            mainTabMaterial3 ? MainTabsUiHelper.getMaterial3MainTabIconTopDp() : 4f, 0, 0));
         }
 
         requestLayout();

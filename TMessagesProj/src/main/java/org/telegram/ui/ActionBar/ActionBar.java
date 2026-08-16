@@ -204,6 +204,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private boolean glassMode;
     private boolean glassOnlyBack;
     private boolean glassModeIsForum;
+    private float glassDrawableLeftRadius;
 
     private ChatAvatarContainer chatAvatarContainer;
 
@@ -230,11 +231,13 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         glassDrawable = factory.create(this)
             .setColorProvider(colorProvider)
             .setPadding(dp(6));
-        if (isForum) {
-            glassDrawable.setRadius(dp(18.33f), dp(23), dp(23), dp(18.33f));
+        if (app.exteraless.appearance.ChatHeaderUiHelper.isMaterial3ChatHeaderStyle()) {
+            glassDrawableLeftRadius = Math.min(dp(23),
+                app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarRadius(app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarSizeDp(), isForum, false) + dp(3.33f));
         } else {
-            glassDrawable.setRadius(dp(23));
+            glassDrawableLeftRadius = isForum ? dp(18.33f) : dp(23);
         }
+        glassDrawable.setRadius(glassDrawableLeftRadius, dp(23), dp(23), glassDrawableLeftRadius);
 
 
         glassDrawableBack = factory.create(this)
@@ -1229,9 +1232,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         alphaUpdate.addUpdateListener(anm -> {
             searchFieldVisibleAlpha = (float) anm.getAnimatedValue();
 
-            if (glassDrawable != null && glassModeIsForum) {
+            if (glassDrawable != null && glassDrawableLeftRadius != dp(23)) {
                 final float r1 = dp(23);
-                final float r2 = lerp(dp(18.33f), dp(23), searchFieldVisibleAlpha);
+                final float r2 = lerp(glassDrawableLeftRadius, dp(23), searchFieldVisibleAlpha);
                 glassDrawable.setRadius(r2, r1, r1, r2);
                 invalidate();
             }

@@ -2353,8 +2353,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         setActionsMode();
 
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         return true;
     }
@@ -2595,8 +2595,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     public View createView(Context context) {
         Theme.createProfileResources(context);
         Theme.createChatResources(context, false);
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         BaseFragment lastFragment = parentLayout.getLastFragment();
         if (lastFragment instanceof ChatActivity && ((ChatActivity) lastFragment).themeDelegate != null && ((ChatActivity) lastFragment).themeDelegate.getCurrentTheme() != null && !((ChatActivity) lastFragment).themeDelegate.isGiftTheme()) {
@@ -4778,6 +4778,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     return Unit.INSTANCE;
                 });
 
+                if (tw.nekomimi.nekogram.helpers.remote.BaseRemoteHelper.hasMetadataChannel()) {
                 builder.addItem(getString(R.string.CheckUpdate), R.drawable.msg_search_solar,
                         (it) -> {
                             Browser.openUrl(context, "tg://update");
@@ -4830,6 +4831,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     showDialog(switchBuilder.create());
                     return Unit.INSTANCE;
                 });
+                }
                 builder.show();
             } else if (position == premiumRow) {
                 presentFragment(new PremiumPreviewFragment("settings"));
@@ -17509,11 +17511,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         final int additionalList = dp(48);
-        final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(MainTabsHelper.getMainTabsMargin());
-        final int mainTabTop = mainTabBottom - dp(MainTabsHelper.getMainTabsHeight());
 
         iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), actionBar.getMeasuredHeight() + additionalList);
-        iBlur3PositionMainTabs.set(0, mainTabTop, fragmentView.getMeasuredWidth(), mainTabBottom);
+        app.exteraless.appearance.MainTabsUiHelper.setBlurBounds(iBlur3PositionMainTabs, fragmentView, navigationBarHeight);
         iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
         scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, 2);

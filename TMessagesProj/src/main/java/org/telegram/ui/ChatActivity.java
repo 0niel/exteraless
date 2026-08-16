@@ -12734,7 +12734,7 @@ public class ChatActivity extends BaseFragment implements
         if (!invalidateChatListViewTopPadding || chatListView == null || (fixedKeyboardHeight > 0 && searchExpandProgress == 0)) {
             return;
         }
-        float pinnedViewH = getTopPanelHeightWithPadding(dp(7))
+        float pinnedViewH = finalTopPanelHeight(getTopPanelHeightWithPadding(dp(7)))
             + (actionBarSearchTags != null ? dp((28 + 7) * actionBarSearchTags.shownT) : 0)
             + (dp(36 + 7) * getHashtagTabsShownT());
 
@@ -12893,7 +12893,7 @@ public class ChatActivity extends BaseFragment implements
         ty += dp(36 + 7) * getHashtagTabsShownT();
 
         if (topicsTabs != null) {
-            topicsTabs.setSideMenuBackgroundMarginTop(ty   + getTopPanelHeightWithPadding(dp(7)) * getHashtagTabsShownT());
+            topicsTabs.setSideMenuBackgroundMarginTop(ty   + finalTopPanelHeight(getTopPanelHeightWithPadding(dp(7))) * getHashtagTabsShownT());
             ty += getTopicTabsSideSize(TopicsTabsView.Position.TOP) * FBool.or(
                 FBool.not(animatorSearchResultAsListVisibility.getFloatValue()),
                 getHashtagTabsShownT()
@@ -12901,7 +12901,7 @@ public class ChatActivity extends BaseFragment implements
         }
 
         if (topPanelLayout != null) {
-            topPanelLayout.setTranslationY(ty - dp(5) - getTopicTabsSideSize(TopicsTabsView.Position.TOP) * getHashtagTabsShownT());
+            topPanelLayout.setTranslationY(app.exteraless.appearance.ChatHeaderUiHelper.getTopPanelTranslationY(ty, getTopicTabsSideSize(TopicsTabsView.Position.TOP), getHashtagTabsShownT()));
         }
     }
 
@@ -46284,6 +46284,9 @@ public class ChatActivity extends BaseFragment implements
         if (actionBar == null) {
             return !Theme.isCurrentThemeDark();
         }
+        if (app.exteraless.appearance.ChatHeaderUiHelper.isMaterial3ChatHeaderStyle()) {
+            return app.exteraless.appearance.ChatHeaderUiHelper.isLightChatStatusBar(actionBar, getThemedColor(Theme.key_windowBackgroundGray));
+        }
         return !shouldHaveLightStatusBarIcons;
     }
 
@@ -49491,7 +49494,7 @@ public class ChatActivity extends BaseFragment implements
 
         float fadeHeight = actionBar.getMeasuredHeight();
         fadeHeight += dp(7 - 6);
-        fadeHeight += getTopPanelHeightWithPadding(dp(7));
+        fadeHeight += finalTopPanelHeight(getTopPanelHeightWithPadding(dp(7)));
         if (topicsTabs != null) {
             fadeHeight += getTopicTabsSideSize(TopicsTabsView.Position.TOP);
         }
@@ -49500,7 +49503,7 @@ public class ChatActivity extends BaseFragment implements
         }
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
-        chatActivityFadeView.setFadeZoneTop((int) fadeHeight);
+        app.exteraless.appearance.ChatHeaderUiHelper.setupChatTopFade(chatActivityFadeView, actionBar, (int) fadeHeight);
     }
 
     private void checkUi_messagesSearchListPadding() {
@@ -49509,7 +49512,7 @@ public class ChatActivity extends BaseFragment implements
         }
 
         final int top = AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(2)
-            + ((int) getTopPanelHeightWithPadding(dp(7)))
+            + ((int) finalTopPanelHeight(getTopPanelHeightWithPadding(dp(7))))
             + (actionBarSearchTags != null ? dp((28 + 7) * actionBarSearchTags.shownT) : 0)
             + dp((36 + 7) * getHashtagTabsShownT());
 
@@ -49529,6 +49532,11 @@ public class ChatActivity extends BaseFragment implements
         if (hashtagSearchEmptyView != null) {
             hashtagSearchEmptyView.linearLayout.setTranslationY((top - bottom) / 2f + dp(32));
         }
+    }
+
+    private float finalTopPanelHeight(float height) {
+        return app.exteraless.appearance.ChatHeaderUiHelper.getFinalTopPanelHeight(height,
+                parentChatActivity != null ? parentChatActivity.topPanelLayout : topPanelLayout);
     }
 
     private float getTopPanelHeightWithPadding(float padding) {

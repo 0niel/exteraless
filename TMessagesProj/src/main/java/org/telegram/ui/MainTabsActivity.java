@@ -465,8 +465,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         o.setBlur(true);
         o.translate(0, -dp(4));
         o.setGravity(Gravity.LEFT);
-        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
-        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        final android.graphics.drawable.Drawable bg = MainTabsUiHelper.createMainTabsScrimBackground(resourceProvider, false);
         o.setScrimViewBackground(bg);
         o.show();
         return true;
@@ -491,8 +490,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
         o.setBlur(true);
         o.translate(0, -dp(4));
-        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
-        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        final android.graphics.drawable.Drawable bg = MainTabsUiHelper.createMainTabsScrimBackground(resourceProvider, false);
         o.setScrimViewBackground(bg);
         o.show();
         return true;
@@ -553,8 +551,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 //        o.setBlur(true);
         o.translate(-dp(8), -dp(4));
         o.setMaxHeight(Math.min(dp(560), Math.max(dp(320), AndroidUtilities.displaySize.y - dp(120))));
-        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
-        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        final android.graphics.drawable.Drawable bg = MainTabsUiHelper.createMainTabsScrimBackground(resourceProvider, false);
         o.setScrimViewBackground(bg);
         o.setGravity(Gravity.LEFT);
         o.show();
@@ -710,8 +707,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         o.setBlur(true);
         o.translate(0, -dp(4));
-        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
-        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        final android.graphics.drawable.Drawable bg = MainTabsUiHelper.createMainTabsScrimBackground(resourceProvider, false);
         o.setScrimViewBackground(bg);
         o.show();
 
@@ -1396,8 +1392,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     private void setupPopupMenuStyle(ItemOptions options) {
         options.setBlur(true);
         options.translate(0, -dp(4));
-        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
-        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        final android.graphics.drawable.Drawable bg = MainTabsUiHelper.createMainTabsScrimBackground(resourceProvider, false);
         options.setScrimViewBackground(bg);
     }
 

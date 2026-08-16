@@ -235,7 +235,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             hasMainTabs = arguments.getBoolean("hasMainTabs", false);
         }
 
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
         return super.onFragmentCreate();
     }
 
@@ -266,7 +266,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
     @Override
     public View createView(Context context) {
-        additionNavigationBarHeight = hasMainTabs ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
+        additionNavigationBarHeight = hasMainTabs ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
 
         contentView = new SizeNotifierFrameLayout(context) {
             @Override
@@ -1539,6 +1539,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             return Unit.INSTANCE;
         });
 
+        if (tw.nekomimi.nekogram.helpers.remote.BaseRemoteHelper.hasMetadataChannel()) {
         builder.addItem(getString(R.string.CheckUpdate), R.drawable.msg_search_solar, (it) -> {
             Browser.openUrl(getContext(), "tg://update");
             return Unit.INSTANCE;
@@ -1590,6 +1591,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             showDialog(switchBuilder.create());
             return Unit.INSTANCE;
         });
+        }
         builder.show();
     }
 
@@ -2239,11 +2241,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         }
 
         final int additionalList = dp(48);
-        final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(MainTabsHelper.getMainTabsMargin());
-        final int mainTabTop = mainTabBottom - dp(MainTabsHelper.getMainTabsHeight());
 
         iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), actionBar.getMeasuredHeight() + additionalList);
-        iBlur3PositionMainTabs.set(0, mainTabTop, fragmentView.getMeasuredWidth(), mainTabBottom);
+        app.exteraless.appearance.MainTabsUiHelper.setBlurBounds(iBlur3PositionMainTabs, fragmentView, navigationBarHeight);
         iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
         scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, hasMainTabs ? 2 : 1);

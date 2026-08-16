@@ -3033,8 +3033,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         BirthdayController.getInstance(currentAccount).check();
-        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         LastSeenHelper.preload();
 
@@ -3303,8 +3303,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         filterTabsView = null;
         selectedDialogs.clear();
 
-        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(MainTabsHelper.getMainTabsHeightWithMargins()) : 0;
-        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(MainTabsHelper.getMainTabsHeight() + MainTabsHelper.getMainTabsMargin()) : 0;
+        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         maximumVelocity = ViewConfiguration.get(context).getScaledMaximumFlingVelocity();
 
@@ -14483,7 +14483,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (fragmentView.getGlobalVisibleRect(bounds)) {
                 final int y = ((int) ev.getRawY()) - bounds.top;
                 final int bottom = fragmentView.getMeasuredHeight() - navigationBarHeight;
-                if (y >= bottom - dp(MainTabsHelper.getMainTabsHeightWithMargins()) && y <= bottom) {
+                if (y >= bottom - dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) && y <= bottom) {
                     return false;
                 }
             }
@@ -14618,8 +14618,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         final int additionalList = dp(48);
-        final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - dp(MainTabsHelper.getMainTabsMargin());
-        final int mainTabTop = mainTabBottom - dp(MainTabsHelper.getMainTabsHeight());
 
         final int actionBarHeight = actionBar.getMeasuredHeight()
             + getIdleSearchFieldHeight()
@@ -14636,7 +14634,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         boolean hasBottomBlur = false;
         if (hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool()) {
-            iBlur3PositionMainTabs.set(0, mainTabTop, fragmentView.getMeasuredWidth(), mainTabBottom);
+            app.exteraless.appearance.MainTabsUiHelper.setBlurBounds(iBlur3PositionMainTabs, fragmentView, navigationBarHeight);
             iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
             hasBottomBlur = true;

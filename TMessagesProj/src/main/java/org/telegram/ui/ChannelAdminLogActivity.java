@@ -943,9 +943,9 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         });
 
         avatarContainer = new ChatAvatarContainer(context, null, false);
-        avatarContainer.setGlassMode();
+        app.exteraless.appearance.ChatHeaderUiHelper.setupGlassAvatarContainer(avatarContainer);
         avatarContainer.setOccupyStatusBar(!AndroidUtilities.isTablet());
-        actionBar.addView(avatarContainer, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 54, 0, 52, 0));
+        actionBar.addView(avatarContainer, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, app.exteraless.appearance.ChatHeaderUiHelper.isMaterial3ChatHeaderStyle() ? app.exteraless.appearance.ChatHeaderUiHelper.getAvatarContainerLeftMargin(false) : 54, 0, 52, 0));
 
         ActionBarMenu menu = actionBar.createMenu();
         searchItem = menu.addItem(0, R.drawable.outline_header_search).setIsSearchField(true).setActionBarMenuItemSearchListener(new ActionBarMenuItem.ActionBarMenuItemSearchListener() {
@@ -1468,8 +1468,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
         chatActivityFadeView = new ChatActivityFadeView(context);
         chatActivityFadeView.setup(navbarContentDrawableFactory);
-        chatActivityFadeView.setFadeZoneTop(AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(2));
-        chatActivityFadeView.setFadeHeightTop(dp(60));
+        app.exteraless.appearance.ChatHeaderUiHelper.setupChatTopFade(chatActivityFadeView, actionBar,
+                AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(2));
         chatActivityFadeView.setFadeZoneBottom(AndroidUtilities.navigationBarHeight + dp(9) + dp(44) + dp(7));
         chatActivityFadeView.setFadeHeightBottom(dp(60));
         contentView.addView(chatActivityFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
