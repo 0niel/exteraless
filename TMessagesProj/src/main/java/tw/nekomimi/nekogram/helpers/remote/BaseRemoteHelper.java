@@ -19,8 +19,27 @@ import org.telegram.tgnet.TLRPC;
 import java.util.ArrayList;
 
 public abstract class BaseRemoteHelper {
-    public static final long CHANNEL_METADATA_ID = 2477822904L;
-    public static final String CHANNEL_METADATA_NAME = "nagramx_remote_metadata";
+    public static final long CHANNEL_METADATA_ID = 0L;
+    public static final String CHANNEL_METADATA_NAME = "";
+
+    public static final long NAGRAMX_METADATA_ID = 2477822904L;
+    public static final String NAGRAMX_METADATA_NAME = "nagramx_remote_metadata";
+
+    public static boolean hasMetadataChannel() {
+        return CHANNEL_METADATA_ID != 0L && !CHANNEL_METADATA_NAME.isEmpty();
+    }
+
+    protected long getMetadataChannelId() {
+        return CHANNEL_METADATA_ID;
+    }
+
+    protected String getMetadataChannelName() {
+        return CHANNEL_METADATA_NAME;
+    }
+
+    protected boolean hasMetadataSource() {
+        return getMetadataChannelId() != 0L && !getMetadataChannelName().isEmpty();
+    }
 
     protected static final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoremoteconfig", Activity.MODE_PRIVATE);
 
@@ -79,7 +98,7 @@ public abstract class BaseRemoteHelper {
     private void onGetMessageSuccess(TLObject response, Delegate delegate) {
         var tag = "#" + getTag();
         final var res = (TLRPC.messages_Messages) response;
-        getMessagesController().removeDeletedMessagesFromArray(CHANNEL_METADATA_ID, res.messages);
+        getMessagesController().removeDeletedMessagesFromArray(getMetadataChannelId(), res.messages);
         ArrayList<JSONObject> responses = new ArrayList<>();
         for (var message : res.messages) {
             if (TextUtils.isEmpty(message.message) || !message.message.startsWith(tag)) {
@@ -103,16 +122,22 @@ public abstract class BaseRemoteHelper {
     }
 
     private void load(boolean forceRefreshAccessHash, Delegate delegate) {
+        if (!hasMetadataSource()) {
+            if (delegate != null) {
+                delegate.onTLResponse(null, null);
+            }
+            return;
+        }
         var tag = "#" + getTag();
         TLRPC.TL_messages_search req = new TLRPC.TL_messages_search();
         req.limit = 10;
         req.offset_id = 0;
         req.filter = new TLRPC.TL_inputMessagesFilterEmpty();
         req.q = tag;
-        req.peer = getMessagesController().getInputPeer(-CHANNEL_METADATA_ID);
+        req.peer = getMessagesController().getInputPeer(-getMetadataChannelId());
         if (req.peer == null || req.peer.access_hash == 0 || forceRefreshAccessHash) {
             TLRPC.TL_contacts_resolveUsername req1 = new TLRPC.TL_contacts_resolveUsername();
-            req1.username = CHANNEL_METADATA_NAME;
+            req1.username = getMetadataChannelName();
             getConnectionsManager().sendRequest(req1, (response1, error1) -> {
                 if (error1 != null) {
                     return;

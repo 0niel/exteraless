@@ -6156,6 +6156,18 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     public void checkAppUpdate(boolean force, Browser.Progress progress, boolean updateAlways) {
+        if (!tw.nekomimi.nekogram.helpers.remote.BaseRemoteHelper.hasMetadataChannel()) {
+            UpdateHelper.cleanAppUpdate();
+            if (progress != null) {
+                progress.end();
+                BaseFragment fragment = getLastFragment();
+                if (fragment != null) {
+                    BulletinFactory.of(fragment).createSimpleBulletin(R.raw.done,
+                            LocaleController.getString(R.string.YourVersionIsLatestNax)).show();
+                }
+            }
+            return;
+        }
        /*if (!ApplicationLoader.isStandaloneBuild() && !ApplicationLoader.isBetaBuild()) {
            return;
        }

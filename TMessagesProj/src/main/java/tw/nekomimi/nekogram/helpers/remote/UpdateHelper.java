@@ -201,6 +201,11 @@ public class UpdateHelper extends BaseRemoteHelper {
     }
 
     public void checkNewVersionAvailable(Delegate delegate, boolean updateAlways) {
+        if (!hasMetadataChannel()) {
+            cleanAppUpdate();
+            delegate.onTLResponse(null, null);
+            return;
+        }
         this.updateAlways = updateAlways;
         load(delegate);
     }
