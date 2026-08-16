@@ -42,6 +42,11 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
     private int sourceRow;
     private int linksDividerRow;
 
+    private int designHeaderRow;
+    private int designerRow;
+    private int designStudioRow;
+    private int designDividerRow;
+
     @Override
     protected void updateRows() {
         super.updateRows();
@@ -57,10 +62,14 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         categoriesDividerRow = addRow();
 
         linksHeaderRow = addRow("linksHeader");
-        // Порядок: канал, репозиторий.
         channelRow = addRow("channel");
         sourceRow = addRow("source");
         linksDividerRow = addRow();
+
+        designHeaderRow = addRow("designHeader");
+        designerRow = addRow("designer");
+        designStudioRow = addRow("designStudio");
+        designDividerRow = addRow();
     }
 
     /**
@@ -150,6 +159,10 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         } else if (position == sourceRow) {
             org.telegram.messenger.browser.Browser.openUrl(getParentActivity(),
                     "https://github.com/exteraless/exteraless");
+        } else if (position == designerRow) {
+            getMessagesController().openByUserName("the8055u", this, 1);
+        } else if (position == designStudioRow) {
+            getMessagesController().openByUserName("BlueprintDsgn", this, 1);
         }
     }
 
@@ -177,7 +190,9 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    if (position == categoriesHeaderRow) {
+                    if (position == designHeaderRow) {
+                        cell.setText(getString(R.string.OpenExteraDesignSection));
+                    } else if (position == categoriesHeaderRow) {
                         cell.setText(getString(R.string.OpenExteraCategories));
                     } else if (position == linksHeaderRow) {
                         cell.setText(getString(R.string.OpenExteraLinks));
@@ -202,6 +217,12 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                     } else if (position == sourceRow) {
                         cell.setTextAndValueAndIcon(getString(R.string.OpenExteraSource),
                                 "GitHub", R.drawable.msg_language, false);
+                    } else if (position == designerRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OpenExteraDesigner),
+                                "@the8055u", R.drawable.msg_theme, true);
+                    } else if (position == designStudioRow) {
+                        cell.setTextAndValueAndIcon(getString(R.string.OpenExteraDesignStudio),
+                                "@BlueprintDsgn", R.drawable.msg_groups, false);
                     }
                     // ВАЖНО: только после setTextAndIcon* — они сбрасывают imageLeft в 16dp.
                     // Метрики сняты с 12.9.0 (420 dpi): иконка 88px от края экрана, текст 219px,
@@ -212,7 +233,7 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    if (position == linksDividerRow) {
+                    if (position == designDividerRow) {
                         cell.setText(null);
                         cell.setBackground(Theme.getThemedDrawable(mContext,
                                 R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
@@ -231,13 +252,14 @@ public class OpenExteraSettingsActivity extends BaseNekoSettingsActivity {
         public int getItemViewType(int position) {
             if (position == aboutRow) {
                 return TYPE_ABOUT;
-            } else if (position == categoriesHeaderRow || position == linksHeaderRow) {
+            } else if (position == categoriesHeaderRow || position == linksHeaderRow
+                    || position == designHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == categoriesDividerRow) {
+            } else if (position == categoriesDividerRow || position == linksDividerRow) {
                 // Промежуток между секциями — тень фиксированной высоты. TextInfoPrivacyCell
                 // здесь держал высоту под подпись, которой нет, и оставлял пустое поле.
                 return TYPE_SHADOW;
-            } else if (position == linksDividerRow) {
+            } else if (position == designDividerRow) {
                 return TYPE_INFO_PRIVACY;
             }
             return TYPE_TEXT;

@@ -99,6 +99,12 @@ Python 3.12 лишь под них, и на `armeabi-v7a` конфигураци
 
 Дальше запустить workflow **Release Build**. Готовый APK лежит в артефактах прогона.
 
+### Авторы дизайна
+
+Иконки и оформление, унаследованные от exteraGram, созданы его дизайнером —
+[@the8055u](https://t.me/the8055u) и студией [@BlueprintDsgn](https://t.me/BlueprintDsgn).
+Права на эти материалы принадлежат авторам.
+
 ### Благодарности
 
 - [AyuGram](https://github.com/AyuGram/AyuGram4A)
@@ -127,6 +133,12 @@ The project is **in beta**: some exteraGram features have not been ported yet. I
 notice a missing feature, open an issue or write to the [channel](https://t.me/exteraless).
 
 * Package name: `com.exteraless.app`
+
+### Design credits
+
+Icons and visual design inherited from exteraGram are the work of its designer,
+[@the8055u](https://t.me/the8055u), and the [@BlueprintDsgn](https://t.me/BlueprintDsgn)
+studio. Rights to those materials belong to their authors.
 
 ### Building
 
