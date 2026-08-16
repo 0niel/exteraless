@@ -598,6 +598,12 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
     // ---- Значения для строк с выбором ----
 
+    private void setBottomButton(int index) {
+        ChatsConfig.bottomButton.setConfigInt(index);
+        NaConfig.INSTANCE.getDisableChannelMuteButton()
+                .setConfigBool(index == ChatsConfig.BOTTOM_BUTTON_HIDE);
+    }
+
     private CharSequence[] bottomButtonOptions() {
         return new CharSequence[]{
                 getString(R.string.Hide),
@@ -859,7 +865,11 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             DoubleTapCell.SetReactionCell.showSelectStatusDialog((DoubleTapCell.SetReactionCell) view, this);
             return;
         } else if (position == bottomButtonRow) {
-            showOptions(view, position, bottomButtonOptions(), NaConfig.INSTANCE.getLeftBottomButton());
+            showOptions(view, bottomButtonOptions(), index -> {
+                setBottomButton(index);
+                listAdapter.notifyItemChanged(position);
+                rebuildChats();
+            });
             return;
         } else if (position == cameraTypeRow) {
             showOptions(view, cameraTypeOptions(), index -> {
@@ -1451,7 +1461,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == bottomButtonRow) {
                 CharSequence[] options = bottomButtonOptions();
                 cell.setTextAndValue(getString(R.string.OEChatsBottomButton),
-                        options[clampIndex(NaConfig.INSTANCE.getLeftBottomButton().Int(), options.length)], true);
+                        options[clampIndex(ChatsConfig.bottomButton(), options.length)], true);
             } else if (position == cameraTypeRow) {
                 CharSequence[] options = cameraTypeOptions();
                 cell.setTextAndValue(getString(R.string.OEChatsCameraType),

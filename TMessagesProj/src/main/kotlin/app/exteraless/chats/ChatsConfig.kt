@@ -47,6 +47,20 @@ object ChatsConfig {
     @JvmField
     val replyBackground = addConfig("OEChatsReplyBackground", ConfigItem.configTypeBool, true)
 
+    @JvmField
+    val bottomButton = addConfig("OEChatsBottomButton", ConfigItem.configTypeInt, 1)
+
+    const val BOTTOM_BUTTON_HIDE = 0
+    const val BOTTOM_BUTTON_MUTE = 1
+    const val BOTTOM_BUTTON_DISCUSS = 2
+
+    @JvmStatic
+    fun bottomButton(): Int {
+        ensureLoaded()
+        val value = bottomButton.Int()
+        return if (value in BOTTOM_BUTTON_HIDE..BOTTOM_BUTTON_DISCUSS) value else BOTTOM_BUTTON_MUTE
+    }
+
     // ---- Камера ----
 
     /**

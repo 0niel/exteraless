@@ -10,6 +10,7 @@ package org.telegram.ui;
 
 import app.exteraless.OpenExteraConfig;
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.chats.ChatsConfig;
 import app.exteraless.appearance.GlassMenuHelper;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
@@ -9141,6 +9142,8 @@ public class ChatActivity extends BaseFragment implements
                                 getNotificationCenter().postNotificationName(NotificationCenter.peerSettingsDidLoad, dialog_id);
                             }
                         }
+                    } else if (shouldShowDiscussButton()) {
+                        openDiscussion();
                     } else {
                         toggleMute(true);
                     }
@@ -28960,6 +28963,25 @@ public class ChatActivity extends BaseFragment implements
         return cachedIsGestureNavigation;
     }
 
+    private boolean haveDiscussion() {
+        return chatInfo != null && chatInfo.linked_chat_id != 0;
+    }
+
+    private boolean shouldShowDiscussButton() {
+        return ChatsConfig.bottomButton() == ChatsConfig.BOTTOM_BUTTON_DISCUSS && haveDiscussion();
+    }
+
+    private void openDiscussion() {
+        if (!haveDiscussion()) {
+            return;
+        }
+        Bundle args = new Bundle();
+        args.putLong("chat_id", chatInfo.linked_chat_id);
+        if (getMessagesController().checkCanOpenChat(args, this)) {
+            presentFragment(new ChatActivity(args));
+        }
+    }
+
     private boolean shouldHideBottomFor3ButtonNav() {
         return NaConfig.INSTANCE.getDisableChannelMuteButton().Bool() && !isGesture() &&
                 chatMode == MODE_DEFAULT && !isReport() && currentChat != null &&
@@ -29111,7 +29133,10 @@ public class ChatActivity extends BaseFragment implements
                     bottomOverlayChatText.setTextInfo(LocaleController.getString(R.string.ForumReplyToMessagesInTopic));
                     bottomOverlayChatText.setEnabled(false);
                 } else if (!isThreadChat()) {
-                    if (!getMessagesController().isDialogMuted(dialog_id, getTopicId())) {
+                    if (shouldShowDiscussButton()) {
+                        bottomOverlayChatText.setText(LocaleController.getString(R.string.ProfileActionsDiscuss), false);
+                        bottomOverlayChatText.setEnabled(true);
+                    } else if (!getMessagesController().isDialogMuted(dialog_id, getTopicId())) {
                         bottomOverlayChatText.setText(LocaleController.getString(R.string.ChannelMuteNoCaps), false);
                         bottomOverlayChatText.setEnabled(true);
                     } else {
