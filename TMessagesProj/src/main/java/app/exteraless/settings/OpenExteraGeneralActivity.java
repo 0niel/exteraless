@@ -53,7 +53,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
     private static final int TYPE_SLIDE = 100;
 
-    /** Регулярка exteraGram (GeneralPreferencesActivity.java:41): имя папки, а не путь. */
+    /** Проверяется имя папки, а не путь. */
     private static final Pattern SAVE_PATH_PATTERN = Pattern.compile("^(?!\\.{1,2}$)[A-Za-z0-9._ -]{1,255}$");
 
     /**
@@ -151,7 +151,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         archiveHeaderRow = addRow("archiveHeader");
         hideArchiveRow = addRow("hideArchive");
-        // «открывать архив потягиванием» нечего, если папки архива нет в списке.
+        // Когда архив скрыт, строка уходит целиком: «открывать архив потягиванием»
+        // нечего, если папки архива нет в списке.
         archiveOnPullRow = NaConfig.INSTANCE.getHideArchive().Bool() ? -1 : addRow("archiveOnPull");
         disableUnarchiveSwipeRow = addRow("disableUnarchiveSwipe");
         archiveDividerRow = addRow();
@@ -172,18 +173,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         return new ListAdapter(context);
     }
 
-    /**
-     * Пересобрать список строк. Нужен там, где меняется их состав: базовый класс зовёт
-     * updateRows() только в onFragmentCreate, поэтому одного notifyDataSetChanged мало.
-     */
-    private void rebuildRowsAndNotify() {
-        updateRows();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
-        }
-    }
-
-    /** Аналог parentLayout.rebuildFragments(0) exteraGram: перерисовать экраны под нами. */
+    /** Перерисовать экраны под нами. */
     private void rebuildAll() {
         if (getParentLayout() != null) {
             getParentLayout().rebuildAllFragmentViews(false, false);
@@ -268,7 +258,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         }
 
         if (position == translateButtonRow || position == translateChatButtonRow) {
-            // и пересобирает экраны — пункт «Translate» появляется/исчезает в меню сообщения.
+            // Поиск по настройкам переиндексируется, экраны пересобираются — пункт
+            // «Translate» появляется и исчезает в меню сообщения.
             getNotificationCenter().postNotificationName(NotificationCenter.updateSearchSettings);
             rebuildAll();
         }
@@ -281,15 +272,32 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             listAdapter.notifyItemChanged(generalDividerRow);
             rebuildAll();
         }
+        if (position == relativeLastSeenRow && view instanceof TextCheckCell) {
+            // Подпись строки — живое превью самой настройки. Меняем только подпись:
+            // пересборка ячейки оборвала бы анимацию переключателя, которая уже идёт.
+            ((TextCheckCell) view).setValueText(
+                    LocaleController.formatDateOnline(fiveMinutesAgo, new boolean[1]));
+        }
         if (position == hidePhoneRow) {
             getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
             rebuildAll();
         }
         if (position == hideArchiveRow) {
+            // Папка архива пересобирается сразу.
             getMessagesController().checkArchiveFolder();
             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload, true);
-            // Состав строк зависит от этой настройки — пересобираем список.
-            rebuildRowsAndNotify();
+            // Со скрытым архивом строке «открывать архив потягиванием» нечего открывать,
+            // она уходит из списка — но с анимацией: notifyDataSetChanged её убивает,
+            // и строка исчезает рывком.
+            final int wasPullRow = archiveOnPullRow;
+            updateRows();
+            if (listAdapter != null) {
+                if (archiveOnPullRow == -1) {
+                    listAdapter.notifyItemRemoved(wasPullRow);
+                } else {
+                    listAdapter.notifyItemInserted(archiveOnPullRow);
+                }
+            }
         }
     }
 
@@ -316,8 +324,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     }
 
     /**
-     * Диалог имени папки сохранения, 1:1 с exteraGram (GeneralPreferencesActivity.java:272–327):
-     * неподходящее имя не «чинится» молча, а отбивается тряской поля, диалог остаётся открытым.
+     * Диалог имени папки сохранения: неподходящее имя не «чинится» молча, а отбивается
+     * тряской поля, диалог остаётся открытым.
      */
     private void showCustomSavePathDialog() {
         Context context = getParentActivity();
@@ -540,7 +548,8 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                                         : path,
                                 false);
                     } else if (position == showIdAndDcRow) {
-                        // Bot API отличается от Telegram API префиксом -100 у чатов и каналов.
+                        // Выбор из трёх режимов, а не переключатель: Bot API отличается
+                        // от Telegram API префиксом -100 у чатов и каналов.
                         int type = NaConfig.INSTANCE.getIdDcType().Int();
                         CharSequence[] options = idOptions();
                         cell.setTextAndValue(getString(R.string.OEGeneralShowIdAndDc),

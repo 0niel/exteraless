@@ -168,6 +168,17 @@ public class TextCheckCell extends FrameLayout {
         setWillNotDraw(!divider);
     }
 
+    /**
+     * Меняет только подпись под названием, не трогая переключатель.
+     *
+     * Нужно там, где подпись — живое превью самой настройки: пересобирать ячейку
+     * целиком нельзя, {@link #setTextAndValueAndCheck} ставит переключатель без
+     * анимации и обрывает ту, что уже идёт после нажатия.
+     */
+    public void setValueText(CharSequence value) {
+        valueTextView.setText(value);
+    }
+
     public void setTextAndCheck(CharSequence text, boolean checked, boolean divider) {
         setTextAndCheck(text, checked, divider, false);
     }
