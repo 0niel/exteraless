@@ -2,6 +2,9 @@ package app.exteraless.plugins;
 
 import com.chaquo.python.PyObject;
 
+import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.FileLog;
+
 import app.exteraless.plugins.files.FilesControllerJava;
 import app.exteraless.plugins.intents.IntentsDispatcher;
 import app.exteraless.plugins.utils.ClassProxyFactory;
@@ -159,5 +162,38 @@ public final class PluginServices {
 
     public static void unregisterIntentHandler(String pluginId, String handlerId) {
         IntentsDispatcher.unregisterHandler(pluginId, handlerId);
+    }
+
+    // ---------- Отложенные вызовы на UI-поток ----------
+
+    /**
+     * Выполнить python-колбэк на UI-потоке.
+     *
+     * Раньше SDK заворачивал колбэк в {@code dynamic_proxy(Runnable)} и отдавал этот
+     * прокси прямо в Handler. Проблема в том, что до python-кода дело доходит не
+     * сразу: сначала Chaquopy разворачивает сам прокси обратно в python-объект, и
+     * если к моменту срабатывания класс прокси уже не тот (плагин перезагрузили,
+     * движок перезапустили), разворот падает с NotImplementedError прямо в
+     * UI-потоке — приложение умирает целиком, до единого except.
+     *
+     * Здесь в Handler уходит обычный Java Runnable, а колбэк живёт {@link PyObject}.
+     * Разворачивать нечего, а если вызов всё же сломается, ошибка гасится здесь.
+     */
+    public static void runOnUiThread(PyObject callback, long delay) {
+        if (callback == null) {
+            return;
+        }
+        final Runnable runnable = () -> {
+            try {
+                callback.call();
+            } catch (Throwable t) {
+                FileLog.e("plugin ui callback failed", t);
+            }
+        };
+        if (delay > 0) {
+            AndroidUtilities.runOnUIThread(runnable, delay);
+        } else {
+            AndroidUtilities.runOnUIThread(runnable);
+        }
     }
 }

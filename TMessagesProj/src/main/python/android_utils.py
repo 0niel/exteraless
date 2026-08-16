@@ -110,15 +110,20 @@ def R(fn):
 
 
 def run_on_ui_thread(func, delay=0):
-    """Run *func* on the Android UI thread, optionally after *delay* ms."""
+    """Run *func* on the Android UI thread, optionally after *delay* ms.
+
+    Колбэк уходит в Java как обычный объект, а Runnable создаётся там же. Через
+    ``R(func)`` этого делать нельзя: в Handler попадал бы python-прокси, и
+    Chaquopy разворачивал бы его обратно в момент срабатывания. Если к этому
+    времени плагин успели перезагрузить, разворот падает NotImplementedError
+    прямо в UI-потоке и роняет приложение — поймать это из python нечем.
+    """
     from java import jclass
 
-    AndroidUtilities = jclass("org.telegram.messenger.AndroidUtilities")
-    runnable = R(func)
-    if delay and int(delay) > 0:
-        AndroidUtilities.runOnUIThread(runnable, int(delay))
-    else:
-        AndroidUtilities.runOnUIThread(runnable)
+    if func is None:
+        return
+    services = jclass("app.exteraless.plugins.PluginServices")
+    services.runOnUiThread(lambda: safe_call(func), int(delay or 0))
 
 
 def OnClickListener(fn):
