@@ -151,7 +151,22 @@ public class TextCheckCell extends FrameLayout {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (isMultiline) {
-            super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            final int exactWidth = MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY);
+            final int freeHeight = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+            super.onMeasure(exactWidth, freeHeight);
+            // Подпись прибита к 35dp сверху, а название в этой ветке переносится:
+            // на двух строках оно доезжало до подписи и налезало на неё. Ниже
+            // 35dp не опускаем — на однострочном названии верстка остаётся прежней.
+            if (valueTextView.getVisibility() == VISIBLE) {
+                final LayoutParams valueParams = (LayoutParams) valueTextView.getLayoutParams();
+                final LayoutParams titleParams = (LayoutParams) textView.getLayoutParams();
+                final int wanted = Math.max(AndroidUtilities.dp(35),
+                        titleParams.topMargin + textView.getMeasuredHeight());
+                if (valueParams.topMargin != wanted) {
+                    valueParams.topMargin = wanted;
+                    super.onMeasure(exactWidth, freeHeight);
+                }
+            }
         } else {
             super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(valueTextView.getVisibility() == VISIBLE ? 64 : height) + (needDivider ? 3 : 0), MeasureSpec.EXACTLY));
         }
@@ -276,6 +291,13 @@ public class TextCheckCell extends FrameLayout {
                     textView.setMaxLines(1);
                     textView.setEllipsize(TextUtils.TruncateAt.END);
                 }
+            } else {
+                // Ячейку могли переиспользовать после setTextAndCheck(isNekoCell),
+                // а он оставляет у названия свои настройки строк.
+                textView.setLines(0);
+                textView.setMaxLines(Integer.MAX_VALUE);
+                textView.setSingleLine(false);
+                textView.setEllipsize(null);
             }
             valueTextView.setLines(0);
             valueTextView.setMaxLines(0);
@@ -288,6 +310,12 @@ public class TextCheckCell extends FrameLayout {
             valueTextView.setSingleLine(true);
             valueTextView.setEllipsize(TextUtils.TruncateAt.END);
             valueTextView.setPadding(0, 0, 0, 0);
+            // Высота ячейки здесь фиксированная (64dp), опустить подпись некуда,
+            // поэтому название держим в одну строку.
+            textView.setLines(1);
+            textView.setMaxLines(1);
+            textView.setSingleLine(true);
+            textView.setEllipsize(TextUtils.TruncateAt.END);
         }
         LayoutParams layoutParams = (LayoutParams) textView.getLayoutParams();
         layoutParams.height = LayoutParams.WRAP_CONTENT;

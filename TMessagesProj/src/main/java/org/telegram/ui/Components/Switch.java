@@ -31,6 +31,7 @@ import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.util.StateSet;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.annotation.Keep;
@@ -334,6 +335,14 @@ public class Switch extends View {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         attachedToWindow = true;
+        // Стиль exteraGram рисует дорожку шире собственных границ вьюхи
+        // (-2dp слева, +3dp справа, высота 26dp против 20-22dp у ячейки), и
+        // клип по границам ребёнка срезает капсуле бока. TextCheckCell снимает
+        // клип у себя, но переключатель живёт ещё в восьми ячейках — проще
+        // попросить об этом родителя отсюда, чем помнить про каждую новую.
+        if (getParent() instanceof ViewGroup) {
+            ((ViewGroup) getParent()).setClipChildren(false);
+        }
     }
 
     @Override
