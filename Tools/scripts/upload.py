@@ -12,8 +12,10 @@ artifacts_path = Path("artifacts")
 test_version = argv[3] == "test" if len(argv) > 2 else None
 metadata_chat_id = argv[4] if len(argv) > 3 else None
 
-def find_apk(abi: str) -> Path | None:
-    return next((apk for apk in artifacts_path.rglob("*.apk") if abi in apk.name), None)
+def find_apks() -> list[Path]:
+    """Все APK из артефактов. Имени ABI в них нет: splits выключены (несовместимы
+    с Chaquopy), сборка выдаёт один файл на вариант."""
+    return sorted(artifacts_path.rglob("*.apk"))
 
 def get_commit_info():
     commit_id_raw = os.environ.get("COMMIT_ID") or "unknown"
@@ -31,15 +33,7 @@ def get_caption() -> str:
     return caption
 
 def get_document() -> list["InputMediaDocument"]:
-    documents = []
-    abis = ["arm64-v8a", "universal"]
-    for abi in abis:
-        if apk := find_apk(abi):
-            documents.append(
-                InputMediaDocument(
-                    media = str(apk),
-                )
-            )
+    documents = [InputMediaDocument(media=str(apk)) for apk in find_apks()]
     if not documents:
         raise FileNotFoundError("No APK artifacts found")
     base_caption = get_caption()
