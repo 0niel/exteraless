@@ -243,6 +243,29 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
     }
 
+    /**
+     * Пересобрать чужие экраны и обновить этот.
+     *
+     * rebuildAllFragmentViews(false, ...) намеренно пропускает последний фрагмент
+     * стека — то есть ровно тот, который открыт. Свои строки поэтому обновляем
+     * сами: галочки внутри группы и счётчик «N/5» ставятся при привязке, а стиль
+     * переключателей и слайдеров читается при отрисовке.
+     */
+    private void rebuildAllAndSelf(View clicked, boolean checked) {
+        if (clicked instanceof org.telegram.ui.Cells.CheckBoxCell) {
+            ((org.telegram.ui.Cells.CheckBoxCell) clicked).setChecked(checked, true);
+        }
+        if (listAdapter != null && md3GroupRow >= 0) {
+            listAdapter.notifyItemChanged(md3GroupRow);
+        }
+        if (listView != null) {
+            for (int i = 0; i < listView.getChildCount(); i++) {
+                listView.getChildAt(i).invalidate();
+            }
+        }
+        rebuildAll();
+    }
+
     private void showRestartHint() {
         if (getParentActivity() == null) {
             return;
@@ -370,7 +393,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == md3LoadingRow) {
             AppearanceConfig.newLoadingStyle.setConfigBool(!AppearanceConfig.newLoadingStyle.Bool());
-            rebuildAll();
+            rebuildAllAndSelf(view, AppearanceConfig.newLoadingStyle.Bool());
             return;
         } else if (position == md3SliderRow) {
             // Стиль слайдера читается в SeekBarView.getEffectiveSliderStyle() на каждой отрисовке,
@@ -381,20 +404,20 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             if (avatarCornersPreviewCell != null) {
                 avatarCornersPreviewCell.invalidate();
             }
-            rebuildAll();
+            rebuildAllAndSelf(view, isMd3(NaConfig.INSTANCE.getSliderStyle().Int()));
             return;
         } else if (position == md3SwitchRow) {
             NaConfig.INSTANCE.getSwitchStyle().setConfigInt(
                     isMd3(NaConfig.INSTANCE.getSwitchStyle().Int()) ? 0 : STYLE_MD3);
-            rebuildAll();
+            rebuildAllAndSelf(view, isMd3(NaConfig.INSTANCE.getSwitchStyle().Int()));
             return;
         } else if (position == md3ChatHeaderRow) {
             AppearanceConfig.newChatHeaderStyle.setConfigBool(!AppearanceConfig.newChatHeaderStyle.Bool());
-            rebuildAll();
+            rebuildAllAndSelf(view, AppearanceConfig.newChatHeaderStyle.Bool());
             return;
         } else if (position == md3NavBarRow) {
             AppearanceConfig.newNavigationBarStyle.setConfigBool(!AppearanceConfig.newNavigationBarStyle.Bool());
-            rebuildAll();
+            rebuildAllAndSelf(view, AppearanceConfig.newNavigationBarStyle.Bool());
             return;
         } else if (position == dividerStyleRow) {
             showSelector(position, getString(R.string.OEAppearanceDividerStyle), new CharSequence[]{
@@ -808,6 +831,23 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
         }
 
+        /**
+         * Свои типы ячеек базовый адаптер считает некликабельными.
+         *
+         * Для превью это верно, а группа Material Design 3 и галочки внутри неё
+         * обработчики имеют: RecyclerListView не только не доводил до них клик,
+         * но и звал setEnabled(false) на строке (onChildAttachedToWindow) — из-за
+         * чего вся группа выглядела погашенной.
+         */
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            final int type = holder.getItemViewType();
+            if (type == TYPE_EXPANDABLE_SWITCH || type == TYPE_ROUND_CHECK) {
+                return true;
+            }
+            return super.isEnabled(holder);
+        }
+
         @Override
         public int getItemViewType(int position) {
             if (position == avatarCornersPreviewRow) {
@@ -886,6 +926,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
         // Перезапуск не нужен: все пять стилей читаются при отрисовке или при создании вьюх.
         rebuildAll();
+        rebuildRowsAndNotify();
     }
 
     private static int clamp(int value, int size) {
