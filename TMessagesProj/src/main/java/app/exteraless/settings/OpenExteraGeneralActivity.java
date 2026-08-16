@@ -78,7 +78,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int formatTimeWithSecondsRow;
     private int inAppVibrationRow;
     private int filterZalgoRow;
-    private int predictiveBackRow;
     private int generalDividerRow;
 
     private int speedHeaderRow;
@@ -133,7 +132,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         formatTimeWithSecondsRow = addRow("formatTimeWithSeconds");
         inAppVibrationRow = addRow("inAppVibration");
         filterZalgoRow = addRow("filterZalgo");
-        predictiveBackRow = addRow("predictiveBack");
         generalDividerRow = addRow();
 
         speedHeaderRow = addRow("speedHeader");
@@ -247,8 +245,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             inverted = true;
         } else if (position == filterZalgoRow) {
             item = NaConfig.INSTANCE.getZalgoFilter();
-        } else if (position == predictiveBackRow) {
-            item = app.exteraless.utils.UtilsConfig.predictiveBack;
         } else if (position == uploadBoostRow) {
             item = NekoConfig.uploadBoost;
         } else if (position == hidePhoneRow) {
@@ -498,11 +494,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                                 !NekoConfig.disableVibration.Bool(), true);
                     } else if (position == filterZalgoRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralFilterZalgo),
-                                NaConfig.INSTANCE.getZalgoFilter().Bool(), true);
-                    } else if (position == predictiveBackRow) {
-                        cell.setTextAndValueAndCheck(getString(R.string.OEGeneralPredictiveBack),
-                                getString(R.string.OEGeneralPredictiveBackValue),
-                                app.exteraless.utils.UtilsConfig.predictiveBack.Bool(), true, false);
+                                NaConfig.INSTANCE.getZalgoFilter().Bool(), false);
                     } else if (position == uploadBoostRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralUploadBoost),
                                 NekoConfig.uploadBoost.Bool(), false);

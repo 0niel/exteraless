@@ -61,8 +61,6 @@
     <string name="OEGeneralResetSettingsInfo">Все настройки exteraless вернутся к значениям по умолчанию.</string>
     <string name="OEGeneralResetSettingsDone">Настройки exteraless сброшены.</string>
     <string name="OEGeneralDeleteAccount">Удалить аккаунт</string>
-    <string name="OEGeneralPredictiveBack">Жест «назад» в стиле Material 3</string>
-    <string name="OEGeneralPredictiveBackValue">Закрывающийся экран уезжает карточкой, открывая предыдущий</string>
     <string name="DeepLFormalityDefault">Тон: как есть</string>
     <string name="DeepLFormalityInformal">Тон: неформальный</string>
     <string name="DeepLFormalityFormal">Тон: формальный</string>

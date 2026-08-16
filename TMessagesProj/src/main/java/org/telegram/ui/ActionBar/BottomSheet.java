@@ -294,7 +294,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         /**
          * Сброс состояния перетаскивания. Нужен predictive back'у: жест «назад» приходит
          * поверх уже начатого касания, и без сброса шторка после отмены жеста остаётся
-         * в режиме drag. exteraGram: BottomSheet.java:1082.
+         * в режиме drag.
          */
         public void resetTouch() {
             startedTracking = false;
@@ -637,7 +637,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             keyboardVisible = keyboardHeight > dp(20);
             if (Build.VERSION.SDK_INT >= 34) {
                 // С открытой клавиатурой колбэк снимается, иначе жест «назад» закрывал бы
-                // шторку вместо клавиатуры. exteraGram: BottomSheet.java:1816.
+                // шторку вместо клавиатуры.
                 updateBackCallbackState();
             }
             if (lastInsets != null) {
@@ -2021,7 +2021,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     @android.annotation.TargetApi(34)
     private void registerBackCallback() {
-        if (backAnimationCallback != null || !app.exteraless.utils.UtilsConfig.predictiveBack()) {
+        if (backAnimationCallback != null) {
             return;
         }
         if (container != null && container.isAttachedToWindow()) {

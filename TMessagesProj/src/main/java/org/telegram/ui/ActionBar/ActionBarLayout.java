@@ -1557,7 +1557,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                                 if (USE_ACTIONBAR_CROSSFADE) {
                                     swipeProgress = MathUtils.clamp((float) dx / containerView.getMeasuredWidth(), 0f, 1f);
                                 }
-                                if (oeM3Motion() && containerView.getMeasuredWidth() > 0) {
+                                if (containerView.getMeasuredWidth() > 0) {
                                     // openExtera: карточка сжимается и следует за пальцем по вертикали
                                     final float m3s = AndroidUtilities.lerp(1.0f, 0.85f,
                                             MathUtils.clamp((float) dx / containerView.getMeasuredWidth(), 0f, 1f));
@@ -1657,11 +1657,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private Drawable springRouteBackgroundDrawable;
     /** Вертикальное следование карточки за пальцем при ручном свайпе, -1..1. */
     private float springRouteYRatio;
-
-    /** Включены ли перенесённые из exteraGram M3-анимации переходов. */
-    private static boolean oeM3Motion() {
-        return app.exteraless.utils.UtilsConfig.predictiveBack();
-    }
 
     /** Стартовый радиус карточки — физические углы экрана. */
     private float getPredictiveBackStartCornerRadius() {
@@ -1811,7 +1806,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         predictiveInput = true;
         predictiveBackLeft = touchX < AndroidUtilities.displaySize.x / 2f;
         predictiveBackY = touchY;
-        m3PredictiveBack = app.exteraless.utils.UtilsConfig.predictiveBack() && !isSheet;
+        m3PredictiveBack = !isSheet;
         if (m3PredictiveBack) {
             predictiveBackAnimation.start(
                     containerView.getMeasuredWidth(),
@@ -1903,6 +1898,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 // exteraGram 12.9.0, onTouchEvent/ACTION_UP: скорость переводится в ту же
                 // нормированную шкалу 0..1000, в которой живёт пружина. У нас было velX/15 —
                 // на экране 1080 px это в ~14 раз слабее, флик почти не докидывал экран.
+                // exteraGram задаёт стартовую скорость и в ветке отката тоже.
                 currentSpringAnimation.setStartVelocity((velX / containerView.getMeasuredWidth()) * SPRING_MULTIPLIER);
             }
             currentSpringAnimation.addUpdateListener((animation, value, velocity) -> {
@@ -1913,7 +1909,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 if (USE_ACTIONBAR_CROSSFADE) {
                     swipeProgress = progress;
                 }
-                if (oeM3Motion() && !m3PredictiveBack) {
+                if (!m3PredictiveBack) {
                     // openExtera: доводим масштаб и вертикальный сдвиг карточки после отпускания
                     final float m3s = AndroidUtilities.lerp(1.0f, 0.85f, MathUtils.clamp(progress, 0f, 1f));
                     containerView.setScaleX(m3s);
@@ -2185,7 +2181,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 swipeProgress = open ? 1f : 0f;
                 invalidateActionBars();
             }
-            if (oeM3Motion() && !preview && !predictiveBackInProgress) {
+            if (!preview && !predictiveBackInProgress) {
                 // openExtera: фон нижележащего фрагмента, чтобы за уменьшенной карточкой
                 // не зияла щель в цвет окна (exteraGram: springRouteBackgroundDrawable)
                 springRouteYRatio = 0f;
@@ -2244,12 +2240,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerView.setTranslationX((1.0f - interpolated) * widthNoPaddings);
                         containerViewBack.setTranslationX(-interpolated * 0.35f * widthNoPaddings);
                         setInnerTranslationX((1.0f - interpolated) * widthNoPaddings);
-                        if (oeM3Motion()) {
-                            // openExtera: открывающийся экран разжимается карточкой (exteraGram)
-                            final float m3s = AndroidUtilities.lerp(0.85f, 1.0f, interpolated);
-                            containerView.setScaleX(m3s);
-                            containerView.setScaleY(m3s);
-                        }
+                        // openExtera: открывающийся экран разжимается карточкой (exteraGram)
+                        final float m3s = AndroidUtilities.lerp(0.85f, 1.0f, interpolated);
+                        containerView.setScaleX(m3s);
+                        containerView.setScaleY(m3s);
                     }
                 } else {
                     float clampedReverseInterpolated = MathUtils.clamp(1f - interpolated, 0, 1);
@@ -2271,12 +2265,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerViewBack.setTranslationX(interpolated * widthNoPaddings);
                         containerView.setTranslationX(-(1f - interpolated) * 0.35f * widthNoPaddings);
                         setInnerTranslationX(interpolated * widthNoPaddings);
-                        if (oeM3Motion()) {
-                            // openExtera: закрывающийся экран сжимается карточкой (exteraGram)
-                            final float m3s = AndroidUtilities.lerp(1.0f, 0.85f, interpolated);
-                            containerViewBack.setScaleX(m3s);
-                            containerViewBack.setScaleY(m3s);
-                        }
+                        // openExtera: закрывающийся экран сжимается карточкой (exteraGram)
+                        final float m3s = AndroidUtilities.lerp(1.0f, 0.85f, interpolated);
+                        containerViewBack.setScaleX(m3s);
+                        containerViewBack.setScaleY(m3s);
                     }
                 }
             });

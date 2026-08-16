@@ -770,15 +770,14 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         RestrictedLanguagesSelectActivity.checkRestrictedLanguages(false);
         // Жест «назад» системы (Android 14+) обязан двигать экран на любом фрагменте.
-        // Раньше эта регистрация висела только на NaConfig.backAnimationStyle ==
-        // PREDICTIVE, а мы по умолчанию ставим SPRING (без него не видно пружинных
-        // переходов NagramX) — и системный жест не анимировал ничего вообще:
-        // SystemUI рисовал свою стрелку, приложение стояло на месте. Свой флаг
-        // OEPredictiveBack отвязан от стиля переходов и включает M3-карточку
-        // независимо от него.
-        if (Build.VERSION.SDK_INT >= 34
-                && (app.exteraless.utils.UtilsConfig.predictiveBack()
-                    || NaConfig.INSTANCE.getBackAnimationStyle().Int() == ActionBarLayout.BACK_ANIMATION_PREDICTIVE)) {
+        // Раньше эта регистрация висела на NaConfig.backAnimationStyle == PREDICTIVE,
+        // а мы по умолчанию ставим SPRING (без него не видно пружинных переходов
+        // NagramX) — и системный жест не анимировал ничего вообще: SystemUI рисовал
+        // свою стрелку, приложение стояло на месте. Регистрируем всегда: M3-карточка
+        // не зависит от стиля переходов, а переключателя у неё больше нет — он
+        // менялся на лету, тогда как колбэк ставится один раз при создании активити,
+        // и после переключения жест оставался наполовину чужим до перезапуска.
+        if (Build.VERSION.SDK_INT >= 34) {
             if (onBackAnimationCallback == null) {
                 onBackAnimationCallback =  new OnBackAnimationCallback() {
                     private AnimationNotificationsLocker locker = new AnimationNotificationsLocker();
@@ -787,7 +786,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     private boolean started = false;
                     private boolean invoked = false;
 
-                    /** exteraGram: LaunchActivity.java:6873-6890 — шторка перехватывает жест «назад». */
+                    /** Шторка перехватывает жест «назад». */
                     private boolean drawerPredictiveBackStarted = false;
 
                     @Override
@@ -1303,7 +1302,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         }
         updateCurrentConnectionState(currentAccount);
 
-        // шторка перечитывает шапку, аккаунты и пункты меню.
+        // Шторка перечитывает шапку, аккаунты и пункты меню.
         if (drawerLayoutContainer != null && drawerLayoutContainer.getDrawerContainer() != null) {
             drawerLayoutContainer.getDrawerContainer().onAccountChanged();
         }
@@ -6925,6 +6924,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     protected void onPause() {
         // Пауза голосовых и кружков при сворачивании приложения.
+        // exteraGram зовёт это из didReceivedNotification по stopAllHeavyOperations(4096);
         // у нас такой ветки нет, а onPause наступает ровно в тот же момент.
         MediaController.getInstance().pauseInBackgroundIfNeeded();
         super.onPause();

@@ -62,8 +62,6 @@
     <string name="OEGeneralResetSettingsInfo">All exteraless settings will be reset to their default values.</string>
     <string name="OEGeneralResetSettingsDone">exteraless preferences have been reset.</string>
     <string name="OEGeneralDeleteAccount">Delete Account</string>
-    <string name="OEGeneralPredictiveBack">Material 3 back gesture</string>
-    <string name="OEGeneralPredictiveBackValue">The closing screen slides away as a card, revealing the one behind it</string>
     <string name="DeepLFormalityDefault">Tone: as it comes</string>
     <string name="DeepLFormalityInformal">Tone: informal</string>
     <string name="DeepLFormalityFormal">Tone: formal</string>

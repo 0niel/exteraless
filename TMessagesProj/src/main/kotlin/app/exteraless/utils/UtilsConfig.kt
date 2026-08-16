@@ -29,14 +29,6 @@ object UtilsConfig {
     fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
 
     /**
-     * Material 3 predictive back: закрывающийся экран уезжает карточкой, за ним —
-     * уменьшенный предыдущий фрагмент, поверх — scrim. В exteraGram это поведение
-     * по умолчанию, поэтому дефолт true.
-     */
-    @JvmField
-    val predictiveBack = addConfig("OEPredictiveBack", ConfigItem.configTypeBool, true)
-
-    /**
      * Чувствительность жеста «назад»: множитель прогресса. Хранится целым в процентах
      * (100 = 1.0), потому что ConfigItem не умеет float. Диапазон exteraGram — 0..2,
      * при нуле жест вообще не двигает экран (ExteraConfig.predictiveBackIntensity,
@@ -52,16 +44,10 @@ object UtilsConfig {
         return (predictiveBackIntensity.Int() / 100f).coerceIn(0f, 2f)
     }
 
-    /** Прогресс жеста с учётом чувствительности. exteraGram: ActionBarLayout.java:634-636. */
+    /** Прогресс жеста с учётом чувствительности. */
     @JvmStatic
     fun adjustPredictiveBackProgress(progress: Float): Float =
         (progress * predictiveBackIntensity()).coerceIn(0f, 1f)
-
-    @JvmStatic
-    fun predictiveBack(): Boolean {
-        ensureLoaded()
-        return predictiveBack.Bool()
-    }
 
     private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
         val item = ConfigItem(key, type, defaultValue)
@@ -87,7 +73,6 @@ object UtilsConfig {
     @JvmStatic
     fun applyMotionDefaults() {
         try {
-            if (!predictiveBack()) return
             val prefs = getPreferences()
             val key = NaConfig.backAnimationStyle.key
             if (!prefs.contains(key)) {
