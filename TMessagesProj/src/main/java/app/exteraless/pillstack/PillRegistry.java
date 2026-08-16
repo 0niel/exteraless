@@ -8,6 +8,7 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.IconBackgroundColors;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,19 +89,32 @@ public class PillRegistry {
         endTransaction();
     }
 
+    /** Цвета берутся из общей палитры {@link IconBackgroundColors}, а не подбираются на глаз. */
     private static void registerDefaultPills() {
         register(new PillInfo(PillType.WEATHER.id, LocaleController.getString(R.string.PillStackWeather),
-                R.drawable.weather_cloudy, 0xFF37B5FF, 0xFF3E7BFF, WeatherPill::new));
-        register(new PillInfo(PillType.GRAM.id, "TON",
-                R.drawable.mini_gram_16, 0xFF38B9FF, 0xFF2E86FF, GramPill::new));
+                R.drawable.weather_cloudy,
+                IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom,
+                WeatherPill::new));
+        register(new PillInfo(PillType.GRAM.id, "GRAM",
+                R.drawable.settings_gram_24,
+                IconBackgroundColors.BLUE_LIGHT.top, IconBackgroundColors.BLUE_LIGHT.bottom,
+                GramPill::new));
         register(new PillInfo(PillType.BTC.id, "BTC",
-                R.drawable.filter_money_solar, 0xFFF7931A, 0xFFE07000, BtcPill::new));
+                R.drawable.pillstack_btc_settings,
+                IconBackgroundColors.ORANGE_BRIGHT.top, IconBackgroundColors.ORANGE_BRIGHT.bottom,
+                BtcPill::new));
         register(new PillInfo(PillType.USD.id, "USD",
-                R.drawable.filter_money_solar, 0xFF2FA34D, 0xFF1D7A38, UsdPill::new));
-        register(new PillInfo(PillType.CACHE.id, LocaleController.getString(R.string.PillStackCache),
-                R.drawable.msg2_data, 0xFF9E7CFF, 0xFF7B5CFF, CachePill::new));
+                R.drawable.pillstack_usd_settings,
+                IconBackgroundColors.GREEN_DEEP.top, IconBackgroundColors.GREEN_DEEP.bottom,
+                UsdPill::new));
+        register(new PillInfo(PillType.CACHE.id, LocaleController.getString(R.string.StorageUsage),
+                R.drawable.msg_filled_storageusage,
+                IconBackgroundColors.BLUE_DEEP.top, IconBackgroundColors.BLUE_DEEP.bottom,
+                CachePill::new));
         register(new PillInfo(PillType.PROXY.id, LocaleController.getString(R.string.PillStackProxy),
-                R.drawable.proxy_on_solar, 0xFF59C1FF, 0xFF3F8FFF, ProxyPill::new));
+                R.drawable.drawer_proxy_on,
+                IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom,
+                ProxyPill::new));
     }
 
     // ---- Пакетная регистрация ----

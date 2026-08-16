@@ -114,18 +114,18 @@ public class ProxyPill extends BasePill implements NotificationCenter.Notificati
 
         String text;
         if (!enabled || SharedConfig.currentProxy == null) {
-            iconView.setImageResource(R.drawable.proxy_off_solar);
+            iconView.setImageResource(R.drawable.drawer_proxy_off);
             text = LocaleController.getString(R.string.Proxy);
             stopLoading();
         } else if (connected) {
             long ping = Utilities.clamp(SharedConfig.currentProxy.ping, 9999L, 0L);
-            iconView.setImageResource(R.drawable.proxy_on_solar);
+            iconView.setImageResource(R.drawable.drawer_proxy_on);
             text = ping > 0
                     ? LocaleController.formatString(R.string.PillStackProxyPing, ping)
                     : LocaleController.getString(R.string.MenuProxyConnected);
             stopLoading();
         } else {
-            iconView.setImageResource(R.drawable.proxy_off_solar);
+            iconView.setImageResource(R.drawable.drawer_proxy_off);
             text = LocaleController.getString(R.string.MenuProxyConnecting);
             startLoading();
         }

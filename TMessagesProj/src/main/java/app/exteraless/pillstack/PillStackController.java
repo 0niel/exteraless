@@ -99,10 +99,15 @@ public class PillStackController implements PillStackEvents.Listener {
         }
         if (stackView == null) {
             stackView = new PillStackView(container.getContext());
+            // Отступ от края строки поиска — 6dp с обеих сторон, как в exteraGram
+            // (FragmentSearchField.updatePillStack, :421). Раньше со стороны края
+            // стояло 44dp «под крестик очистки», из-за чего полоса заметно не
+            // доходила до правого бока поиска; крестика при пустом поле нет, а с
+            // набранным текстом пилюли и так спрятаны.
             container.addView(stackView, LayoutHelper.createFrame(
                     LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT,
                     (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL,
-                    LocaleController.isRTL ? 44 : 6, 0, LocaleController.isRTL ? 6 : 44, 0));
+                    6, 0, 6, 0));
         }
         stackView.clearPills();
 

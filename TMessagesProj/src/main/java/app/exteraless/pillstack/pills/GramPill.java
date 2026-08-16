@@ -17,7 +17,7 @@ public class GramPill extends RatePill {
 
     public GramPill(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context, resourcesProvider, CACHE, "TON", 3, R.drawable.mini_gram_16,
-                new ColoredBackground(0xFF38B9FF, 0xFF2E86FF));
+                new ColoredBackground());
     }
 
     @Override

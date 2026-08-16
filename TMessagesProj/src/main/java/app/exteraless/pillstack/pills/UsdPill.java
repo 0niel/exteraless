@@ -5,6 +5,7 @@ import android.content.Context;
 
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.IconBackgroundColors;
 
 import app.exteraless.pillstack.PillCurrencies;
 import app.exteraless.pillstack.PillStackConfig;
@@ -17,8 +18,9 @@ public class UsdPill extends RatePill {
     private static final RateCache CACHE = new RateCache();
 
     public UsdPill(Context context, Theme.ResourcesProvider resourcesProvider) {
-        super(context, resourcesProvider, CACHE, "USD", 2, R.drawable.filter_money_solar,
-                new ColoredBackground(0xFF2FA34D, 0xFF1D7A38));
+        super(context, resourcesProvider, CACHE, "USD", 2, R.drawable.pillstack_usd,
+                new ColoredBackground(IconBackgroundColors.GREEN_DEEP.top,
+                        IconBackgroundColors.GREEN_DEEP.bottom));
     }
 
     @Override
