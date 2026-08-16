@@ -186,12 +186,27 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
     }
     public void whiteSectionEnd() {
         if (currentWhiteSection != null) {
-            currentWhiteSection.end = Math.max(0, itemsOffset + items.size() - 1);
-            if (currentWhiteSection.start == currentWhiteSection.end) {
+            final int end = Math.max(0, itemsOffset + items.size() - 1);
+            currentWhiteSection.start = skipLeadingHeaders(currentWhiteSection.start, end);
+            currentWhiteSection.end = end;
+            if (currentWhiteSection.start >= end) {
                 whiteSections.remove(currentWhiteSection);
             }
             currentWhiteSection = null;
         }
+    }
+
+    /**
+     * Вынесенный заголовок не входит в карточку, поэтому секция начинается
+     * со строки под ним.
+     */
+    private int skipLeadingHeaders(int start, int end) {
+        if (!app.exteraless.appearance.AppearanceConfig.sectionsSeparatedHeaders()) return start;
+        int position = start;
+        while (position <= end && isHeader(getItemViewType(position))) {
+            position++;
+        }
+        return position;
     }
 
     public int reorderSectionStart() {
@@ -203,7 +218,9 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
     }
     public void reorderSectionEnd() {
         if (currentReorderSection != null) {
-            currentReorderSection.end = Math.max(0, items.size() - 1);
+            final int end = Math.max(0, items.size() - 1);
+            currentReorderSection.start = skipLeadingHeaders(currentReorderSection.start, end);
+            currentReorderSection.end = end;
         }
     }
 
@@ -593,7 +610,18 @@ public class UniversalAdapter extends AdapterWithDiffUtils {
     private boolean hasDivider(int position) {
         UItem item = getItem(position);
         UItem nextItem = getItem(position + 1);
-        return item != null && !item.hideDivider && nextItem != null && isShadow(nextItem.viewType) == isShadow(item.viewType);
+        if (item == null || nextItem == null || item.hideDivider) return false;
+        if (isHeader(nextItem.viewType) && app.exteraless.appearance.AppearanceConfig.sectionsSeparatedHeaders()) {
+            return false;
+        }
+        return isShadow(nextItem.viewType) == isShadow(item.viewType);
+    }
+
+    public static boolean isHeader(int viewType) {
+        return viewType == VIEW_TYPE_HEADER
+            || viewType == VIEW_TYPE_BLACK_HEADER
+            || viewType == VIEW_TYPE_LARGE_HEADER
+            || viewType == VIEW_TYPE_ANIMATED_HEADER;
     }
 
     public static boolean isShadow(int viewType) {

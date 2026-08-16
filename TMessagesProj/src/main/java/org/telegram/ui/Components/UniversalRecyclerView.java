@@ -438,14 +438,21 @@ public class UniversalRecyclerView extends RecyclerListView {
             view -> {
                 if (view.getParent() != this) return false;
                 final ViewHolder viewHolder = getChildViewHolder(view);
-                if (UniversalAdapter.isShadow(viewHolder.getItemViewType())) return false;
+                final int viewType = viewHolder.getItemViewType();
+                if (UniversalAdapter.isShadow(viewType)) return false;
+                if (UniversalAdapter.isHeader(viewType)
+                        && app.exteraless.appearance.AppearanceConfig.sectionsSeparatedHeaders()) {
+                    return false;
+                }
                 // Элемент, помеченный transparent, не должен получать карточку секции:
                 // так exteraGram рисует пустые состояния (папка + подсказка) — на голом фоне,
                 // а не внутри скруглённого блока.
                 final UItem item = adapter.getItem(viewHolder.getAdapterPosition());
                 return item == null || !item.transparent;
             },
-            UniversalAdapter::isShadow,
+            viewType -> !UniversalAdapter.isShadow(viewType)
+                    && !(UniversalAdapter.isHeader(viewType)
+                        && app.exteraless.appearance.AppearanceConfig.sectionsSeparatedHeaders()),
             padding, roundRadius,
             super::drawBackgroundRect,
             topPadding
