@@ -611,8 +611,8 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
                 paint.setStrokeWidth(AndroidUtilities.dp(2));
                 paint.setAlpha((int) (255 * segmentsAlpha));
                 boolean isForum = ChatObject.isForum(UserConfig.selectedAccount, dialogId);
-                if (isForum) {
-                    float r = rect2.height() * 0.32f;
+                if (isForum || useAvatarCornersRing()) {
+                    float r = avatarCornersRingRadius(rect2, isForum);
                     canvas.drawRoundRect(rect2, r, r, paint);
                 } else {
                     canvas.drawCircle(rect2.centerX(), rect2.centerY(), rect2.width() / 2f, paint);
@@ -902,10 +902,19 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
     private final PathMeasure forumRoundRectPathMeasure = new PathMeasure();
     private final Path forumSegmentPath = new Path();
 
+    private boolean useAvatarCornersRing() {
+        return !app.exteraless.appearance.AppearanceConfig.avatarCornersDefault() && expandProgress < 0.2f;
+    }
+
+    private float avatarCornersRingRadius(RectF oval, boolean isForum) {
+        return app.exteraless.appearance.AppearanceConfig.getAvatarCorners(oval.height() + dp(4),
+                isForum ? app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_FORUM : app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_DEFAULT);
+    }
+
     private void drawArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, boolean useCenter, Paint paint) {
         boolean isForum = ChatObject.isForum(UserConfig.selectedAccount, dialogId);
-        if (isForum) {
-            float r = oval.height() * 0.32f;
+        if (isForum || useAvatarCornersRing()) {
+            float r = avatarCornersRingRadius(oval, isForum);
             if (Math.abs(sweepAngle) == 360) {
                 canvas.drawRoundRect(oval, r, r, paint);
                 return;

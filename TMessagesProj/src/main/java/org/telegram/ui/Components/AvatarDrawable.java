@@ -590,17 +590,7 @@ public class AvatarDrawable extends Drawable {
                 canvas.save();
                 canvas.rotate(-45, size / 2.0f, size / 2.0f);
             }
-            if (roundRadius > 0) {
-                AndroidUtilities.rectTmp.set(0, 0, size, size);
-                canvas.drawRoundRect(AndroidUtilities.rectTmp, roundRadius, roundRadius, backgroundPaint);
-            } else if (!app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
-                // openExtera: закругление аватарок из настроек Appearance.
-                int oeRadius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(size);
-                AndroidUtilities.rectTmp.set(0, 0, size, size);
-                canvas.drawRoundRect(AndroidUtilities.rectTmp, oeRadius, oeRadius, backgroundPaint);
-            } else {
-                canvas.drawCircle(size / 2.0f, size / 2.0f, size / 2.0f, backgroundPaint);
-            }
+            drawBackgroundShape(canvas, size, 1f, backgroundPaint);
             if (rotate45Background) {
                 canvas.restore();
             }
@@ -609,7 +599,7 @@ public class AvatarDrawable extends Drawable {
         if (avatarType == AVATAR_TYPE_ARCHIVED) {
             if (archivedAvatarProgress != 0) {
                 backgroundPaint.setColor(ColorUtils.setAlphaComponent(getThemedColor(Theme.key_avatar_backgroundArchived), alpha));
-                canvas.drawCircle(size / 2.0f, size / 2.0f, size / 2.0f * archivedAvatarProgress, backgroundPaint);
+                drawBackgroundShape(canvas, size, archivedAvatarProgress, backgroundPaint);
                 if (Theme.dialogs_archiveAvatarDrawableRecolored) {
                     Theme.dialogs_archiveAvatarDrawable.beginApplyLayerColors();
                     Theme.dialogs_archiveAvatarDrawable.setLayerColor("Arrow1.**", Theme.getNonAnimatedColor(Theme.key_avatar_backgroundArchived));
@@ -777,6 +767,28 @@ public class AvatarDrawable extends Drawable {
 
     private int getThemedColor(int key) {
         return Theme.getColor(key, resourcesProvider);
+    }
+
+    /**
+     * Подложка аватарки формой из настроек: круг, либо скруглённый квадрат.
+     *
+     * scale < 1 нужен раскрытию архива: там подложка вырастает из центра, и
+     * пока это был drawCircle, при квадратных аватарках внутри квадрата
+     * оставался круг чужого цвета.
+     */
+    private void drawBackgroundShape(Canvas canvas, int size, float scale, Paint paint) {
+        final float half = size / 2.0f;
+        int radius = roundRadius;
+        if (radius <= 0 && !app.exteraless.appearance.AppearanceConfig.avatarCornersDefault()) {
+            radius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(size);
+        }
+        if (radius <= 0) {
+            canvas.drawCircle(half, half, half * scale, paint);
+            return;
+        }
+        final float inset = half * (1f - scale);
+        AndroidUtilities.rectTmp.set(inset, inset, size - inset, size - inset);
+        canvas.drawRoundRect(AndroidUtilities.rectTmp, radius * scale, radius * scale, paint);
     }
 
     public void setRoundRadius(int roundRadius) {

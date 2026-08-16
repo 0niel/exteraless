@@ -1,6 +1,7 @@
 package app.exteraless.appearance
 
 import android.content.SharedPreferences
+import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.FileLog
 import tw.nekomimi.nekogram.NekoConfig
@@ -349,11 +350,27 @@ object AppearanceConfig {
      * При максимуме слайдера возвращает size / 2, то есть круг.
      */
     @JvmStatic
-    fun getAvatarCorners(size: Float): Int {
+    @JvmOverloads
+    fun getAvatarCorners(size: Float, cornerType: Int = CORNER_TYPE_DEFAULT, hasStories: Boolean = false): Int {
         val corners = avatarCorners()
         if (corners <= 0) return 0
-        return Math.ceil((size * corners / (AVATAR_CORNERS_MAX * 2.0)).toDouble()).toInt()
+        var value = size * corners / (AVATAR_CORNERS_MAX * 2.0)
+        if (hasStories) {
+            value -= AndroidUtilities.dpf2(2.5f)
+        }
+        if (!singleCornerRadius()) {
+            when (cornerType) {
+                CORNER_TYPE_FORUM -> value = value.toInt() * 42.0 / 64.0
+                CORNER_TYPE_COMMUNITY -> value = value * 40.0 / 72.0
+            }
+        }
+        if (value <= 0) return 0
+        return Math.ceil(value).toInt()
     }
+
+    const val CORNER_TYPE_DEFAULT = 0
+    const val CORNER_TYPE_FORUM = 1
+    const val CORNER_TYPE_COMMUNITY = 2
 
     private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
         val item = ConfigItem(key, type, defaultValue)

@@ -99,7 +99,8 @@ public class SenderSelectView extends View {
 
         int alpha = (int) (menuProgress * 0xFF);
         backgroundPaint.setAlpha(alpha);
-        canvas.drawCircle(getWidth() / 2f, getHeight() / 2f, Math.min(getWidth(), getHeight()) / 2f, backgroundPaint);
+        final float senderCorners = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(getWidth());
+        canvas.drawRoundRect(0, 0, getWidth(), getHeight(), senderCorners, senderCorners, backgroundPaint);
 
         canvas.save();
         menuPaint.setAlpha(alpha);

@@ -3809,17 +3809,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             if (drawMonoforumAvatar) {
                 avatarRadius = 1;
             } else if (drawCommunityAvatar) {
-                avatarRadius = dp(12);
-            } else if ((chat != null && chat.forum && currentDialogFolderId == 0 && !useFromUserAsAvatar
-                    && !app.exteraless.appearance.AppearanceConfig.singleCornerRadius())
+                avatarRadius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(dp(56), app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_COMMUNITY);
+            } else if ((chat != null && chat.forum && currentDialogFolderId == 0 && !useFromUserAsAvatar)
                     || !isSavedDialog && user != null && user.self && MessagesController.getInstance(currentAccount).savedViewAsChats) {
-                // «Единое закругление»: с настройкой форумы получают ту же форму
-                // аватарки, что и обычные чаты, то есть падают в ветку ниже.
-                avatarRadius = dp(16);
+                avatarRadius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(dp(56), app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_FORUM);
             } else {
-                avatarRadius = dp(28);
+                avatarRadius = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(dp(56));
             }
 
+            avatarImage.setAvatarCornersApplied(!drawMonoforumAvatar);
             avatarImage.setRoundRadius(avatarRadius);
         }
         if (!isTopic && (getMeasuredWidth() != 0 || getMeasuredHeight() != 0)) {

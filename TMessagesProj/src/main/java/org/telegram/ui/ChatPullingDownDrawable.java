@@ -509,12 +509,13 @@ public class ChatPullingDownDrawable implements NotificationCenter.NotificationC
         } else {
             int oldAlpha1 = getThemedPaint(Theme.key_paint_chatActionBackground).getAlpha();
             getThemedPaint(Theme.key_paint_chatActionBackground).setAlpha((int) (oldAlpha1 * alpha));
-            canvas.drawRoundRect(AndroidUtilities.rectTmp, circleRadius, circleRadius, getThemedPaint(Theme.key_paint_chatActionBackground));
+            final float avatarCorners = app.exteraless.appearance.AppearanceConfig.getAvatarCorners(AndroidUtilities.rectTmp.width());
+            canvas.drawRoundRect(AndroidUtilities.rectTmp, avatarCorners, avatarCorners, getThemedPaint(Theme.key_paint_chatActionBackground));
             getThemedPaint(Theme.key_paint_chatActionBackground).setAlpha(oldAlpha1);
             if (hasGradientService()) {
                 int oldAlpha2 = Theme.chat_actionBackgroundGradientDarkenPaint.getAlpha();
                 Theme.chat_actionBackgroundGradientDarkenPaint.setAlpha((int) (oldAlpha2 * alpha));
-                canvas.drawRoundRect(AndroidUtilities.rectTmp, circleRadius, circleRadius, Theme.chat_actionBackgroundGradientDarkenPaint);
+                canvas.drawRoundRect(AndroidUtilities.rectTmp, avatarCorners, avatarCorners, Theme.chat_actionBackgroundGradientDarkenPaint);
                 Theme.chat_actionBackgroundGradientDarkenPaint.setAlpha(oldAlpha2);
             }
         }
