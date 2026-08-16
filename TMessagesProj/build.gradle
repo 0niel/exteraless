@@ -173,12 +173,20 @@ android {
         }
     }
 
+    // Ключ подписи в репозиторий не кладётся. Положи свой release.keystore рядом
+    // с этим файлом и пропиши KEYSTORE_PASS / ALIAS_NAME / ALIAS_PASS в
+    // local.properties; без него сборка подписывается отладочным ключом Android.
+    def releaseKeystore = project.file('release.keystore')
+    def hasReleaseKeystore = releaseKeystore.exists() && keystorePwd != null && alias != null
+
     signingConfigs {
         release {
-            storeFile project.file('release.keystore')
-            storePassword keystorePwd
-            keyAlias alias
-            keyPassword pwd
+            if (hasReleaseKeystore) {
+                storeFile releaseKeystore
+                storePassword keystorePwd
+                keyAlias alias
+                keyPassword pwd
+            }
         }
     }
 
@@ -188,7 +196,7 @@ android {
             debuggable = true
             jniDebuggable = true
             multiDexEnabled = true
-            signingConfig = signingConfigs.release
+            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
 
         staging {
@@ -199,7 +207,7 @@ android {
             multiDexEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             matchingFallbacks = ['release', 'staging', 'debug']
-            signingConfig = signingConfigs.release
+            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
 
         release {
@@ -210,7 +218,7 @@ android {
             multiDexEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             matchingFallbacks = ['release', 'staging', 'debug']
-            signingConfig = signingConfigs.release
+            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }
 

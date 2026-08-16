@@ -7,7 +7,7 @@ cross the bridge are JSON strings, plain strings or booleans.
 User-code exceptions from hook callbacks propagate to Java intentionally —
 the engine catches them and disables the offending plugin. PermissionError is
 the one exception to that rule: a denied permission is not a broken plugin, so
-it is logged and swallowed here (docs/port/PLUGINS-SECURITY.md).
+it is logged and swallowed here.
 """
 
 import contextlib
@@ -63,7 +63,7 @@ __all__ = [
     "get_settings_json", "notify_setting_changed", "dispatch_setting_click",
     "is_loaded", "plugins", "PluginRecord", "start_dev_server",
     "plugin_context", "current_plugin_id",
-    # песочница (docs/port/PLUGINS-SECURITY.md)
+    # песочница
     "caller_plugin_id", "has_permission", "require_permission", "plugin_files",
     "PERM_UI", "PERM_MESSAGES_READ", "PERM_MESSAGES_SEND", "PERM_NETWORK",
     "PERM_FILES", "PERM_INTENTS", "PERM_SETTINGS", "PERM_HOOKS",
@@ -88,9 +88,7 @@ _VALID_STRATEGIES = frozenset({
 })
 
 
-# ---------------------------------------------------------------------------
 # Plugin context (which plugin's code is running on this thread)
-# ---------------------------------------------------------------------------
 
 _context_state = threading.local()
 
@@ -184,9 +182,7 @@ def current_plugin_id() -> Optional[str]:
     return getattr(_context_state, "plugin_id", None)
 
 
-# ---------------------------------------------------------------------------
-# Песочница: разрешения плагинов (docs/port/PLUGINS-SECURITY.md)
-# ---------------------------------------------------------------------------
+# Песочница: разрешения плагинов
 #
 # Граница честная и узкая: проверки ловят обращения ЧЕРЕЗ SDK и импорты из кода
 # плагина. Плагин, который дёргает Java напрямую (`from java.lang import ...`,
@@ -815,9 +811,7 @@ def _install_sandbox() -> None:
               file=sys.stderr)
 
 
-# ---------------------------------------------------------------------------
 # Loading / unloading
-# ---------------------------------------------------------------------------
 
 def _error_json(exc: BaseException) -> str:
     return json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}",
@@ -1006,9 +1000,7 @@ def is_loaded(plugin_id: str) -> bool:
     return plugin_id in plugins
 
 
-# ---------------------------------------------------------------------------
 # Event dispatch
-# ---------------------------------------------------------------------------
 
 def call_app_event(plugin_id: str, event: str) -> None:
     record = plugins.get(plugin_id)
@@ -1114,9 +1106,7 @@ def call_updates_hook(plugin_id: str, account: int, container_name: str, updates
                           instance.on_updates_hook, container_name, account, updates)
 
 
-# ---------------------------------------------------------------------------
 # Settings serialization
-# ---------------------------------------------------------------------------
 
 def _put(data: dict, key: str, value):
     """Set an optional schema field; None-valued optionals are omitted."""
@@ -1263,9 +1253,7 @@ def get_settings_json(plugin_id: str) -> str:
     return json.dumps(out, ensure_ascii=False)
 
 
-# ---------------------------------------------------------------------------
 # Settings callbacks
-# ---------------------------------------------------------------------------
 
 def _takes_positional_arg(fn) -> bool:
     try:
@@ -1320,9 +1308,7 @@ def dispatch_setting_click(plugin_id: str, callback_id: str) -> None:
     return None
 
 
-# ---------------------------------------------------------------------------
 # Dev server (port 42690; started by the engine in developer mode)
-# ---------------------------------------------------------------------------
 
 def scan_capabilities_json(path: str) -> str:
     """Что плагин может делать — по исходнику, без запуска (для диалога установки)."""

@@ -14,6 +14,9 @@ TMessagesProj/jniLibs/
 TMessagesProj/jniRes/
 TMessagesProj/afat/
 TMessagesProj/jni/ffmpeg/build_android
-# Python-артефакты (были в индексе: docs/port/__pycache__)
+# Python-артефакты
 __pycache__/
 *.pyc
+
+# Ключ подписи
+TMessagesProj/release.keystore

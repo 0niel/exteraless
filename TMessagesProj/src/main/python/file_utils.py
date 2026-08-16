@@ -15,7 +15,7 @@ import threading
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
-# Имя разрешения на файлы вне своего каталога (docs/port/PLUGINS-SECURITY.md).
+# Имя разрешения на файлы вне своего каталога.
 _PERM_FILES = "files"
 
 
@@ -81,9 +81,7 @@ def get_plugin_cache_dir(plugin_id: Optional[str] = None) -> Optional[str]:
         return None
 
 
-# ---------------------------------------------------------------------------
 # Разрешение "files": доступ вне своего каталога (PLUGINS-SECURITY.md)
-# ---------------------------------------------------------------------------
 
 _own_roots_cache = {}
 
@@ -318,9 +316,7 @@ def read_file_bytes(path: str) -> Optional[bytes]:
         return None
 
 
-# ---------------------------------------------------------------------------
 # FilesController (per-extension file-open interception, PLUGINS-API.md §8)
-# ---------------------------------------------------------------------------
 
 def _plugin_services():
     from app.exteraless.plugins import PluginServices

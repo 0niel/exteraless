@@ -6,7 +6,7 @@ app_version, sdk_version, beta, requirements) plus Elyx-specific extras
 (min_version, requires). Also exposes read_metadata()/read_metadata_json() so
 the host plugin loader can scan .elyx/.eaf files without executing anything.
 
-Field rules come from docs/port/PLUGINS-ELYX.md (§5 Metadata):
+Field rules of the .elyx metadata block:
   - id and name are required; id is 2-32 chars of [A-Za-z0-9_]
   - description defaults to "Description not provided", author to
     "Unknown author", version to "1.0.0"
@@ -39,9 +39,7 @@ _REQUIRES_KEY_PATTERN = re.compile(r"^\s*([A-Za-z0-9_]{2,32})(?:\s*\(([^)]*)\))?
 _METADATA_EXTENSIONS = (".yaml", ".yml", ".json", ".py")
 
 
-# ---------------------------------------------------------------------------
 # Parsing
-# ---------------------------------------------------------------------------
 
 def _normalize_keys(raw: Dict[str, Any]) -> Dict[str, Any]:
     """__name__ -> name, etc. Plain keys win when both forms are present."""
@@ -96,9 +94,7 @@ def parse_mapping_file(name: str, data: bytes, *, what: str = "metainfo") -> Dic
     return parsed
 
 
-# ---------------------------------------------------------------------------
 # Validation / normalization
-# ---------------------------------------------------------------------------
 
 def validate_plugin_id(plugin_id: Any) -> str:
     if not isinstance(plugin_id, str) or not _ID_PATTERN.match(plugin_id):
@@ -196,9 +192,7 @@ def build_metadata(raw: Dict[str, Any],
     }
 
 
-# ---------------------------------------------------------------------------
 # Archive-level metadata reading (no extraction, no code execution)
-# ---------------------------------------------------------------------------
 
 def read_metadata(path: str, string_lookup: Optional[Callable[[str], Any]] = None) -> Dict[str, Any]:
     """Read and normalize the metadata of an .elyx/.eaf archive.

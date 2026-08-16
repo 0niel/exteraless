@@ -1,6 +1,6 @@
 """Elyx archive handling: refmap discovery, safe extraction, bundled wheels.
 
-Archive layout (per docs/port/PLUGINS-ELYX.md):
+Archive layout of the .elyx container:
   - ZIP-compatible file (.elyx / .eaf / .elyx.zip / .eaf.zip)
   - refmap.yaml | refmap.yml | refmap.json at the archive root (first match wins)
   - all refmap paths are relative to the archive root
@@ -41,9 +41,7 @@ _COMPLETE_MARKER = ".elyx_complete"
 _WHEEL_MARKER = ".elyx_wheel_complete"
 
 
-# ---------------------------------------------------------------------------
 # ZIP basics
-# ---------------------------------------------------------------------------
 
 def open_archive(path: str) -> zipfile.ZipFile:
     """Open *path* as a ZIP, raising a clear error for non-archives."""
@@ -114,9 +112,7 @@ def find_metainfo_member(zf: zipfile.ZipFile, refmap: Dict[str, str]) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # refmap parsing
-# ---------------------------------------------------------------------------
 
 def parse_refmap(name: str, data: bytes) -> Dict[str, str]:
     """Parse a refmap file (YAML or JSON by extension) into a str->str mapping."""
@@ -147,9 +143,7 @@ def load_refmap(zf: zipfile.ZipFile) -> Dict[str, str]:
     return parse_refmap(member, read_member(zf, member))
 
 
-# ---------------------------------------------------------------------------
 # Safe extraction
-# ---------------------------------------------------------------------------
 
 def _check_member_safety(name: str) -> None:
     """Reject absolute paths and path traversal (zip-slip) in member names."""
@@ -216,9 +210,7 @@ def purge_plugin_dirs(plugins_dir: str, plugin_id: str) -> None:
                   ignore_errors=True)
 
 
-# ---------------------------------------------------------------------------
 # Bundled wheels
-# ---------------------------------------------------------------------------
 
 def process_wheels(extract_dir: str, refmap: Dict[str, str],
                    plugins_dir: str, plugin_id: str) -> List[str]:

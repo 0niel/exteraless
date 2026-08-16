@@ -22,7 +22,7 @@ _METADATA_KEYS = (
 )
 
 # Permission keys a plugin may declare in ``__permissions__``.
-# Mirrors app.exteraless.plugins.PluginPermissions (docs/port/PLUGINS-SECURITY.md);
+# Mirrors app.exteraless.plugins.PluginPermissions;
 # the Python import hook in plugin_loader imports this tuple, so the two lists
 # cannot drift apart.
 PERMISSION_UI = "ui"
@@ -100,7 +100,7 @@ def _validate_permissions(declared: Any) -> list:
     """Normalise and validate ``__permissions__``.
 
     An unknown key is a metadata error on purpose: a typo must not silently turn
-    into a missing permission (docs/port/PLUGINS-SECURITY.md, "Объявление в плагине").
+    into a missing permission.
     """
     if isinstance(declared, str):
         # Same leniency as __requirements__: a single permission is often written bare.

@@ -50,7 +50,7 @@ def _log(message):
 
 
 def _require(perm: str, what: str, detail=None):
-    """Проверить разрешение плагина (docs/port/PLUGINS-SECURITY.md).
+    """Проверить разрешение плагина.
 
     Импорт ленивый: plugin_loader импортирует client_utils первым, на уровне
     модуля это был бы цикл. Плагин определяется по стеку, поэтому проверка
@@ -60,9 +60,7 @@ def _require(perm: str, what: str, detail=None):
     require_permission(perm, what, detail=detail)
 
 
-# ---------------------------------------------------------------------------
 # Hook account scope
-# ---------------------------------------------------------------------------
 
 _hook_state = threading.local()
 _MISSING = object()
@@ -128,9 +126,7 @@ def _resolve_scoped_account(account) -> int:
     return get_selected_account()
 
 
-# ---------------------------------------------------------------------------
 # Dispatch queues
-# ---------------------------------------------------------------------------
 
 def get_queue_by_name(name: str):
     """Return (creating lazily) a named org.telegram.messenger.DispatchQueue."""
@@ -188,9 +184,7 @@ def run_on_queue(fn, queue: str = PLUGINS_QUEUE, delay: int = 0, delay_ms: int =
     return dispatch_queue
 
 
-# ---------------------------------------------------------------------------
 # TL requests
-# ---------------------------------------------------------------------------
 
 def RequestCallback(fn, account=None):
     """Wrap ``fn(response, error)`` as a Java ``RequestDelegate``.
@@ -255,9 +249,7 @@ def send_request(request, fn, account=None) -> int:
     return int(get_connections_manager(resolved).sendRequest(request, proxy))
 
 
-# ---------------------------------------------------------------------------
 # Core controller accessors
-# ---------------------------------------------------------------------------
 
 def get_account_instance(account=None):
     """AccountInstance for *account* (default: UI-selected / hook scope rules)."""
@@ -346,9 +338,7 @@ def get_user_config(account=None):
     return get_account_instance(_resolve_account(account, "get_user_config")).getUserConfig()
 
 
-# ---------------------------------------------------------------------------
 # Sending messages
-# ---------------------------------------------------------------------------
 
 def _to_array_list(items):
     array_list = _jclass("java.util.ArrayList")()
@@ -607,9 +597,7 @@ def edit_message(message_obj, text=None, file_path=None, with_spoiler=False,
         message_obj, message, True, fragment, entities, 0, 0))
 
 
-# ---------------------------------------------------------------------------
 # AccountClient (PLUGINS-API.md §4.1)
-# ---------------------------------------------------------------------------
 
 class AccountClient:
     """Per-account view of the client_utils helpers.
@@ -741,9 +729,7 @@ def get_client(account=None) -> AccountClient:
     return AccountClient(account)
 
 
-# ---------------------------------------------------------------------------
 # NotificationCenter
-# ---------------------------------------------------------------------------
 
 class NotificationCenterDelegate:
     """Python base for NotificationCenter.NotificationCenterDelegate.

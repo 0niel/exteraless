@@ -9,6 +9,7 @@ import xyz.nextalone.nagram.NaConfig;
 /**
  * Встроенные наборы иконок (порт {@code com.exteragram.messenger.icons.BaseIconPacks}, 1223 строки).
  *
+ * exteraGram держит три ленивых {@link SparseIntArray} «id базовой иконки → id иконки набора»:
  * {@code remix} ({@code BaseIconPacks.java:53}, {@code new SparseIntArray(590)}, 565 put),
  * {@code solar} ({@code BaseIconPacks.java:624}, 563 put) и {@code def}
  * ({@code BaseIconPacks.java:41}, 3 put). Пак выбирается в
@@ -25,7 +26,7 @@ import xyz.nextalone.nagram.NaConfig;
  *       {@code popup_fixed_alert4}. У нас он перенесён, но при выборе «Default» НЕ применяется:
  *       дефолт обязан оставаться стоковым.</li>
  *   <li>{@value #SKIPPED_PUTS} подмен exteraGram пропущены — базовых drawable нет в нашем дереве
- *       (см. {@code docs/port/strings.md}, strings-11). Список — в комментарии ниже.</li>
+ *       Список — в комментарии ниже.</li>
  * </ul>
  */
 public final class BaseIconPacks {
@@ -75,7 +76,7 @@ public final class BaseIconPacks {
         NaConfig.INSTANCE.getIconReplacements().setConfigInt(type);
     }
 
-    /** Название набора для экрана настроек (в exteraGram — литералы, {@code BaseIconPacks.java:1192}). */
+    /** Название набора для экрана настроек. */
     public static String getName(int type) {
         if (type == BASE_SOLAR) {
             return "Solar Icon Set";
@@ -105,7 +106,8 @@ public final class BaseIconPacks {
         if (type == BASE_REMIX) {
             return getRemix();
         }
-        // popup_fixed_alert/2/3 схлопываются в popup_fixed_alert4.
+        // Набор def применяется и при «Default»: popup_fixed_alert/2/3
+        // схлопываются в popup_fixed_alert4.
         return getDef();
     }
 
