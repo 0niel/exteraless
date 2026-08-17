@@ -131,6 +131,7 @@ import org.telegram.ui.Components.UndoView;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
+import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 import org.telegram.ui.Components.blur3.ViewGroupPartRenderer;
 import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
@@ -1327,7 +1328,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             );
         }
 
-        public static class Background extends Drawable {
+        public static class Background extends Drawable implements GlassOutlineStyle.Listener {
             private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             private LinearGradient gradient, strokeGradient;
@@ -1337,6 +1338,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 strokePaint.setStyle(Paint.Style.STROKE);
                 strokeGradient = new LinearGradient(0, 0, 0, dp(28), new int[] { 0x4dffffff, 0, 0x1affffff }, new float[] { 0, 0.5f, 1 }, Shader.TileMode.CLAMP);
                 strokePaint.setShader(strokeGradient);
+                GlassOutlineStyle.addListener(this);
             }
 
             public void setColor(int topColor, int bottomColor) {
@@ -1357,7 +1359,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
 
-                if (border) {
+                if (GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
                     final float sw = dp(1);
                     strokePaint.setStrokeWidth(sw);
                     matrix.reset();
@@ -1365,6 +1367,11 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     AndroidUtilities.rectTmp.inset(sw / 2.0f, sw / 2.0f);
                     canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, strokePaint);
                 }
+            }
+
+            @Override
+            public void onGlassOutlineStyleChanged() {
+                invalidateSelf();
             }
 
             @Override

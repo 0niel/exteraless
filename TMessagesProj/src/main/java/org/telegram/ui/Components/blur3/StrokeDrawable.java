@@ -17,7 +17,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 
-public class StrokeDrawable extends Drawable {
+public class StrokeDrawable extends Drawable implements GlassOutlineStyle.Listener {
 
     private BlurredBackgroundColorProvider colorProvider;
     protected int strokeColorTop, strokeColorBottom;
@@ -43,6 +43,7 @@ public class StrokeDrawable extends Drawable {
     }
 
     public void setColorProvider(BlurredBackgroundColorProvider colorProvider) {
+        GlassOutlineStyle.addListener(this);
         this.colorProvider = colorProvider;
 
         paintStrokeTop.setStyle(Paint.Style.STROKE);
@@ -50,6 +51,12 @@ public class StrokeDrawable extends Drawable {
         paintStrokeFull.setStyle(Paint.Style.STROKE);
 
         updateColors();
+    }
+
+    @Override
+    public void onGlassOutlineStyleChanged() {
+        updateColors();
+        invalidateSelf();
     }
 
     /** Как было; SOLID — сплошной контур; HIDDEN — без контура. */

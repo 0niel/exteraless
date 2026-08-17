@@ -2,6 +2,10 @@ package org.telegram.ui.Components.blur3;
 
 import app.exteraless.appearance.AppearanceConfig;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+
 /**
  * Стиль контура «стеклянных» поверхностей.
  * GLARE(0), SOLID(1), HIDDEN(2);
@@ -16,6 +20,28 @@ public enum GlassOutlineStyle {
     HIDDEN;
 
     private static final GlassOutlineStyle[] VALUES = values();
+    private static final Set<Listener> listeners = Collections.newSetFromMap(new WeakHashMap<>());
+
+    // made with <3 from uzbekgram
+    public interface Listener {
+        void onGlassOutlineStyleChanged();
+    }
+
+    public static void addListener(Listener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public static void dispatchChange() {
+        final Listener[] snapshot;
+        synchronized (listeners) {
+            snapshot = listeners.toArray(new Listener[0]);
+        }
+        for (Listener listener : snapshot) {
+            listener.onGlassOutlineStyleChanged();
+        }
+    }
 
     /** Текущий стиль из настроек; неизвестное значение трактуется как {@link #GLARE}. */
     public static GlassOutlineStyle current() {
