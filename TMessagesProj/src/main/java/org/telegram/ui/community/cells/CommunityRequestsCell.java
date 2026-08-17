@@ -114,8 +114,9 @@ public class CommunityRequestsCell extends LinearLayout implements Theme.Colorab
         iconLayout.setVisibility(icon != 0 ? View.VISIBLE : View.GONE);
         titleView.setTranslationX(icon == 0 ? dp(2) : 0);
 
-        iconBackground.setColor(iconColorTop, iconColorBottom);
         iconView.setImageResource(icon);
+        SettingsActivity.SettingCell.applyIconColors(iconView, iconBackground,
+                iconColorTop, iconColorBottom, resourcesProvider);
         setTitle(title);
         setValue(value);
         setUnreadMode(valueAsUnread);

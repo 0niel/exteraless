@@ -1296,24 +1296,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             titleView.setTranslationX(icon == 0 ? dp(2) : 0);
             subtitleView.setTranslationX(icon == 0 ? dp(2) : 0);
 
-            final boolean monet = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet();
-            final int monetIconColor;
-            if (monet) {
-                final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
-                final int backgroundColor = MonetHelper.getColor(dark ? "a1_200" : "a1_600");
-                iconBackground.setMonetColor(backgroundColor);
-                monetIconColor = MonetHelper.getColor(dark ? "a1_800" : "a1_100");
-            } else {
-                iconBackground.setColor(iconColorTop, iconColorBottom);
-                monetIconColor = Color.TRANSPARENT;
-            }
-
             iconView.setImageResource(icon);
-            if (monet) {
-                iconView.setColorFilter(monetIconColor, PorterDuff.Mode.SRC_IN);
-            } else {
-                iconView.clearColorFilter();
-            }
+            applyIconColors(iconView, iconBackground, iconColorTop, iconColorBottom, resourcesProvider);
             // exteraGram, SettingsActivity.java:577 — строке-входу в настройки форка ставится
             // CENTER_CROP, чтобы логотип занял всю плашку, остальным CENTER.
             iconView.setScaleType(icon == R.drawable.exteraless_icon_tile
@@ -1322,6 +1306,24 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             subtitleView.setVisibility((twoLines = !TextUtils.isEmpty(subtitle)) ? View.VISIBLE : View.GONE);
             subtitleView.setText(subtitle);
             setValue(value);
+        }
+
+        public static void applyIconColors(
+                ImageView iconView,
+                Background iconBackground,
+                int iconColorTop,
+                int iconColorBottom,
+                Theme.ResourcesProvider resourcesProvider
+        ) {
+            final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet()) {
+                iconBackground.setMonetColor(MonetHelper.getColor(dark ? "a1_200" : "a1_600"));
+                iconView.setColorFilter(MonetHelper.getColor(dark ? "a1_800" : "a1_100"), PorterDuff.Mode.SRC_IN);
+            } else {
+                iconBackground.setColor(iconColorTop, iconColorBottom);
+                iconView.clearColorFilter();
+            }
+            iconBackground.setDrawBorder(dark);
         }
 
         public void setValue(CharSequence value) {

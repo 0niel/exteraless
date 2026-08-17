@@ -86,12 +86,10 @@ public class PollCreateCheckCell extends FrameLayout {
     public void setTextAndValueAndIconAndCheck(CharSequence text, CharSequence value, IconBackgroundColors color, int iconResId, boolean checked) {
         textView.setText(text);
 
-        final boolean border = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
         SettingsActivity.SettingCell.Background drawable = new SettingsActivity.SettingCell.Background();
-        drawable.setColor(color.top, color.bottom);
-        drawable.setDrawBorder(border);
         imageView.setBackground(drawable);
         imageView.setImageResource(iconResId);
+        SettingsActivity.SettingCell.applyIconColors(imageView, drawable, color.top, color.bottom, resourcesProvider);
         checkBox.setChecked(checked, 0, animationsEnabled);
         multilineValueTextView.setText(value);
         checkBox.setContentDescription(text);
