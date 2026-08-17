@@ -59,7 +59,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
-import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -1297,14 +1296,24 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             titleView.setTranslationX(icon == 0 ? dp(2) : 0);
             subtitleView.setTranslationX(icon == 0 ? dp(2) : 0);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet()) {
-                int flatHarmonizedColor = MonetHelper.harmonizeColor(ColorUtils.blendARGB(iconColorTop, iconColorBottom, 0.5f));
-                iconColorTop = flatHarmonizedColor;
-                iconColorBottom = flatHarmonizedColor;
+            final boolean monet = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet();
+            final int monetIconColor;
+            if (monet) {
+                final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+                final int backgroundColor = MonetHelper.getColor(dark ? "a1_200" : "a1_600");
+                iconBackground.setMonetColor(backgroundColor);
+                monetIconColor = MonetHelper.getColor(dark ? "a1_800" : "a1_100");
+            } else {
+                iconBackground.setColor(iconColorTop, iconColorBottom);
+                monetIconColor = Color.TRANSPARENT;
             }
 
-            iconBackground.setColor(iconColorTop, iconColorBottom);
             iconView.setImageResource(icon);
+            if (monet) {
+                iconView.setColorFilter(monetIconColor, PorterDuff.Mode.SRC_IN);
+            } else {
+                iconView.clearColorFilter();
+            }
             // exteraGram, SettingsActivity.java:577 — строке-входу в настройки форка ставится
             // CENTER_CROP, чтобы логотип занял всю плашку, остальным CENTER.
             iconView.setScaleType(icon == R.drawable.exteraless_icon_tile
@@ -1342,8 +1351,17 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             }
 
             public void setColor(int topColor, int bottomColor) {
+                monet = false;
                 gradient = new LinearGradient(0, 0, 0, dp(28), new int[] { topColor, bottomColor }, new float[] { 0, 1 }, Shader.TileMode.CLAMP);
                 paint.setShader(gradient);
+            }
+
+            private boolean monet;
+            public void setMonetColor(int color) {
+                monet = true;
+                gradient = null;
+                paint.setShader(null);
+                paint.setColor(color);
             }
 
             private boolean border;
@@ -1359,7 +1377,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
 
-                if (GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
+                if (!monet && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
                     final float sw = dp(1);
                     strokePaint.setStrokeWidth(sw);
                     matrix.reset();
