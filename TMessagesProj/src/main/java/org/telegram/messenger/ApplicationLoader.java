@@ -65,9 +65,12 @@ import tw.nekomimi.nekogram.utils.AndroidUtil;
 import xyz.nextalone.nagram.NaConfig;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
+import androidx.camera.camera2.Camera2Config;
+import androidx.camera.core.CameraXConfig;
+
 import static android.os.Build.VERSION.SDK_INT;
 
-public class ApplicationLoader extends Application {
+public class ApplicationLoader extends Application implements CameraXConfig.Provider {
 
     public static ApplicationLoader applicationLoaderInstance;
 
@@ -318,6 +321,11 @@ public class ApplicationLoader extends Application {
 
     public ApplicationLoader() {
         super();
+    }
+
+    @Override
+    public CameraXConfig getCameraXConfig() {
+        return Camera2Config.defaultConfig();
     }
 
     @Override

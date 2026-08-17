@@ -164,7 +164,14 @@ public class CameraXSession {
 
     public void initCamera(Context context, boolean frontface, boolean dual, Runnable onReady) {
         isFrontface = frontface;
-        final ListenableFuture<ProcessCameraProvider> future = ProcessCameraProvider.getInstance(context);
+        final ListenableFuture<ProcessCameraProvider> future;
+        try {
+            future = ProcessCameraProvider.getInstance(context);
+        } catch (Throwable t) {
+            FileLog.e(t);
+            isInitiated = false;
+            return;
+        }
         future.addListener(() -> {
             try {
                 provider = future.get();
