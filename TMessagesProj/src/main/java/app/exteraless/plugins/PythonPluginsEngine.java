@@ -57,6 +57,25 @@ public class PythonPluginsEngine {
         return started;
     }
 
+    /**
+     * Чей код лежит на питоновском стеке этого потока прямо сейчас.
+     *
+     * Нужно {@link PluginSinkGate}: колбэк, пришедший из Java, метки на потоке
+     * не имеет, а владелец определяется только по кадрам. Зовётся редко —
+     * лишь когда сработал сток и метки нет.
+     */
+    public String pluginFromPythonStack() {
+        if (!started || loader == null) {
+            return null;
+        }
+        try {
+            PyObject owner = loader.callAttr("plugin_frame_owner");
+            return owner == null ? null : owner.toJava(String.class);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     public interface StartCallback {
         void onStarted(boolean ok);
     }

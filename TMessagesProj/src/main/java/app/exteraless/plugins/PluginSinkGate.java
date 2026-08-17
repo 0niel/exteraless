@@ -34,10 +34,14 @@ import de.robv.android.xposed.XposedBridge;
  * Чего он не держит:
  * <ul>
  *   <li>плагин с разрешением {@code hooks} снимает эти хуки — против него
- *       защиты нет и быть не может;</li>
- *   <li>отложенную работу: Runnable, поставленный плагином в очередь,
- *       исполняется без метки потока.</li>
+ *       защиты нет и быть не может.</li>
  * </ul>
+ *
+ * Отложенная работа закрыта: колбэк, пришедший из Java в python мимо SDK
+ * (свой {@code dynamic_proxy}, поставленный в чужую очередь), метки на потоке
+ * не имеет, поэтому на входе в {@code PyInvocationHandler.invoke} отмечается
+ * сам факт исполнения python-кода, а владелец достаётся по кадрам питоновского
+ * стека — и только если сток действительно сработал.
  */
 public final class PluginSinkGate {
 
@@ -116,6 +120,7 @@ public final class PluginSinkGate {
         ok += hookNetwork(Socket.class, "connect", "connect to the network");
         ok += hookClassResolution();
         ok += hookMessengerSinks();
+        ok += hookPythonCallbacks();
         FileLog.d("PluginSinkGate: " + ok + " hooks installed");
     }
 
@@ -551,6 +556,26 @@ public final class PluginSinkGate {
 
     // ---------- инфраструктура ----------
 
+    /**
+     * Колбэки, пришедшие из Java в python. Метку с id здесь поставить нечем:
+     * Chaquopy зовёт объект, а владельца знает только питоновский стек. Поэтому
+     * отмечается сам факт исполнения python-кода, а id достаётся в
+     * {@link #enterCheck()} и только если сток действительно сработал.
+     */
+    private static int hookPythonCallbacks() {
+        return hookAll(com.chaquo.python.PyInvocationHandler.class, "invoke", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                PluginRuntime.enterPython();
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                PluginRuntime.exitPython();
+            }
+        });
+    }
+
     /** id плагина, если проверять надо; null — приложение или мы уже внутри проверки. */
     private static String enterCheck() {
         if (Boolean.TRUE.equals(INSIDE.get())) {
@@ -558,7 +583,20 @@ public final class PluginSinkGate {
         }
         String pluginId = PluginRuntime.current();
         if (pluginId == null) {
-            return null;
+            if (!PluginRuntime.isPythonActive()) {
+                return null;
+            }
+            INSIDE.set(Boolean.TRUE);
+            try {
+                pluginId = PythonPluginsEngine.getInstance().pluginFromPythonStack();
+            } catch (Throwable t) {
+                pluginId = null;
+            }
+            if (pluginId == null) {
+                INSIDE.remove();
+                return null;
+            }
+            return pluginId;
         }
         INSIDE.set(Boolean.TRUE);
         return pluginId;

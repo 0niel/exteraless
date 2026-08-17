@@ -22,6 +22,8 @@ public final class PluginRuntime {
 
     private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
 
+    private static final ThreadLocal<int[]> PYTHON_DEPTH = new ThreadLocal<>();
+
     private PluginRuntime() {
     }
 
@@ -44,5 +46,35 @@ public final class PluginRuntime {
     /** id плагина, чей код исполняется на этом потоке, или {@code null}. */
     public static String current() {
         return CURRENT.get();
+    }
+
+    /**
+     * Вход в python-колбэк, пришедший из Java (dynamic proxy). Метку с id здесь
+     * поставить нельзя — владельца знает только питоновский стек, — поэтому
+     * отмечается сам факт: на потоке сейчас исполняется python-код плагина.
+     */
+    public static void enterPython() {
+        int[] depth = PYTHON_DEPTH.get();
+        if (depth == null) {
+            depth = new int[1];
+            PYTHON_DEPTH.set(depth);
+        }
+        depth[0]++;
+    }
+
+    public static void exitPython() {
+        int[] depth = PYTHON_DEPTH.get();
+        if (depth == null) {
+            return;
+        }
+        if (--depth[0] <= 0) {
+            PYTHON_DEPTH.remove();
+        }
+    }
+
+    /** На этом потоке исполняется python-колбэк? */
+    public static boolean isPythonActive() {
+        int[] depth = PYTHON_DEPTH.get();
+        return depth != null && depth[0] > 0;
     }
 }
