@@ -18,6 +18,7 @@ import android.widget.LinearLayout;
 import android.content.Context;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -444,11 +445,22 @@ public class PluginsActivity extends BaseFragment {
         if (plugin.loadError != null) {
             message.append('\n').append(plugin.loadError);
         }
-        showDialog(new AlertDialog.Builder(activity)
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
                 .setTitle(plugin.getDisplayName())
                 .setMessage(message.toString())
-                .setPositiveButton(getString(R.string.OK), null)
-                .create());
+                .setPositiveButton(getString(R.string.OK), null);
+        // Разбираться с падением будет автор плагина в другом чате — отдаём
+        // ему traceback целиком, а на экране оставляем короткую строку.
+        final String report = plugin.loadDebug != null ? plugin.loadDebug : plugin.loadError;
+        if (report != null && !report.isEmpty()) {
+            builder.setNeutralButton(getString(R.string.PluginsInstallCopyReport),
+                    (dialog, which) -> {
+                        AndroidUtilities.addToClipboard(report);
+                        BulletinFactory.of(this).createCopyBulletin(
+                                getString(R.string.TextCopied)).show();
+                    });
+        }
+        showDialog(builder.create());
     }
 
     private void showPluginMenu(Plugin plugin) {

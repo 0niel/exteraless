@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLoader;
@@ -310,7 +311,8 @@ public final class PluginInstallHelper {
                                 && PluginsController.getInstance().getPlugin(consentedId) == null) {
                             PluginPermissions.clear(consentedId);
                         }
-                        showError(activity, humanError(error, consentedId));
+                        showError(activity, humanError(error, consentedId),
+                                plugin == null ? null : plugin.loadDebug);
                         return;
                     }
                     if (enableAfterInstall && plugin != null && plugin.id != null) {
@@ -372,13 +374,36 @@ public final class PluginInstallHelper {
     }
 
     private static void showError(Activity activity, CharSequence message) {
+        showError(activity, message, null);
+    }
+
+    /**
+     * Ошибка установки с кнопкой «копировать».
+     *
+     * Текст в диалоге короткий и для человека, а разбираться с плагином будет
+     * его автор в другом чате — ему нужен traceback и версии. Поэтому полный
+     * отчёт не показывается, а кладётся в буфер по кнопке.
+     */
+    private static void showError(Activity activity, CharSequence message, String debug) {
         if (activity == null || activity.isFinishing()) {
             return;
         }
-        new AlertDialog.Builder(activity)
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
                 .setTitle(LocaleController.getString(R.string.PluginsInstallError))
                 .setMessage(message)
-                .setPositiveButton(LocaleController.getString(R.string.OK), null)
-                .show();
+                .setPositiveButton(LocaleController.getString(R.string.OK), null);
+        final String report = debug != null && !debug.isEmpty()
+                ? debug : (message == null ? null : message.toString());
+        if (report != null && !report.isEmpty()) {
+            builder.setNeutralButton(LocaleController.getString(R.string.PluginsInstallCopyReport),
+                    (dialog, which) -> {
+                        AndroidUtilities.addToClipboard(report);
+                        if (!activity.isFinishing()) {
+                            Toast.makeText(activity, LocaleController.getString(R.string.TextCopied),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
+        builder.show();
     }
 }

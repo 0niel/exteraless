@@ -46,6 +46,8 @@ public class Plugin {
     public transient boolean hasSettings;
     /** Текст последней ошибки загрузки/валидации; null если всё хорошо. */
     public String loadError;
+    /** Полный отчёт о той же ошибке: traceback и окружение, для кнопки «копировать». */
+    public transient String loadDebug;
 
     public String getDisplayName() {
         return name != null ? name : id;

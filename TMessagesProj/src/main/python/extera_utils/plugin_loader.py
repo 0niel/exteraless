@@ -877,6 +877,24 @@ def _java_import_hint(exc: BaseException) -> Optional[str]:
             f"__import__ = {hook}")
 
 
+def _error_report(exc: BaseException, summary: str) -> str:
+    """Полный отчёт для кнопки «копировать»: он уедет в чужой чат, не в наш лог."""
+    import platform
+    import traceback
+    lines = [summary, "", "traceback:"]
+    lines.extend(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    lines.append("")
+    lines.append(f"python: {platform.python_version()}")
+    try:
+        import java
+        lines.append(f"android sdk: {java.jclass('android.os.Build$VERSION').SDK_INT}")
+        build = java.jclass("org.telegram.messenger.BuildVars")
+        lines.append(f"app: {build.BUILD_VERSION_STRING}")
+    except Exception as e:
+        lines.append(f"java bridge: {type(e).__name__}: {e}")
+    return "\n".join(line.rstrip() for line in lines)
+
+
 def _error_json(exc: BaseException) -> str:
     import traceback
     traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
@@ -887,7 +905,12 @@ def _error_json(exc: BaseException) -> str:
     hint = _java_import_hint(exc)
     if hint:
         parts.append(hint)
-    return json.dumps({"ok": False, "error": "\n".join(parts),
+    summary = "\n".join(parts)
+    try:
+        debug = _error_report(exc, summary)
+    except Exception:
+        debug = summary
+    return json.dumps({"ok": False, "error": summary, "debug": debug,
                        "has_settings": False}, ensure_ascii=False)
 
 

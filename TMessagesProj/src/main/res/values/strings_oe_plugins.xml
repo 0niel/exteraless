@@ -8,6 +8,7 @@
     <string name="PluginsInstallFromFile">Install from file</string>
     <string name="PluginsInstalling">Installing plugin…</string>
     <string name="PluginsInstallError">Installation failed</string>
+    <string name="PluginsInstallCopyReport">Copy report</string>
     <string name="PluginsInstallReadError">Couldn\'t read the selected file.</string>
     <string name="PluginsCrashedTitle">Plugin crashed</string>
     <string name="PluginsCrashedMessage">Plugin %1$s was disabled after a crash.</string>

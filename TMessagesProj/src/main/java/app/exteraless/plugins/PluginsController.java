@@ -323,6 +323,7 @@ public class PluginsController {
                 p.id = f.getName();
                 p.name = f.getName();
                 p.loadError = root.optString("error", "unknown error");
+                p.loadDebug = root.optString("debug", null);
                 return p;
             }
             JSONObject meta = root.getJSONObject("meta");
@@ -465,11 +466,13 @@ public class PluginsController {
             if (root.optBoolean("ok")) {
                 p.loaded = true;
                 p.loadError = null;
+                p.loadDebug = null;
                 p.hasSettings = root.optBoolean("has_settings", false);
                 return true;
             }
             p.loaded = false;
             p.loadError = root.optString("error", "load failed");
+            p.loadDebug = root.optString("debug", null);
             return false;
         } catch (Exception e) {
             p.loaded = false;
