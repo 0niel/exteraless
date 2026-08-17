@@ -824,8 +824,70 @@ def _install_sandbox() -> None:
 
 # Loading / unloading
 
+#: Верхние пакеты, которые импортом достаёт Chaquopy, а не питон.
+_JAVA_ROOTS = ("java", "javax", "org", "com", "android", "androidx", "dalvik", "kotlin")
+
+
+def _failing_line(exc: BaseException) -> Optional[str]:
+    """Последний кадр из файла плагина: «путь:строка: исходный код»."""
+    import traceback
+    frames = traceback.extract_tb(exc.__traceback__)
+    if not frames:
+        return None
+    frame = frames[-1]
+    for candidate in reversed(frames):
+        if candidate.filename and not candidate.filename.startswith("<") \
+                and "extera_utils" not in candidate.filename \
+                and "importlib" not in candidate.filename:
+            frame = candidate
+            break
+    name = os.path.basename(frame.filename or "?")
+    line = (frame.line or "").strip()
+    return f"{name}:{frame.lineno}" + (f": {line}" if line else "")
+
+
+def _java_import_hint(exc: BaseException) -> Optional[str]:
+    """Настоящая причина отказа импорта java-пакета.
+
+    Сообщение питона тут врёт: на `from org.telegram... import X` Chaquopy
+    сначала пробует обычный импорт, ловит ModuleNotFoundError и только потом
+    идёт за Java-классом. Не достался класс — наружу уходит исходная
+    питоновская ошибка «No module named 'org'», в которой не видно ни имени
+    класса, ни причины. Здесь причина добывается пробой.
+    """
+    if not isinstance(exc, ModuleNotFoundError):
+        return None
+    root = (getattr(exc, "name", "") or "").partition(".")[0]
+    if root not in _JAVA_ROOTS:
+        return None
+    try:
+        import java
+    except Exception as e:
+        return f"java bridge unavailable: {type(e).__name__}: {e}"
+    probe = "org.telegram.messenger.ApplicationLoader"
+    try:
+        resolved = java.jclass(probe)
+    except Exception as e:
+        return f"Java classes are unreachable ({probe} -> {type(e).__name__}: {e})"
+    if resolved is None:
+        return f"Java classes are gated for this plugin ({probe} -> None)"
+    import builtins
+    hook = getattr(builtins.__import__, "__qualname__", "?")
+    return (f"Java resolves ({probe} ok), so {root!r} lacks a specific class; "
+            f"__import__ = {hook}")
+
+
 def _error_json(exc: BaseException) -> str:
-    return json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}",
+    import traceback
+    traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
+    parts = [f"{type(exc).__name__}: {exc}"]
+    where = _failing_line(exc)
+    if where:
+        parts.append(where)
+    hint = _java_import_hint(exc)
+    if hint:
+        parts.append(hint)
+    return json.dumps({"ok": False, "error": "\n".join(parts),
                        "has_settings": False}, ensure_ascii=False)
 
 
