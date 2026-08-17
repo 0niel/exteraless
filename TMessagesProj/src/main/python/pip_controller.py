@@ -147,6 +147,71 @@ def _fetch_pypi_json(normalized_name: str) -> dict:
     return data
 
 
+#: Имя пакета не совпадает с именем модуля чаще, чем кажется.
+_IMPORT_ALIASES = {
+    "pillow": "PIL",
+    "beautifulsoup4": "bs4",
+    "pyyaml": "yaml",
+    "python-dateutil": "dateutil",
+    "msgpack-python": "msgpack",
+    "opencv-python": "cv2",
+    "scikit-learn": "sklearn",
+    "protobuf": "google.protobuf",
+    "pycryptodome": "Crypto",
+    "pycryptodomex": "Cryptodome",
+}
+
+
+def bundled_version(name: str):
+    """Версия пакета, вшитого в сборку приложения, или None.
+
+    Chaquopy ставит часть колёс во время сборки — там же собираются нативные,
+    которых на PyPI под Android нет вовсе. Ставить такое в рантайме не нужно
+    и невозможно.
+    """
+    from importlib.metadata import version as _version
+    for candidate in (name, _normalize(name), name.replace("-", "_")):
+        try:
+            return Version(_version(candidate))
+        except Exception:
+            continue
+    return None
+
+
+def is_provided(name: str) -> bool:
+    """Есть ли пакет в сборке, даже если метаданные до него не достают.
+
+    Chaquopy держит зависимости в своих архивах, и importlib.metadata видит
+    их не всегда, — поэтому вторая попытка идёт по имени модуля.
+    """
+    if bundled_version(name) is not None:
+        return True
+    import importlib.util
+    key = _normalize(name)
+    candidates = [_IMPORT_ALIASES.get(key), name.replace("-", "_"),
+                  name.replace("-", "_").lower()]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            if importlib.util.find_spec(candidate) is not None:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _bundled_names() -> str:
+    """Имена вшитых пакетов — для сообщения об ошибке."""
+    try:
+        from importlib.metadata import distributions
+        names = sorted({d.metadata["Name"] for d in distributions()
+                        if d.metadata and d.metadata["Name"]})
+        return ", ".join(names)
+    except Exception:
+        return ""
+
+
 def _pick_pure_wheel(pypi_data: dict, requirement: Requirement):
     """-> (Version, file dict) of the newest satisfying pure-Python wheel."""
     python_version = platform.python_version()
@@ -176,9 +241,12 @@ def _pick_pure_wheel(pypi_data: dict, requirement: Requirement):
             break  # one pure wheel per release is enough
     if best is None:
         spec = str(requirement.specifier) or "(any version)"
+        bundled = _bundled_names()
         raise RuntimeError(
-            f"No pure-Python wheel found for {requirement.name!r} {spec}: "
-            "only pure-Python (-none-any.whl) wheels are supported")
+            f"{requirement.name} {spec}: на Android ставятся только чисто "
+            "питоновские пакеты, а у этого есть нативная часть — её собирают "
+            "вместе с приложением, а не по требованию плагина."
+            + (f" Уже вшиты: {bundled}." if bundled else ""))
     return best
 
 
@@ -293,6 +361,18 @@ def ensure_requirements(plugin_id: str, requirements) -> None:
                 f"Dependency conflict: {name} {existing['version']} is already "
                 f"installed for {others}, but {plugin_id!r} requires "
                 f"'{requirement}'")
+
+        bundled = bundled_version(requirement.name)
+        if bundled is not None:
+            if not requirement.specifier.contains(bundled, prereleases=True):
+                print(f"[exteraless:pip] {plugin_id!r} wants '{requirement}', "
+                      f"the build ships {bundled} — using it anyway",
+                      file=sys.stderr)
+            continue
+        if is_provided(requirement.name):
+            print(f"[exteraless:pip] '{requirement}' is already in the build",
+                  file=sys.stderr)
+            continue
 
         pypi_data = _fetch_pypi_json(name)
         version, file_info = _pick_pure_wheel(pypi_data, requirement)

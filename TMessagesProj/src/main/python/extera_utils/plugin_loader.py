@@ -970,17 +970,32 @@ def _ensure_requirements(plugin_id: str, requirements) -> None:
     import importlib.util
     for raw in requirements:
         name = re.split(r"[\s\[<>=!~;]", str(raw).strip(), 1)[0]
-        module = name.replace("-", "_")
-        if not module:
+        if not name:
             continue
+        if _dependency_available(name):
+            continue
+        raise RuntimeError(
+            f"зависимость {name!r} поставлена, но не импортируется — "
+            "проверьте, что пакет чисто питоновский")
+
+
+def _dependency_available(name: str) -> bool:
+    """Есть ли зависимость.
+
+    Имя пакета и имя модуля совпадают далеко не всегда — pillow импортируется
+    как PIL, beautifulsoup4 как bs4, — и проверка по имени модуля их не
+    находила, хотя пакет стоит.
+    """
+    if pip_controller is not None:
         try:
-            found = importlib.util.find_spec(module) is not None
+            return pip_controller.is_provided(name)
         except Exception:
-            found = False
-        if not found:
-            raise RuntimeError(
-                f"зависимость {name!r} поставлена, но не импортируется — "
-                "проверьте, что пакет чисто питоновский")
+            pass
+    import importlib.util
+    try:
+        return importlib.util.find_spec(name.replace("-", "_")) is not None
+    except Exception:
+        return False
 
 
 def load_plugin(path: str, plugin_id: str) -> str:
