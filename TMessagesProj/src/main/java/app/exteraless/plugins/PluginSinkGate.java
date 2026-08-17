@@ -112,10 +112,7 @@ public final class PluginSinkGate {
         int ok = 0;
         ok += hookDeny(Runtime.class, "exec", "run a shell command", "process");
         ok += hookDeny(ProcessBuilder.class, "start", "start a process", "process");
-        ok += hookDeny(Runtime.class, "load", "load a native library", "native");
-        ok += hookDeny(Runtime.class, "loadLibrary", "load a native library", "native");
-        ok += hookDeny(System.class, "load", "load a native library", "native");
-        ok += hookDeny(System.class, "loadLibrary", "load a native library", "native");
+        ok += hookNativeLoad();
         ok += hookNetwork(URL.class, "openConnection", "open a network connection");
         ok += hookNetwork(Socket.class, "connect", "connect to the network");
         ok += hookClassResolution();
@@ -229,8 +226,40 @@ public final class PluginSinkGate {
                 }
             }
         };
-        int count = hookAll(Class.class, "forName", hook);
+        int count = hookExact(Class.class, "forName", hook,
+                String.class, boolean.class, ClassLoader.class);
         count += hookAll(ClassLoader.class, "loadClass", hook);
+        return count;
+    }
+
+    /**
+     * Загрузка нативных библиотек.
+     *
+     * Хук стоит на внутренних {@code Runtime.load0/loadLibrary0}, а не на
+     * {@code System.loadLibrary}: последний определяет загрузчик по кадру
+     * вызывающего ({@code VMStack.getCallingClassLoader}), а после хука этим
+     * кадром становится сгенерированный LSPlant класс с boot-загрузчиком —
+     * и приложение перестаёт находить собственные .so. Внутренние методы
+     * получают загрузчик аргументом, поэтому хук им не мешает.
+     */
+    private static int hookNativeLoad() {
+        XC_MethodHook hook = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                String pluginId = enterCheck();
+                if (pluginId == null) {
+                    return;
+                }
+                try {
+                    deny(pluginId, "Runtime." + param.method.getName(), "native", describe(param),
+                            "loading a native library is never available to plugins", param);
+                } finally {
+                    leaveCheck();
+                }
+            }
+        };
+        int count = hookAll(Runtime.class, "load0", hook);
+        count += hookAll(Runtime.class, "loadLibrary0", hook);
         return count;
     }
 
@@ -508,7 +537,7 @@ public final class PluginSinkGate {
 
     private static Class<?> classForName(String name) {
         try {
-            return Class.forName(name);
+            return Class.forName(name, false, PluginSinkGate.class.getClassLoader());
         } catch (Throwable ignored) {
             // Класса нет в этой сборке — гейтить нечего.
             return null;
@@ -604,6 +633,17 @@ public final class PluginSinkGate {
 
     private static void leaveCheck() {
         INSIDE.remove();
+    }
+
+    private static int hookExact(Class<?> owner, String methodName, XC_MethodHook hook,
+                                Class<?>... parameterTypes) {
+        try {
+            XposedBridge.hookMethod(owner.getDeclaredMethod(methodName, parameterTypes), hook);
+            return 1;
+        } catch (Throwable t) {
+            FileLog.e("PluginSinkGate: hook failed for " + owner.getName() + "." + methodName, t);
+            return 0;
+        }
     }
 
     private static int hookAll(Class<?> owner, String methodName, XC_MethodHook hook) {
