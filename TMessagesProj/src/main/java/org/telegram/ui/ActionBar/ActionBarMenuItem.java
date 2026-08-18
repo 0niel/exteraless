@@ -323,6 +323,10 @@ public class ActionBarMenuItem extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (parentMenu != null && !isSearchField() && parentMenu.searchFieldVisible()) {
+            setPressed(false);
+            return true;
+        }
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             if (longClickEnabled && hasSubMenu() && (popupWindow == null || !popupWindow.isShowing())) {
                 showMenuRunnable = () -> {
@@ -1505,6 +1509,7 @@ public class ActionBarMenuItem extends FrameLayout {
                 }
             };
             searchContainer.setClipChildren(searchItemPaddingStart != 0);
+            searchContainer.setClickable(true);
             wrappedSearchFrameLayout = null;
             if (wrapSearchInScrollView) {
                 wrappedSearchFrameLayout = new FrameLayout(getContext());
