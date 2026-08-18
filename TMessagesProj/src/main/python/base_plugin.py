@@ -384,6 +384,11 @@ class BasePlugin:
     _plugin_id: Optional[str] = None
     _registered_send_message = False
 
+    #: Идентификатор плагина. Плагины читают именно `self.id` — так называется
+    #: это поле у exteraGram, и без него у них падает всё, что обращается к
+    #: контроллеру по id (обновление экрана настроек, поиск себя в реестре).
+    id: Optional[str] = None
+
     # ---- lifecycle (override in the subclass) ----
 
     def on_plugin_load(self):
@@ -428,6 +433,7 @@ class BasePlugin:
     def _attach(self, plugin_id: str):
         """Bind this instance to a plugin id. Called by extera_utils.plugin_loader."""
         self._plugin_id = plugin_id
+        self.id = plugin_id
         self._state("_registered_request_hooks", list)
         self._state("_menu_callbacks", dict)
         if "_registered_send_message" not in self.__dict__:
@@ -515,6 +521,27 @@ class BasePlugin:
             PythonBridge.addRequestHook(self._plugin_id, entry[0], entry[1], entry[2])
         except Exception as e:
             self.log(f"add_hook({entry[0]!r}) failed: {e}")
+
+    def remove_hook(self, name: str):
+        """Снять хук, поставленный add_hook()/add_on_send_message_hook()."""
+        key = str(name)
+        if key == "on_send_message_hook":
+            self.__dict__["_registered_send_message"] = False
+            if not self._bridge_available():
+                return
+            try:
+                PythonBridge.removeSendMessageHook(self._plugin_id)
+            except Exception as e:
+                self.log(f"remove_hook({key!r}) failed: {e}")
+            return
+        hooks = self._state("_registered_request_hooks", list)
+        hooks[:] = [entry for entry in hooks if entry[0] != key]
+        if not self._bridge_available():
+            return
+        try:
+            PythonBridge.removeRequestHook(self._plugin_id, key)
+        except Exception as e:
+            self.log(f"remove_hook({key!r}) failed: {e}")
 
     def add_on_send_message_hook(self, priority: int = 0):
         """Register the outgoing-message hook (on_send_message_hook)."""

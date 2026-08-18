@@ -9,6 +9,9 @@
     <string name="PluginsInstalling">Установка плагина…</string>
     <string name="PluginsInstallError">Ошибка установки</string>
     <string name="PluginsInstallCopyReport">Копировать отчёт</string>
+    <string name="PluginsEnterValue">Введите значение</string>
+    <string name="PluginsResetSettings">Сбросить настройки</string>
+    <string name="PluginsResetSettingsInfo">Все сохранённые настройки **%1$s** будут сброшены. Сам плагин останется установленным.</string>
     <string name="PluginsInstallReadError">Не удалось прочитать выбранный файл.</string>
     <string name="PluginsCrashedTitle">Плагин упал</string>
     <string name="PluginsCrashedMessage">Плагин %1$s был отключён после сбоя.</string>

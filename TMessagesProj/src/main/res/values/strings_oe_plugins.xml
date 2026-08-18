@@ -9,6 +9,9 @@
     <string name="PluginsInstalling">Installing plugin…</string>
     <string name="PluginsInstallError">Installation failed</string>
     <string name="PluginsInstallCopyReport">Copy report</string>
+    <string name="PluginsEnterValue">Enter value</string>
+    <string name="PluginsResetSettings">Reset settings</string>
+    <string name="PluginsResetSettingsInfo">All saved settings of **%1$s** will be reset. The plugin itself stays installed.</string>
     <string name="PluginsInstallReadError">Couldn\'t read the selected file.</string>
     <string name="PluginsCrashedTitle">Plugin crashed</string>
     <string name="PluginsCrashedMessage">Plugin %1$s was disabled after a crash.</string>

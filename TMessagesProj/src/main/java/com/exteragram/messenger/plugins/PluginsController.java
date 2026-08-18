@@ -103,7 +103,12 @@ public final class PluginsController {
      * чтобы настройки были построены (15 обращений в каталоге).
      */
     public String loadPluginSettings(String pluginId) {
-        return delegate().getPluginSettingsJson(pluginId);
+        String json = delegate().getPluginSettingsJson(pluginId);
+        // Плагины зовут это, когда хотят, чтобы открытый экран перерисовался
+        // (у exteraGram список настроек и есть модель экрана). Сам по себе
+        // пересбор JSON ничего на экране не меняет — дёргаем слушателей.
+        delegate().reloadSettingsScreen(pluginId);
+        return json;
     }
 
     public boolean hasPluginSettings(String pluginId) {

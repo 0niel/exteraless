@@ -95,6 +95,7 @@ class AlertDialogBuilder:
         self._alert_type = alert_type
         self._dialog = None
         self._cancelable = None
+        self._canceled_on_touch_outside = None
         self._proxies = []  # keep dynamic proxies alive for the dialog lifetime
 
         Builder = _jclass("org.telegram.ui.ActionBar.AlertDialog$Builder")
@@ -205,6 +206,12 @@ class AlertDialogBuilder:
             _post(lambda: self._dialog.setCancelable(self._cancelable))
         return self
 
+    def set_canceled_on_touch_outside(self, cancel):
+        self._canceled_on_touch_outside = bool(cancel)
+        if self._dialog is not None:
+            _post(lambda: self._dialog.setCanceledOnTouchOutside(self._canceled_on_touch_outside))
+        return self
+
     def set_progress(self, progress):
         """Set progress (0-100) on a shown LOADING/SPINNER dialog."""
         if self._dialog is not None:
@@ -276,8 +283,7 @@ class AlertDialogBuilder:
         def _do():
             if self._dialog is None:
                 self._dialog = self._builder.create()
-                if self._cancelable is not None:
-                    self._dialog.setCancelable(self._cancelable)
+                self._apply_cancel_flags()
         _run_sync(_do)
         return self
 
@@ -286,12 +292,17 @@ class AlertDialogBuilder:
         def _do():
             if self._dialog is None:
                 self._dialog = self._builder.show()
-                if self._cancelable is not None:
-                    self._dialog.setCancelable(self._cancelable)
+                self._apply_cancel_flags()
             elif not self._dialog.isShowing():
                 self._dialog.show()
         _run_sync(_do)
         return self
+
+    def _apply_cancel_flags(self):
+        if self._cancelable is not None:
+            self._dialog.setCancelable(self._cancelable)
+        if self._canceled_on_touch_outside is not None:
+            self._dialog.setCanceledOnTouchOutside(self._canceled_on_touch_outside)
 
     def dismiss(self):
         if self._dialog is not None:

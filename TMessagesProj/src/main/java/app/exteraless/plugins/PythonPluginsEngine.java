@@ -328,8 +328,8 @@ public class PythonPluginsEngine {
         callSimple(pluginId, "notify_setting_changed", key, jsonValue);
     }
 
-    public void dispatchSettingClick(String pluginId, String callbackId) {
-        callSimple(pluginId, "dispatch_setting_click", callbackId);
+    public void dispatchSettingClick(String pluginId, String callbackId, android.view.View view) {
+        callSimple(pluginId, "dispatch_setting_click", callbackId, view);
     }
 
     // ---------- внутреннее ----------

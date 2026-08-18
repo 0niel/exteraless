@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -76,7 +77,7 @@ public class PluginsController {
     private final Map<String, List<String>> updatesContainerHooks = new ConcurrentHashMap<>();
     private final List<MenuItemRecord> menuItems = Collections.synchronizedList(new ArrayList<>());
     /** Слушатель открытого экрана настроек плагина. */
-    private final Map<String, Runnable> settingsReloadListeners = new ConcurrentHashMap<>();
+    private final Map<String, List<Runnable>> settingsReloadListeners = new ConcurrentHashMap<>();
 
     private final ExecutorService fileExecutor = Executors.newSingleThreadExecutor(r ->
             new Thread(r, "plugins-io"));
@@ -358,6 +359,20 @@ public class PluginsController {
                     }
                 }
             }
+            // Elyx requires: {"dep_id": {"min_version": ..., "url": ...}}
+            p.requires = new java.util.LinkedHashMap<>();
+            JSONObject requires = meta.optJSONObject("requires");
+            if (requires != null) {
+                Iterator<String> keys = requires.keys();
+                while (keys.hasNext()) {
+                    String depId = keys.next();
+                    JSONObject dep = requires.optJSONObject(depId);
+                    p.requires.put(depId, new String[]{
+                            dep == null ? null : JsonUtils.optStringOrNull(dep, "min_version"),
+                            dep == null ? null : JsonUtils.optStringOrNull(dep, "url"),
+                    });
+                }
+            }
             String constraintError = checkVersionConstraints(p);
             if (constraintError != null) {
                 p.loadError = constraintError;
@@ -459,7 +474,40 @@ public class PluginsController {
         }
     }
 
+    /**
+     * Elyx {@code requires}: требуемый плагин должен быть установлен, включён и
+     * не старше объявленной версии. Проверяем перед загрузкой — иначе плагин
+     * падает уже внутри своего кода, и причина теряется.
+     */
+    private String checkRequiredPlugins(Plugin p) {
+        if (p.requires == null || p.requires.isEmpty()) {
+            return null;
+        }
+        for (Map.Entry<String, String[]> entry : p.requires.entrySet()) {
+            String depId = entry.getKey();
+            String minVersion = entry.getValue() == null ? null : entry.getValue()[0];
+            Plugin dep = getPlugin(depId);
+            if (dep == null) {
+                return "requires plugin " + depId + " (not installed)";
+            }
+            if (!dep.enabled) {
+                return "requires plugin " + depId + " (disabled)";
+            }
+            if (minVersion != null && !checkVersionConstraint(">=" + minVersion, dep.version)) {
+                return "requires plugin " + depId + " >= " + minVersion
+                        + " (installed " + dep.version + ")";
+            }
+        }
+        return null;
+    }
+
     private boolean loadPluginInternal(Plugin p) {
+        String missingDependency = checkRequiredPlugins(p);
+        if (missingDependency != null) {
+            p.loaded = false;
+            p.loadError = missingDependency;
+            return false;
+        }
         String result = PythonPluginsEngine.getInstance().loadPlugin(p);
         try {
             JSONObject root = new JSONObject(result);
@@ -749,6 +797,20 @@ public class PluginsController {
         }
     }
 
+    /** Есть ли у плагина сохранённые настройки (кнопка сброса показывается только тогда). */
+    public boolean hasPluginSettingsPreferences(String pluginId) {
+        return appContext != null && pluginId != null && !pluginPrefs(pluginId).getAll().isEmpty();
+    }
+
+    /** Сброс настроек плагина: значения стираются, открытый экран пересобирается. */
+    public void clearPluginSettingsPreferences(String pluginId) {
+        if (appContext == null || pluginId == null) {
+            return;
+        }
+        pluginPrefs(pluginId).edit().clear().apply();
+        reloadSettingsScreen(pluginId);
+    }
+
     public String exportPluginSettings(String pluginId) {
         if (appContext == null) {
             return "{}";
@@ -801,22 +863,47 @@ public class PluginsController {
         PythonPluginsEngine.getInstance().notifySettingChanged(pluginId, key, jsonValue);
     }
 
-    /** Из UI: пользователь нажал элемент с on_click. */
-    public void dispatchSettingClick(String pluginId, String callbackId) {
-        PythonPluginsEngine.getInstance().dispatchSettingClick(pluginId, callbackId);
+    /** Из UI: пользователь нажал элемент с on_click. Вьюха строки уезжает в плагин:
+     * exteraGram зовёт колбэк как {@code callback.call(view)}, и плагины на это
+     * рассчитывают — привязывают к ней меню и всплывашки. */
+    public void dispatchSettingClick(String pluginId, String callbackId, android.view.View view) {
+        PythonPluginsEngine.getInstance().dispatchSettingClick(pluginId, callbackId, view);
     }
 
-    public void setSettingsReloadListener(String pluginId, Runnable listener) {
-        if (listener == null) {
+    /**
+     * Слушателей на плагин может быть несколько: подстраницы настроек живут
+     * отдельными фрагментами поверх корневого, и перестроиться должен каждый
+     * открытый — иначе экран под пальцем остаётся со старым списком.
+     */
+    public void addSettingsReloadListener(String pluginId, Runnable listener) {
+        if (pluginId == null || listener == null) {
+            return;
+        }
+        settingsReloadListeners
+                .computeIfAbsent(pluginId, id -> new CopyOnWriteArrayList<>())
+                .add(listener);
+    }
+
+    public void removeSettingsReloadListener(String pluginId, Runnable listener) {
+        if (pluginId == null || listener == null) {
+            return;
+        }
+        List<Runnable> list = settingsReloadListeners.get(pluginId);
+        if (list == null) {
+            return;
+        }
+        list.remove(listener);
+        if (list.isEmpty()) {
             settingsReloadListeners.remove(pluginId);
-        } else {
-            settingsReloadListeners.put(pluginId, listener);
         }
     }
 
     public void reloadSettingsScreen(String pluginId) {
-        Runnable r = settingsReloadListeners.get(pluginId);
-        if (r != null) {
+        List<Runnable> list = settingsReloadListeners.get(pluginId);
+        if (list == null) {
+            return;
+        }
+        for (Runnable r : list) {
             org.telegram.messenger.AndroidUtilities.runOnUIThread(r);
         }
     }
@@ -856,6 +943,38 @@ public class PluginsController {
             if (!list.contains(pluginId)) {
                 list.add(pluginId);
             }
+        }
+    }
+
+    /** Снять один request-хук плагина (SDK: {@code remove_hook(name)}). */
+    public void unregisterRequestHook(String pluginId, String requestName) {
+        if (pluginId == null || requestName == null) {
+            return;
+        }
+        synchronized (requestHooks) {
+            dropPluginFromKey(requestHooks, requestName, pluginId);
+        }
+        synchronized (requestHooksSubstring) {
+            dropPluginFromKey(requestHooksSubstring, requestName, pluginId);
+        }
+    }
+
+    /** Снять хук исходящих сообщений (SDK: {@code remove_hook("on_send_message_hook")}). */
+    public void unregisterSendMessageHook(String pluginId) {
+        if (pluginId != null) {
+            sendMessageHooks.remove(pluginId);
+        }
+    }
+
+    private static void dropPluginFromKey(Map<String, List<String>> hooks, String key,
+                                          String pluginId) {
+        List<String> list = hooks.get(key);
+        if (list == null) {
+            return;
+        }
+        list.remove(pluginId);
+        if (list.isEmpty()) {
+            hooks.remove(key);
         }
     }
 

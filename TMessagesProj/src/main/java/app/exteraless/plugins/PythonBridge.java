@@ -56,6 +56,14 @@ public final class PythonBridge {
         controller().registerSendMessageHook(pluginId, priority);
     }
 
+    public static void removeRequestHook(String pluginId, String requestName) {
+        controller().unregisterRequestHook(pluginId, requestName);
+    }
+
+    public static void removeSendMessageHook(String pluginId) {
+        controller().unregisterSendMessageHook(pluginId);
+    }
+
     // ---------- меню ----------
 
     /** @return item_id пункта меню. onClick зовётся с Map-контекстом меню. */

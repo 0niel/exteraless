@@ -119,6 +119,26 @@ def _plugin_id_of(record) -> Optional[str]:
 
 # Entry module / plugin class
 
+def _entry_dirs(refmap: Dict[str, str], extract_dir: str) -> List[str]:
+    """Каталог entry-модуля, если он лежит не в корне архива.
+
+    Документация обещает точке входа «привычные импорты» соседних модулей
+    (``from helpers import ...``). Для корневого main.py это даёт корень архива,
+    а для вложенного (``main: plugin/src/main.py``) — иначе не нашлось бы ничего,
+    кроме относительных импортов. Корень остаётся первым в списке.
+    """
+    main = refmap.get("main")
+    if not main:
+        return []
+    parts = [part for part in main.strip("/").replace("\\", "/").split("/") if part]
+    if len(parts) < 2:
+        return []
+    entry_dir = os.path.join(extract_dir, *parts[:-1])
+    if not os.path.isdir(entry_dir) or os.path.samefile(entry_dir, extract_dir):
+        return []
+    return [entry_dir]
+
+
 def _entry_module_name(refmap: Dict[str, str], extract_dir: str) -> str:
     """Dotted module path (relative to the plugin root) of the entry module."""
     main = refmap.get("main")
@@ -270,7 +290,8 @@ def load_plugin_record(record, path: str) -> None:
     #    — both must exist before the entry module executes.
     environment = _build_environment(plugin_id, refmap, metainfo, extract_dir)
     plugin_namespace = namespace.register_namespace(
-        plugin_id, extract_dir, [extract_dir] + list(wheel_dirs))
+        plugin_id, extract_dir,
+        [extract_dir] + _entry_dirs(refmap, extract_dir) + list(wheel_dirs))
     facade.register_environment(plugin_id, environment)
 
     state = ElyxPluginState(

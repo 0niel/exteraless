@@ -11,10 +11,10 @@ it is logged and swallowed here.
 """
 
 import contextlib
+import hashlib
 import importlib.machinery
 import importlib.util
 import inspect
-import itertools
 import json
 import os
 import re
@@ -1253,13 +1253,29 @@ def _put(data: dict, key: str, value):
         data[key] = value
 
 
-def _register_callbacks(item, record: PluginRecord, counter) -> Optional[str]:
+def _item_ident(item, scope: str, index: int) -> str:
+    """Стабильное имя строки: путь заголовков от корня, тип и ключ или текст.
+
+    Нумеровать строки по порядку нельзя: список пересобирается при каждом
+    изменении настройки, часть строк появляется и исчезает по условию, и
+    порядковый id начинает указывать на чужой колбэк — а экран, открытый до
+    пересборки, продолжает слать старые id.
+    """
+    name = getattr(item, "key", None) or getattr(item, "text", None) or f"#{index}"
+    return f"{scope}/{type(item).__name__}:{name}"
+
+
+def _ident_hash(prefix: str, ident: str) -> str:
+    return prefix + hashlib.sha1(ident.encode("utf-8")).hexdigest()[:12]
+
+
+def _register_callbacks(item, record: PluginRecord, ident: str) -> Optional[str]:
     """Allocate a callback_id when the item declares on_change and/or on_click."""
     on_change = getattr(item, "on_change", None)
     on_click = getattr(item, "on_click", None)
     if on_change is None and on_click is None:
         return None
-    callback_id = f"cb_{next(counter)}"
+    callback_id = _ident_hash("cb_", ident)
     if on_click is not None:
         record.click_callbacks[callback_id] = on_click
     key = getattr(item, "key", None)
@@ -1268,9 +1284,25 @@ def _register_callbacks(item, record: PluginRecord, counter) -> Optional[str]:
     return callback_id
 
 
-def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dict]:
+def _register_long_click(item, record: PluginRecord, ident: str) -> Optional[str]:
+    on_long_click = getattr(item, "on_long_click", None)
+    if on_long_click is None:
+        return None
+    callback_id = _ident_hash("lc_", ident)
+    record.click_callbacks[callback_id] = on_long_click
+    return callback_id
+
+
+def _attach_callbacks(data: dict, item, record: PluginRecord, ident: str) -> None:
+    _put(data, "callback_id", _register_callbacks(item, record, ident))
+    _put(data, "long_callback_id", _register_long_click(item, record, ident))
+
+
+def _serialize_setting_item(item, record: PluginRecord, scope: str = "",
+                            index: int = 0) -> Optional[dict]:
     s = ui_settings
     instance = record.instance
+    ident = _item_ident(item, scope, index)
 
     if isinstance(item, s.Header):
         return {"type": "header", "text": item.text}
@@ -1289,7 +1321,7 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
         }
         _put(data, "subtext", item.subtext)
         _put(data, "icon", item.icon)
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         return data
 
     if isinstance(item, s.Selector):
@@ -1301,7 +1333,7 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
             "value": instance.get_setting(item.key, item.default),
         }
         _put(data, "icon", item.icon)
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         return data
 
     if isinstance(item, s.Input):
@@ -1314,7 +1346,7 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
         }
         _put(data, "subtext", item.subtext)
         _put(data, "icon", item.icon)
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         return data
 
     if isinstance(item, s.EditText):
@@ -1326,7 +1358,7 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
             "multiline": bool(item.multiline),
         }
         _put(data, "max_length", item.max_length)
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         return data
 
     if isinstance(item, s.Text):
@@ -1338,7 +1370,7 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
         }
         _put(data, "subtext", item.subtext)
         _put(data, "icon", item.icon)
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         if item.create_sub_fragment is not None:
             try:
                 sub_items = item.create_sub_fragment()
@@ -1347,18 +1379,19 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
                 sub_items = None
             if sub_items:
                 sub_page = []
-                for sub_item in sub_items:
-                    entry = _serialize_setting_item(sub_item, record, counter)
+                for sub_index, sub_item in enumerate(sub_items):
+                    entry = _serialize_setting_item(sub_item, record, ident, sub_index)
                     if entry is not None:
                         sub_page.append(entry)
-                data["sub_page"] = sub_page
+                if sub_page:
+                    data["sub_page"] = sub_page
         return data
 
     if isinstance(item, s.Custom):
-        view_id = f"cv_{next(counter)}"
+        view_id = _ident_hash("cv_", ident)
         record.custom_views[view_id] = item
         data = {"type": "custom", "view_id": view_id}
-        _put(data, "callback_id", _register_callbacks(item, record, counter))
+        _attach_callbacks(data, item, record, ident)
         if item.create_sub_fragment is not None:
             try:
                 sub_items = item.create_sub_fragment()
@@ -1367,11 +1400,12 @@ def _serialize_setting_item(item, record: PluginRecord, counter) -> Optional[dic
                 sub_items = None
             if sub_items:
                 sub_page = []
-                for sub_item in sub_items:
-                    entry = _serialize_setting_item(sub_item, record, counter)
+                for sub_index, sub_item in enumerate(sub_items):
+                    entry = _serialize_setting_item(sub_item, record, ident, sub_index)
                     if entry is not None:
                         sub_page.append(entry)
-                data["sub_page"] = sub_page
+                if sub_page:
+                    data["sub_page"] = sub_page
         return data
 
     return None  # unknown item type: skip defensively
@@ -1386,20 +1420,23 @@ def get_settings_json(plugin_id: str) -> str:
     try:
         items = instance.create_settings()
     except Exception as e:
-        instance.log(f"create_settings() failed: {type(e).__name__}: {e}")
-        return "null"
+        summary = f"create_settings() failed: {type(e).__name__}: {e}"
+        instance.log(summary)
+        # Пустой экран не говорит пользователю ничего и выглядит как наша поломка.
+        # Показываем причину прямо строкой на месте настроек.
+        import traceback
+        print(f"[{plugin_id}] {summary}\n{traceback.format_exc()}", file=sys.stderr)
+        return json.dumps([{"type": "divider", "text": summary}], ensure_ascii=False)
     if items is None:
         return "null"
 
-    record.click_callbacks = {}
-    record.change_callbacks = {}
-    record.custom_views = {}
-    counter = itertools.count(1)
-
+    # Реестры не обнуляем, а дополняем: id теперь выводятся из самой строки,
+    # поэтому повторная сборка даёт те же самые, а строки, открытые на экране
+    # до пересборки, продолжают попадать в свои колбэки.
     out = []
-    for item in items:
+    for index, item in enumerate(items):
         try:
-            entry = _serialize_setting_item(item, record, counter)
+            entry = _serialize_setting_item(item, record, "", index)
         except Exception as e:
             instance.log(f"settings item skipped: {type(e).__name__}: {e}")
             continue
@@ -1449,15 +1486,19 @@ def notify_setting_changed(plugin_id: str, key: str, json_value: str) -> None:
     return None
 
 
-def dispatch_setting_click(plugin_id: str, callback_id: str) -> None:
-    """Invoke the on_click callback registered under *callback_id*."""
+def dispatch_setting_click(plugin_id: str, callback_id: str, view=None) -> None:
+    """Invoke the on_click callback registered under *callback_id*.
+
+    Вьюха нажатой строки передаётся первым аргументом: у exteraGram колбэк
+    зовётся как ``callback.call(view)``, и плагины привязывают к ней меню.
+    """
     record = plugins.get(plugin_id)
     if record is None:
         return None
     callback = record.click_callbacks.get(callback_id)
     if callback is not None:
         try:
-            _call_with_optional_arg(callback, None)
+            _call_with_optional_arg(callback, view)
         except PermissionError as e:  # отказ разрешения — не поломка плагина
             _log_permission_error(plugin_id, e)
     return None

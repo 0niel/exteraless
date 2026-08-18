@@ -24,6 +24,13 @@ public class Plugin {
     public List<String> requirements = new ArrayList<>();
 
     /**
+     * Elyx {@code requires}: id требуемого плагина → {минимальная версия, ссылка}.
+     * Обе части могут быть null: версия не обязательна, ссылку автор указывает
+     * не всегда.
+     */
+    public java.util.Map<String, String[]> requires = new java.util.LinkedHashMap<>();
+
+    /**
      * Объявленные в {@code __permissions__} разрешения (уже проверенные ключи,
      * см. {@link PluginPermissions}). Пустой список при {@code __permissions__ = []}.
      */
