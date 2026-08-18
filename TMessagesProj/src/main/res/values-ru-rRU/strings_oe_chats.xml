@@ -83,4 +83,17 @@
     <string name="OEChatsUnmuteWithVolumeButtonsInfo">Кнопки громкости включат звук у беззвучного видео вместо изменения громкости.</string>
     <string name="OEChatsShowResultsBeforeVotingInfo">Результаты публичных опросов видны, не отдавая голос.</string>
     <string name="OEChatsRememberLastUsedCameraInfo">Следующее видеосообщение начнётся с той камеры, которой вы снимали в прошлый раз.</string>
+    <string name="OEDetailsBitrate">Битрейт</string>
+    <string name="OEDetailsBitrateValue">%1$d Кбит/с</string>
+    <string name="OEDetailsDatacenter">Дата-центр</string>
+    <string name="OEDetailsDate">Дата</string>
+    <string name="OEDetailsDuration">Длительность</string>
+    <string name="OEDetailsEditedDate">Дата изменения</string>
+    <string name="OEDetailsFileName">Имя файла</string>
+    <string name="OEDetailsFilePath">Путь к файлу</string>
+    <string name="OEDetailsFileSize">Размер файла</string>
+    <string name="OEDetailsForwardedDate">Дата пересылки</string>
+    <string name="OEDetailsMimeType">Тип MIME</string>
+    <string name="OEDetailsPlatform">Платформа</string>
+    <string name="OEDetailsResolution">Разрешение</string>
 </resources>

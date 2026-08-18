@@ -29,4 +29,11 @@
     <string name="OpenExteraDesigner">Иконки и дизайн</string>
     <string name="OpenExteraDesignStudio">Студия дизайна</string>
     <string name="OEDownloadEmojiPacks">Загружать наборы эмодзи</string>
+    <string name="OEChooseSubtitles">Выбрать субтитры</string>
+    <string name="OEDisableSubtitles">Выключить субтитры</string>
+    <string name="OESubtitles">Субтитры</string>
+    <string name="OESubtitlesAdded">Субтитры включены.</string>
+    <string name="OESubtitlesLoadError">Не удалось загрузить субтитры.</string>
+    <string name="OESubtitlesRemoved">Субтитры выключены.</string>
+    <string name="OESubtitlesUnsupportedFormat">Неподдерживаемый формат субтитров.</string>
 </resources>

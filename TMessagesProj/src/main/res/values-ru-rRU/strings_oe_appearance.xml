@@ -101,4 +101,5 @@
     <string name="OEAppearanceNewLoadingStyle">Стиль загрузки</string>
     <string name="OEAppearanceNewChatHeaderStyle">Шапка чата</string>
     <string name="OEAppearanceNewNavigationBarStyle">Нижняя панель навигации</string>
+    <string name="OEAppearanceHideActionBarStatus">Скрыть статус</string>
 </resources>

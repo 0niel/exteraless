@@ -73,4 +73,5 @@
     <string name="OEGeneralNagramHeader">NagramX</string>
     <string name="OEGeneralNagramSettings">Настройки NagramX</string>
     <string name="OEGeneralNagramSettingsInfo">Добавляет в общий список настроек строку с настройками NagramX — форка, на котором собран exteraless. Смотреть там стоит только то, для чего у exteraless нет своего экрана.</string>
+    <string name="OEBottomNavigationModeFloating">Плавающая</string>
 </resources>
