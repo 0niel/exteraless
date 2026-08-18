@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.FileLog
+import org.telegram.ui.Components.blur3.GlassOutlineStyle
 import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
 
@@ -139,7 +140,13 @@ object AppearanceConfig {
     /** Стиль стеклянного контура: 0 — блик, 1 — сплошной, 2 — скрыт. Только UI. */
     @JvmField
     val glassOutlineStyle =
-        addConfig("OEAppearanceGlassOutlineStyle", ConfigItem.configTypeInt, 0)
+        addConfig(object : ConfigItem("OEAppearanceGlassOutlineStyle", ConfigItem.configTypeInt, 0) {
+            override fun setConfigInt(v: Int) {
+                val changed = Int() != v
+                super.setConfigInt(v)
+                if (changed) GlassOutlineStyle.dispatchChange()
+            }
+        })
 
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
@@ -378,6 +385,11 @@ object AppearanceConfig {
         return item
     }
 
+    private fun addConfig(item: ConfigItem): ConfigItem {
+        configs.add(item)
+        return item
+    }
+
     @JvmStatic
     fun ensureLoaded() {
         if (!configLoaded) loadConfig(false)
@@ -431,5 +443,6 @@ object AppearanceConfig {
             }
             editor.apply()
         }
+        GlassOutlineStyle.dispatchChange()
     }
 }

@@ -4,18 +4,15 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-
-import android.content.Context;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.Components.BulletinFactory;
@@ -28,7 +25,6 @@ import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -65,22 +61,16 @@ public class PluginsActivity extends BaseFragment {
     private static final int MENU_INFO = 1;
 
     private static final int ID_ENGINE_TOGGLE = -1;
-    /** id строк плагинов начинаются отсюда — не пересекаются со служебными. */
-    private static final int ID_PLUGIN_BASE = 1000;
 
     private static final int REQUEST_CODE_PICK_PLUGIN = 9781;
 
     private UniversalRecyclerView listView;
     private final List<Plugin> plugins = new ArrayList<>();
-    /** Вьюхи карточек по id плагина: см. {@link #cellFor}. */
-    private final java.util.HashMap<String, PluginCell> cells = new java.util.HashMap<>();
+    private PluginsEmptyCell emptyCell;
     private String searchQuery;
 
     @Override
     public View createView(Context context) {
-        // Пересоздание вьюхи фрагмента бывает при смене темы: карточки забрали
-        // цвета при постройке, поэтому старые больше не годятся.
-        cells.clear();
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(getString(R.string.OpenExteraPlugins));
@@ -103,13 +93,13 @@ public class PluginsActivity extends BaseFragment {
                                     @Override
                                     public void onSearchCollapse() {
                                         searchQuery = null;
-                                        update();
+                                        updateRows();
                                     }
 
                                     @Override
                                     public void onTextChanged(android.widget.EditText editText) {
                                         searchQuery = editText.getText().toString();
-                                        update();
+                                        updateRows();
                                     }
                                 });
         search.setSearchFieldHint(getString(R.string.Search));
@@ -118,8 +108,16 @@ public class PluginsActivity extends BaseFragment {
         FrameLayout contentView = new FrameLayout(context);
         contentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
 
+        refreshPlugins(true);
+        emptyCell = new PluginsEmptyCell(context, getCurrentAccount());
         listView = new UniversalRecyclerView(this, this::fillItems, this::onItemClick,
-                this::onItemLongClick);
+                this::onItemLongClick) {
+            @Override
+            protected boolean canHighlightChildAt(View child, float x, float y) {
+                return !(child instanceof PluginCell)
+                        && super.canHighlightChildAt(child, x, y);
+            }
+        };
         listView.setSections();
         listView.adapter.setApplyBackground(false);
         contentView.addView(listView,
@@ -132,9 +130,9 @@ public class PluginsActivity extends BaseFragment {
 
     // ---------- список ----------
 
-    private void reloadPlugins() {
+    private void refreshPlugins(boolean rescan) {
         PluginsController controller = PluginsController.getInstance();
-        if (controller.isEngineEnabled()) {
+        if (rescan && controller.isEngineEnabled()) {
             // Движок стартует асинхронно; rescan сам выйдет, если он ещё не поднялся.
             controller.rescanPlugins();
         }
@@ -168,71 +166,30 @@ public class PluginsActivity extends BaseFragment {
     }
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        reloadPlugins();
         PluginsController controller = PluginsController.getInstance();
+        boolean engineEnabled = controller.isEngineEnabled();
 
-        items.add(UItem.asRippleCheck(ID_ENGINE_TOGGLE, getString(R.string.EnablePluginsEngine))
-                .setChecked(controller.isEngineEnabled()));
+        items.add(PluginUiItem.engineToggle(ID_ENGINE_TOGGLE,
+                getString(R.string.EnablePluginsEngine), engineEnabled));
+        if (!engineEnabled) {
+            return;
+        }
         items.add(UItem.asSpace(dp(8)));
 
         List<Plugin> visible = visiblePlugins();
         if (visible.isEmpty()) {
-            items.add(UItem.asFullscreenCustom(createEmptyView(), dp(74), true).setTransparent(true));
+            CharSequence hint = TextUtils.isEmpty(searchQuery)
+                    ? withUsernameLink(getString(R.string.PluginsEmptyHint))
+                    : getString(R.string.PluginsNotFound);
+            emptyCell.setState(engineEnabled, hint, listView != null);
+            items.add(PluginUiItem.fullscreen(emptyCell, dp(74), true));
             return;
         }
-        for (int i = 0; i < visible.size(); i++) {
-            Plugin plugin = visible.get(i);
-            PluginCell cell = cellFor(plugin);
-            // Прозрачным: фон карточка рисует сама, иначе поверх неё ложится
-            // ещё и плашка секции — с другим скруглением.
-            items.add(UItem.asCustom(ID_PLUGIN_BASE + i, cell).setTransparent(true));
+        boolean compact = controller.isCompactView();
+        for (Plugin plugin : visible) {
+            items.add(PluginCell.Factory.of(plugin, controller.isPluginPinned(plugin.id),
+                    compact, cellDelegate));
         }
-    }
-
-    /**
-     * Одна и та же вьюха на плагин между пересборками списка.
-     *
-     * UItem считает элементы разными, если у них разные view (UItem.itemEquals:
-     * {@code view == item.view}), — на новую вьюху каждый раз DiffUtil отвечал
-     * «строку удалили и вставили другую», и RecyclerView проигрывал анимацию
-     * удаления с вставкой. Со стороны это выглядело как «карточка дёрнулась по
-     * высоте и вернулась» на каждое действие: вход на экран, включение плагина.
-     */
-    private PluginCell cellFor(Plugin plugin) {
-        PluginCell cell = cells.get(plugin.id);
-        if (cell == null) {
-            cell = new PluginCell(getContext());
-            cell.setDelegate(cellDelegate);
-            cells.put(plugin.id, cell);
-        }
-        cell.setPlugin(plugin, PluginsController.getInstance().isCompactView());
-        return cell;
-    }
-
-    private View createEmptyView() {
-        Context context = getContext();
-        LinearLayout layout = new LinearLayout(context);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER);
-
-        android.widget.TextView emoji = new android.widget.TextView(context);
-        emoji.setText("📁");
-        emoji.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 48);
-        emoji.setGravity(Gravity.CENTER);
-        layout.addView(emoji, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT,
-                LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 0, 0, 0, 12));
-
-        LinkSpanDrawable.LinksTextView hint = new LinkSpanDrawable.LinksTextView(context);
-        hint.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 14);
-        hint.setGravity(Gravity.CENTER);
-        hint.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
-        hint.setLinkTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        hint.setText(TextUtils.isEmpty(searchQuery)
-                ? withUsernameLink(getString(R.string.PluginsEmptyHint))
-                : getString(R.string.PluginsNotFound));
-        layout.addView(hint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
-                LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 24, 0, 24, 0));
-        return layout;
     }
 
     /**
@@ -284,7 +241,8 @@ public class PluginsActivity extends BaseFragment {
             PluginsController controller = PluginsController.getInstance();
             boolean pinned = !controller.isPluginPinned(plugin.id);
             controller.setPluginPinned(plugin.id, pinned);
-            update();
+            refreshPlugins(false);
+            updateRows();
             if (getContext() != null) {
                 org.telegram.ui.Components.BulletinFactory.of(PluginsActivity.this)
                         .createSimpleBulletin(pinned ? R.raw.ic_pin : R.raw.ic_unpin,
@@ -368,7 +326,7 @@ public class PluginsActivity extends BaseFragment {
         controller.setPluginEnabled(plugin.id, !plugin.enabled);
         Plugin updated = controller.getPlugin(plugin.id);
         boolean enabled = updated != null && updated.enabled;
-        update();
+        updateRows();
         if (enabled && updated.loadError != null) {
             // Плагин уже падал: покажем, на чём именно, иначе включение
             // выглядит как «щёлкнул и ничего».
@@ -376,7 +334,7 @@ public class PluginsActivity extends BaseFragment {
         }
     }
 
-    private void update() {
+    private void updateRows() {
         if (listView != null) {
             listView.adapter.update(true);
         }
@@ -389,7 +347,7 @@ public class PluginsActivity extends BaseFragment {
         if (item.id == ID_ENGINE_TOGGLE) {
             boolean enabling = !controller.isEngineEnabled();
             controller.setEngineEnabled(enabling);
-            update();
+            updateRows();
             if (enabling) {
                 // Python поднимается асинхронно (около 240 мс на Pixel 7), а
                 // rescanPlugins до его старта выходит рано. Без обновления по
@@ -399,7 +357,8 @@ public class PluginsActivity extends BaseFragment {
                         org.telegram.messenger.ApplicationLoader.applicationContext,
                         ok -> AndroidUtilities.runOnUIThread(() -> {
                             if (getParentActivity() != null) {
-                                update();
+                                refreshPlugins(true);
+                                updateRows();
                             }
                         }));
             }
@@ -421,9 +380,11 @@ public class PluginsActivity extends BaseFragment {
     }
 
     private Plugin pluginOf(UItem item) {
-        int index = item.id - ID_PLUGIN_BASE;
-        List<Plugin> visible = visiblePlugins();
-        return index >= 0 && index < visible.size() ? visible.get(index) : null;
+        if (!(item.object instanceof PluginCell.Model)) {
+            return null;
+        }
+        String id = ((PluginCell.Model) item.object).id;
+        return PluginsController.getInstance().getPlugin(id);
     }
 
     // ---------- диалоги ----------
@@ -498,7 +459,8 @@ public class PluginsActivity extends BaseFragment {
                 presentFragment(PluginSettingsActivity.newInstance(plugin.id));
             } else if (action == 1) {
                 controller.reloadPlugin(plugin.id);
-                update();
+                refreshPlugins(false);
+                updateRows();
             } else if (action == 2) {
                 AndroidUtilities.addToClipboard(plugin.id);
             } else if (action == 3) {
@@ -523,8 +485,8 @@ public class PluginsActivity extends BaseFragment {
                 plugin.getDisplayName()));
         builder.setPositiveButton(getString(R.string.Delete), (dialog, which) -> {
             PluginsController.getInstance().uninstallPlugin(plugin.id);
-            cells.remove(plugin.id);
-            update();
+            refreshPlugins(false);
+            updateRows();
         });
         builder.setNegativeButton(getString(R.string.Cancel), null);
         AlertDialog dialog = builder.create();
@@ -634,6 +596,20 @@ public class PluginsActivity extends BaseFragment {
                     .setPositiveButton(getString(R.string.OK), null)
                     .create());
         }
-        update();
+        refreshPlugins(true);
+        updateRows();
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        if (listView != null) {
+            listView.setPadding(0, 0, 0, bottom);
+            listView.setClipToPadding(false);
+        }
     }
 }
