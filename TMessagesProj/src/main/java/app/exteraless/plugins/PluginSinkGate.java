@@ -169,8 +169,13 @@ public final class PluginSinkGate {
     /**
      * Резолв классов. Без него сеть закрывается на один шаг: плагин, которому
      * запрещён {@code java.net.URL}, достаёт тот же класс через
-     * {@code Class.forName} или {@code loadClass} у любого объекта, который
-     * у него уже есть.
+     * {@code Class.forName}.
+     *
+     * Только {@code Class.forName}: хук на {@code ClassLoader.loadClass} ронял
+     * приложение изнутри ART. Резолвя класс, ClassLinker сам зовёт loadClass
+     * загрузчика приложения, и с хуком это заход в сгенерированный LSPlant
+     * класс прямо из середины DefineClass — рекурсия по загрузке классов,
+     * которая изредка кончалась SIGSEGV на чужом потоке.
      */
     private static int hookClassResolution() {
         XC_MethodHook hook = new XC_MethodHook() {
@@ -226,10 +231,8 @@ public final class PluginSinkGate {
                 }
             }
         };
-        int count = hookExact(Class.class, "forName", hook,
+        return hookExact(Class.class, "forName", hook,
                 String.class, boolean.class, ClassLoader.class);
-        count += hookAll(ClassLoader.class, "loadClass", hook);
-        return count;
     }
 
     /**
@@ -312,6 +315,7 @@ public final class PluginSinkGate {
             }
             try {
                 for (java.lang.reflect.Constructor<?> constructor : owner.getDeclaredConstructors()) {
+                    app.exteraless.plugins.xposed.HookGate.prewarm(constructor);
                     XposedBridge.hookMethod(constructor, new XC_MethodHook() {
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) {
@@ -638,7 +642,9 @@ public final class PluginSinkGate {
     private static int hookExact(Class<?> owner, String methodName, XC_MethodHook hook,
                                 Class<?>... parameterTypes) {
         try {
-            XposedBridge.hookMethod(owner.getDeclaredMethod(methodName, parameterTypes), hook);
+            Member target = owner.getDeclaredMethod(methodName, parameterTypes);
+            app.exteraless.plugins.xposed.HookGate.prewarm(target);
+            XposedBridge.hookMethod(target, hook);
             return 1;
         } catch (Throwable t) {
             FileLog.e("PluginSinkGate: hook failed for " + owner.getName() + "." + methodName, t);
@@ -661,6 +667,7 @@ public final class PluginSinkGate {
         int count = 0;
         for (Member target : targets) {
             try {
+                app.exteraless.plugins.xposed.HookGate.prewarm(target);
                 XposedBridge.hookMethod(target, hook);
                 count++;
             } catch (Throwable t) {

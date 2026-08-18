@@ -192,6 +192,80 @@ class _FunctionalHook:
     for which actual callables were supplied (Java probes attribute presence)."""
 
 
+class UnhookId(str):
+    """Unhook id that also answers ``.unhook()``, the way Xposed handles do."""
+
+    __slots__ = ("_owner",)
+
+    def __new__(cls, value, owner=None):
+        obj = super().__new__(cls, value)
+        obj._owner = owner
+        return obj
+
+    def unhook(self):
+        owner = self._owner
+        if owner is not None:
+            owner.unhook_method(str(self))
+
+
+class UnhookIdList(list):
+    """List of unhook ids with a bulk ``.unhook()``."""
+
+    def __init__(self, ids=(), owner=None):
+        super().__init__(ids)
+        self._owner = owner
+
+    def unhook(self):
+        owner = self._owner
+        if owner is not None:
+            owner.unhook_method(list(self))
+
+
+class HookParam:
+    """Thin proxy over Xposed's MethodHookParam.
+
+    Everything is forwarded to the Java object; only ``result`` and
+    ``throwable`` are special-cased, so both the Xposed accessor style
+    (``param.getResult()`` / ``param.setResult(v)``) and the attribute style
+    (``param.result``, ``param.result = v``) work.
+    """
+
+    __slots__ = ("_param",)
+
+    def __init__(self, param):
+        object.__setattr__(self, "_param", param)
+
+    @property
+    def java(self):
+        """The underlying MethodHookParam, for calls into Java."""
+        return object.__getattribute__(self, "_param")
+
+    def __getattr__(self, name):
+        param = object.__getattribute__(self, "_param")
+        if name == "result":
+            return param.getResult()
+        if name == "throwable":
+            return param.getThrowable()
+        return getattr(param, name)
+
+    def __setattr__(self, name, value):
+        param = object.__getattribute__(self, "_param")
+        if name == "result":
+            param.setResult(value)
+        elif name == "throwable":
+            param.setThrowable(value)
+        else:
+            setattr(param, name, value)
+
+    def __repr__(self):
+        return f"HookParam({object.__getattribute__(self, '_param')!r})"
+
+
+def dispatch_hook(handler, attr, param):
+    """Entry point for the Java hook bridge: calls *handler.attr(param)*."""
+    return getattr(handler, attr)(HookParam(param))
+
+
 def _filter_value(value):
     """Make a filter value JSON-safe (primitives pass through, rest str()'d)."""
     if isinstance(value, (str, int, float, bool)) or value is None:
@@ -657,7 +731,7 @@ class BasePlugin:
         """Shared tail for hook_all_methods/hook_all_constructors."""
         if PluginServices is None or not self._plugin_id:
             self.log(f"{kind} requires the Android runtime")
-            return []
+            return UnhookIdList((), self)
         try:
             raw = PluginServices.hookAllMethods(self._plugin_id, clazz, method_name,
                                                 handler_obj, int(priority), filters_json) \
@@ -667,9 +741,9 @@ class BasePlugin:
             ids = [str(x) for x in (json.loads(raw) if raw else [])]
         except Exception as e:
             self.log(f"hook_all_{kind}({method_name or clazz!r}) failed: {e}")
-            return []
+            return UnhookIdList((), self)
         self._track_unhook_ids(ids)
-        return ids
+        return UnhookIdList(ids, self)
 
     @staticmethod
     def _resolve_class(clazz):
@@ -728,7 +802,7 @@ class BasePlugin:
             return None
         unhook_id = str(unhook_id)
         self._track_unhook_ids((unhook_id,))
-        return unhook_id
+        return UnhookId(unhook_id, self)
 
     def hook_all_methods(self, clazz, method_name, handler=None, priority: int = 50,
                          filters=None, before=None, after=None,

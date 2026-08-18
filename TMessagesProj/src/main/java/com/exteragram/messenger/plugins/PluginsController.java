@@ -87,6 +87,22 @@ public final class PluginsController {
         return delegate().setPluginEnabled(pluginId, enabled);
     }
 
+    /**
+     * Та же операция с колбэком: менеджеры плагинов зовут её с тремя аргументами,
+     * третий — Runnable либо null.
+     */
+    public boolean setPluginEnabled(String pluginId, boolean enabled, Object callback) {
+        boolean result = setPluginEnabled(pluginId, enabled);
+        if (callback instanceof Runnable) {
+            try {
+                ((Runnable) callback).run();
+            } catch (Throwable t) {
+                FileLog.e("PluginsController shim: setPluginEnabled callback failed", t);
+            }
+        }
+        return result;
+    }
+
     public void reloadPlugin(String pluginId) {
         delegate().reloadPlugin(pluginId);
     }

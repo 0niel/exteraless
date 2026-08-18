@@ -1,6 +1,7 @@
 package app.exteraless.plugins.xposed;
 
 import com.chaquo.python.PyObject;
+import com.chaquo.python.Python;
 
 import org.json.JSONArray;
 import org.telegram.messenger.FileLog;
@@ -97,6 +98,7 @@ public final class XposedHooks {
         }
         try {
             XC_MethodHook hook = createHook(pluginId, handler, priority, filtersJson);
+            HookGate.prewarm((Member) member);
             XC_MethodHook.Unhook unhook = XposedBridge.hookMethod((Member) member, hook);
             return register(pluginId, unhook);
         } catch (Throwable t) {
@@ -118,6 +120,7 @@ public final class XposedHooks {
         }
         try {
             XC_MethodHook hook = createHook(pluginId, handler, priority, filtersJson);
+            HookGate.prewarmAllMethods((Class<?>) clazz, methodName);
             Set<XC_MethodHook.Unhook> unhooks =
                     XposedBridge.hookAllMethods((Class<?>) clazz, methodName, hook);
             return registerAll(pluginId, unhooks);
@@ -139,6 +142,7 @@ public final class XposedHooks {
         }
         try {
             XC_MethodHook hook = createHook(pluginId, handler, priority, filtersJson);
+            HookGate.prewarmAllConstructors((Class<?>) clazz);
             Set<XC_MethodHook.Unhook> unhooks = XposedBridge.hookAllConstructors((Class<?>) clazz, hook);
             return registerAll(pluginId, unhooks);
         } catch (Throwable t) {
@@ -272,6 +276,31 @@ public final class XposedHooks {
     }
 
     /** Итог вызова Python-колбэка. ok=false — ошибка уже в watchdog, param не тронут. */
+    private static volatile PyObject hookBridge;
+    private static volatile boolean hookBridgeResolved;
+
+    /**
+     * base_plugin.dispatch_hook оборачивает MethodHookParam так, чтобы из Python
+     * работали обе формы: param.getResult()/setResult() и param.result. Если
+     * модуль почему-то недоступен, зовём обработчик напрямую — как раньше.
+     */
+    private static PyObject hookBridge() {
+        if (!hookBridgeResolved) {
+            synchronized (XposedHooks.class) {
+                if (!hookBridgeResolved) {
+                    try {
+                        hookBridge = Python.getInstance().getModule("base_plugin");
+                    } catch (Throwable t) {
+                        FileLog.e("XposedHooks: base_plugin bridge unavailable", t);
+                        hookBridge = null;
+                    }
+                    hookBridgeResolved = true;
+                }
+            }
+        }
+        return hookBridge;
+    }
+
     static final class PyResult {
         static final PyResult ERROR = new PyResult(false, null);
 
@@ -302,7 +331,10 @@ public final class XposedHooks {
                 watchdog.notePluginEnter(pluginId);
                 entered = true;
             }
-            return PyResult.of(handler.callAttr(attr, param));
+            PyObject bridge = hookBridge();
+            return PyResult.of(bridge != null
+                    ? bridge.callAttr("dispatch_hook", handler, attr, param)
+                    : handler.callAttr(attr, param));
         } catch (Throwable t) {
             reportError(pluginId, t);
             return PyResult.ERROR;

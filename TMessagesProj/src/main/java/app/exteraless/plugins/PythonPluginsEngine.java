@@ -217,6 +217,26 @@ public class PythonPluginsEngine {
         }
     }
 
+    /**
+     * Пересканировать каталог плагинов и выполнить колбэк. У exteraGram менеджеры
+     * плагинов зовут это после установки или удаления файла:
+     * {@code controller.engines.get("python").loadPlugins(callback)}.
+     */
+    public void loadPlugins(Object callback) {
+        try {
+            PluginsController.getInstance().rescanPlugins();
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine.loadPlugins: rescan failed", t);
+        }
+        if (callback instanceof Runnable) {
+            try {
+                ((Runnable) callback).run();
+            } catch (Throwable t) {
+                FileLog.e("PluginsEngine.loadPlugins: callback failed", t);
+            }
+        }
+    }
+
     /** Выгрузить плагин (on_plugin_unload + очистка). Синхронно. */
     public void unloadPlugin(Plugin plugin) {
         if (!started) {
