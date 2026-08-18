@@ -286,6 +286,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     private final LinearLayout buttonsLayout;
     private final int buttonsSizePx;
     private final ZoomControlView zoomControlView;
+    private final app.exteraless.camera.InstantCameraZoomSlider zoomSlider;
     private float lockedZoom;
 
 
@@ -352,7 +353,13 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         zoomControlView = new ZoomControlView(context);
         zoomControlView.setAlpha(0.0f);
         zoomControlView.setDelegate(this::setLockedZoom);
+        zoomControlView.setVisibility(GONE);
         addView(zoomControlView, new LayoutParams(LayoutHelper.MATCH_PARENT, dp(50), Gravity.CENTER));
+
+        zoomSlider = new app.exteraless.camera.InstantCameraZoomSlider(context, resourcesProvider);
+        zoomSlider.setOpenAlpha(0f);
+        zoomSlider.setOnCameraZoomChangeListener(this::onZoomSliderChanged);
+        addView(zoomSlider, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
 
 
         buttonsLayout = new LinearLayout(context);
@@ -519,6 +526,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         drawable.setPadding(dp(6));
         drawable.setRadius(dp(21));
         buttonsLayout.setBackground(drawable);
+        zoomSlider.setBlurBackground(factory.create(zoomSlider, colorProvider));
     }
 
     private Boolean wasFlashing;
@@ -607,6 +615,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 textureOverlayView.getLayoutParams().width = textureOverlayView.getLayoutParams().height = textureViewSize;
                 cameraContainer.getLayoutParams().width = cameraContainer.getLayoutParams().height = textureViewSize;
                 zoomControlView.getLayoutParams().width = textureViewSize;
+                zoomSlider.setTextureViewSize(textureViewSize);
                 ((LayoutParams) muteImageView.getLayoutParams()).topMargin = textureViewSize / 2 - dp(24);
                 textureOverlayView.setRoundRadius(textureViewSize / 2);
                 cameraContainer.invalidateOutline();
@@ -683,6 +692,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void destroy(boolean async) {
+        AndroidUtilities.runOnUIThread(zoomSlider::unbindSession);
         if (useCameraX) {
             releaseCameraXSession();
             if (camLifecycle != null) {
@@ -734,6 +744,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
         buttonsLayout.setAlpha(0.0f);
         zoomControlView.setAlpha(0.0f);
+        zoomSlider.setOpenAlpha(0f);
         cameraContainer.setAlpha(0.0f);
         textureOverlayView.setAlpha(0.0f);
         muteImageView.setAlpha(0.0f);
@@ -1024,6 +1035,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         animatorSet.playTogether(
                 ObjectAnimator.ofFloat(buttonsLayout, View.ALPHA, open ? 1.0f : 0.0f),
                 ObjectAnimator.ofFloat(zoomControlView, View.ALPHA, open ? 1.0f : 0.0f),
+                ObjectAnimator.ofFloat(zoomSlider, app.exteraless.camera.InstantCameraZoomSlider.OPEN_ALPHA, open ? 1.0f : 0.0f),
                 ObjectAnimator.ofFloat(muteImageView, View.ALPHA, 0.0f),
                 ObjectAnimator.ofInt(paint, AnimationProperties.PAINT_ALPHA, open ? 255 : 0),
                 ObjectAnimator.ofFloat(cameraContainer, View.ALPHA, open ? 1.0f : 0.0f),
@@ -1067,6 +1079,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         final float maxZoomY = getMeasuredHeight() / 2f - dp(89);
         zoomControlCenterY = Math.min(zoomControlCenterY, maxZoomY);
         zoomControlView.setTranslationY(zoomControlCenterY);
+        zoomSlider.setBaseTranslationY(translationY);
     }
 
     public RectOld getCameraRect() {
@@ -1276,6 +1289,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             return;
         }
         cancelZoomAnimations();
+        zoomSlider.beginCameraSwitch();
         final boolean dual = cameraXSession != null && cameraXSession.isDualMode();
         isFrontface = !isFrontface;
         app.exteraless.chats.ChatsConfig.ensureLoaded();
@@ -3175,6 +3189,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             animatorSet.playTogether(
                     ObjectAnimator.ofFloat(buttonsLayout, View.ALPHA, 0.0f),
                     ObjectAnimator.ofFloat(zoomControlView, View.ALPHA, 0.0f),
+                    ObjectAnimator.ofFloat(zoomSlider, app.exteraless.camera.InstantCameraZoomSlider.OPEN_ALPHA, 0.0f),
                     ObjectAnimator.ofInt(paint, AnimationProperties.PAINT_ALPHA, 0),
                     ObjectAnimator.ofFloat(muteImageView, View.ALPHA, 1.0f));
             animatorSet.setDuration(180);
@@ -4098,6 +4113,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 pointerId1 = ev.getPointerId(0);
                 pointerId2 = ev.getPointerId(1);
                 isInPinchToZoomTouchMode = true;
+                zoomSlider.beginPinchZoomGesture();
             }
             if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 AndroidUtilities.rectTmp.set(cameraContainer.getX(), cameraContainer.getY(), cameraContainer.getX() + cameraContainer.getMeasuredWidth(), cameraContainer.getY() + cameraContainer.getMeasuredHeight());
@@ -4177,6 +4193,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
      */
     private void adjustZoom(boolean up) {
         cancelZoomAnimations();
+        zoomSlider.beginSteppedZoomGesture();
 
         final float from;
         final float target;
@@ -4241,6 +4258,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     public void finishZoom() {
+        zoomSlider.endPinchZoomGesture();
         // exteraGram 12.9.0, InstantCameraView.java:2856-2860 — при staticZoom зум остаётся
         // там, где его оставили пальцы, и не анимируется обратно.
         if (finishZoomTransition != null || app.exteraless.chats.ChatsConfig.staticZoom.Bool()) {
@@ -4378,11 +4396,52 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private void syncZoomControlView(float currentZoom) {
+        if (zoomSlider != null) {
+            if (useRatioZoom) {
+                zoomSlider.setZoom(currentZoom);
+            } else {
+                zoomSlider.syncZoom(Utilities.clamp01(currentZoom));
+            }
+        }
         if (zoomControlView == null || zoomControlView.isTouch()) {
             return;
         }
         final float value = useRatioZoom ? getZoomControlValueFromRatio(currentZoom) : Utilities.clamp01(currentZoom);
         zoomControlView.setZoom(value, false);
+    }
+
+    /**
+     * Ползунок сам поставил зум камере — нам остаётся запомнить его как «отпущенный»,
+     * иначе {@link #finishZoom()} после щипка утянет кратность обратно.
+     */
+    private void onZoomSliderChanged(float zoom, boolean fromUser) {
+        if (!fromUser) {
+            return;
+        }
+        cancelZoomAnimations();
+        if (useRatioZoom) {
+            pinchScale = zoomSlider.getZoom();
+            lockedZoom = getZoomControlValueFromRatio(pinchScale);
+        } else {
+            pinchScale = Utilities.clamp(zoom, 1f, 0f);
+            lockedZoom = pinchScale;
+        }
+        if (zoomControlView != null) {
+            zoomControlView.setZoom(lockedZoom, false);
+        }
+    }
+
+    /** Привязать ползунок к текущей сессии: пределы зума он берёт у неё. */
+    private void bindZoomSlider() {
+        AndroidUtilities.runOnUIThread(() -> {
+            if (useCameraX) {
+                zoomSlider.bindSession(cameraXSession);
+            } else if (useCamera2) {
+                zoomSlider.bindSession(camera2SessionCurrent);
+            } else {
+                zoomSlider.bindSession(cameraSession, lockedZoom);
+            }
+        });
     }
 
     private void setLockedZoom(float zoom) {
@@ -4401,6 +4460,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
     }
 
     private void applyLockedZoomToCamera() {
+        bindZoomSlider();
         if (useCameraX) {
             final app.exteraless.camera.CameraXSession session = cameraXSession;
             if (session == null) {
