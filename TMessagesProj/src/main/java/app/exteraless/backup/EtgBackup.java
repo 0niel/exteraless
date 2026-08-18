@@ -321,6 +321,7 @@ public final class EtgBackup {
         bool(list, "disableUnarchiveSwipe", NaConfig.INSTANCE.getDoNotUnarchiveBySwipe());
         bool(list, "doNotUseProxyWithVpn", NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled());
         bool(list, "singleCornerRadius", AppearanceConfig.singleCornerRadius);
+        bool(list, "hideActionBarStatus", AppearanceConfig.hideActionBarStatus);
         bool(list, "centerTitle", AppearanceConfig.centerTitle);
         bool(list, "hideStories", NaConfig.INSTANCE.getDisableStories());
         bool(list, "hideFloatingButton", NaConfig.INSTANCE.getDisableDialogsFloatingButton());

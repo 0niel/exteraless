@@ -143,7 +143,7 @@ public class ThemeDescription {
         drawablesToUpdate = drawables;
         viewToInvalidate = view;
         changeFlags = flags;
-        listClasses = classes;
+        listClasses = RecyclerListView.filterThemeDescription(flags, classes);
         delegate = themeDescriptionDelegate;
         if (viewToInvalidate instanceof EditTextEmoji) {
             viewToInvalidate = ((EditTextEmoji) viewToInvalidate).getEditText();

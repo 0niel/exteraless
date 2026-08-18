@@ -72,6 +72,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Cells.ChatActionCell;
 import org.telegram.ui.Cells.ChatMessageCell;
 import org.telegram.ui.Cells.CollapseTextCell;
@@ -3268,6 +3269,36 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         return sectionsItemDecoration != null;
     }
 
+    /**
+     * Убирает HeaderCell из набора классов, которым ThemeDescription красит фон ячейки.
+     * Вынесенный заголовок стоит вне карточки и подложки не имеет, а смена темы иначе
+     * возвращала бы ему белый прямоугольник.
+     */
+    public static Class[] filterThemeDescription(int changeFlags, Class[] classes) {
+        if (classes == null
+                || changeFlags != ThemeDescription.FLAG_CELLBACKGROUNDCOLOR
+                || !app.exteraless.appearance.AppearanceConfig.sectionsSeparatedHeaders()) {
+            return classes;
+        }
+        int count = 0;
+        for (Class cls : classes) {
+            if (cls != null && !cls.equals(HeaderCell.class)) {
+                count++;
+            }
+        }
+        if (count == classes.length) {
+            return classes;
+        }
+        final Class[] filtered = new Class[count];
+        int index = 0;
+        for (Class cls : classes) {
+            if (cls != null && !cls.equals(HeaderCell.class)) {
+                filtered[index++] = cls;
+            }
+        }
+        return filtered;
+    }
+
     private ListSectionsDecoration sectionsItemDecoration;
     private Utilities.CallbackReturn<Integer, Boolean> isViewTypeSection;
     private Utilities.Callback5<Canvas, RectF, Float, Float, Float> drawSectionBackground;
@@ -3482,6 +3513,24 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         }
     }
 
+    private boolean segmentedSectionsEnabled = true;
+
+    /**
+     * Точечный отказ от сегментов для списка, которому такая разбивка не подходит:
+     * настройка внешнего вида остаётся включённой, но этот список рисуется цельными
+     * карточками.
+     */
+    public void setSegmentedSectionsEnabled(boolean enabled) {
+        if (segmentedSectionsEnabled == enabled) {
+            return;
+        }
+        segmentedSectionsEnabled = enabled;
+        if (sectionsItemDecoration != null) {
+            invalidateItemDecorations();
+            invalidate();
+        }
+    }
+
     /**
      * Режим «Сегменты»: каждая строка — своя карточка.
      *
@@ -3492,7 +3541,8 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
      * общей карточкой.
      */
     private boolean useSegmentedSections() {
-        return sectionsItemDecoration != null
+        return segmentedSectionsEnabled
+                && sectionsItemDecoration != null
                 && app.exteraless.appearance.AppearanceConfig.dividerStyle()
                         == app.exteraless.appearance.AppearanceConfig.DIVIDER_SEGMENTS;
     }

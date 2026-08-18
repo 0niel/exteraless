@@ -31,4 +31,12 @@
     <string name="OpenExteraDesigner">Icons and design</string>
     <string name="OpenExteraDesignStudio">Design studio</string>
     <string name="OEDownloadEmojiPacks">Download emoji packs</string>
+
+    <string name="OESubtitles">Subtitles</string>
+    <string name="OEChooseSubtitles">Choose Subtitles</string>
+    <string name="OEDisableSubtitles">Disable Subtitles</string>
+    <string name="OESubtitlesAdded">Subtitles enabled.</string>
+    <string name="OESubtitlesRemoved">Subtitles disabled.</string>
+    <string name="OESubtitlesLoadError">Couldn\'t load subtitles.</string>
+    <string name="OESubtitlesUnsupportedFormat">Unsupported subtitle format.</string>
 </resources>

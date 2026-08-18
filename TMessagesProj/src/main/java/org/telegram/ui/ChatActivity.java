@@ -11,6 +11,8 @@ package org.telegram.ui;
 import app.exteraless.OpenExteraConfig;
 import app.exteraless.appearance.AppearanceConfig;
 import app.exteraless.chats.ChatsConfig;
+import app.exteraless.components.ActionRow;
+import app.exteraless.components.MessageDetailsPopupWrapper;
 import app.exteraless.appearance.GlassMenuHelper;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
@@ -4817,28 +4819,44 @@ public class ChatActivity extends BaseFragment implements
             }
 
             if (ChatObject.hasAdminRights(currentChat)) {
-                boolean hasAtLeastOneOption = false;
-                if (NaConfig.INSTANCE.getShortcutsAdministrators().Bool()) {
-                    hasAtLeastOneOption = true;
-                    headerItem.lazilyAddSubItem(shortcuts_administrators, R.drawable.msg_admins, LocaleController.getString(R.string.ChannelAdministrators));
+                boolean withoutPermissions = ChatObject.isChannel(currentChat) && !currentChat.megagroup || currentChat.gigagroup;
+                int[] shortcutIds = {shortcuts_permissions, shortcuts_administrators, shortcuts_members, shortcuts_recent_actions, shortcuts_statistics};
+                int[] shortcutIcons = {withoutPermissions ? R.drawable.msg_user_remove : R.drawable.msg_permissions, R.drawable.msg_admins, R.drawable.msg_groups, R.drawable.msg_log, R.drawable.msg_stats};
+                boolean[] shortcutEnabled = {
+                        NaConfig.INSTANCE.getShortcutsPermissions().Bool(),
+                        NaConfig.INSTANCE.getShortcutsAdministrators().Bool(),
+                        NaConfig.INSTANCE.getShortcutsMembers().Bool(),
+                        NaConfig.INSTANCE.getShortcutsRecentActions().Bool(),
+                        NaConfig.INSTANCE.getShortcutsStatistics().Bool()
+                };
+                CharSequence[] shortcutTitles = {
+                        LocaleController.getString(R.string.ChannelPermissions),
+                        LocaleController.getString(R.string.ChannelAdministrators),
+                        LocaleController.getString(R.string.GroupMembers),
+                        LocaleController.getString(R.string.EventLog),
+                        LocaleController.getString(R.string.Statistics)
+                };
+                ArrayList<ActionRow.ActionItem> adminActions = new ArrayList<>();
+                ArrayList<Integer> adminOverflow = new ArrayList<>();
+                for (int a = 0; a < shortcutIds.length; a++) {
+                    if (!shortcutEnabled[a]) {
+                        continue;
+                    }
+                    if (adminActions.size() < ActionRow.MAX_ITEMS) {
+                        final int shortcutId = shortcutIds[a];
+                        adminActions.add(new ActionRow.ActionItem(shortcutIcons[a], true, view -> {
+                            headerItem.closeSubMenu();
+                            nkbtn_onclick_actionbar(shortcutId);
+                        }));
+                    } else {
+                        adminOverflow.add(a);
+                    }
                 }
-                if (NaConfig.INSTANCE.getShortcutsRecentActions().Bool()) {
-                    hasAtLeastOneOption = true;
-                    headerItem.lazilyAddSubItem(shortcuts_recent_actions, R.drawable.msg_log, LocaleController.getString(R.string.EventLog));
-                }
-                if (NaConfig.INSTANCE.getShortcutsStatistics().Bool()) {
-                    hasAtLeastOneOption = true;
-                    headerItem.lazilyAddSubItem(shortcuts_statistics, R.drawable.msg_stats, LocaleController.getString(R.string.Statistics));
-                }
-                if (NaConfig.INSTANCE.getShortcutsPermissions().Bool()) {
-                    hasAtLeastOneOption = true;
-                    headerItem.lazilyAddSubItem(shortcuts_permissions, R.drawable.msg_permissions, LocaleController.getString(R.string.ChannelPermissions));
-                }
-                if (NaConfig.INSTANCE.getShortcutsMembers().Bool()) {
-                    hasAtLeastOneOption = true;
-                    headerItem.lazilyAddSubItem(shortcuts_members, R.drawable.msg_groups, LocaleController.getString(R.string.GroupMembers));
-                }
-                if (hasAtLeastOneOption) {
+                if (!adminActions.isEmpty()) {
+                    headerItem.lazilyAddView(new ActionRow(context, themeDelegate, adminActions), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 56));
+                    for (int a : adminOverflow) {
+                        headerItem.lazilyAddSubItem(shortcutIds[a], shortcutIcons[a], shortcutTitles[a]);
+                    }
                     headerItem.lazilyAddColoredGap();
                 }
             }
@@ -33440,6 +33458,22 @@ public class ChatActivity extends BaseFragment implements
                             popupLayout.getSwipeBack().openForeground(swipeBackIndex);
                             return true;
                         });
+                    }
+                    if (option == nkbtn_detail && selectedObject != null) {
+                        var detailsPopupWrapper = new MessageDetailsPopupWrapper(this, popupLayout.getSwipeBack(), selectedObject, themeDelegate) {
+                            @Override
+                            public void closeMenu() {
+                                ChatActivity.this.closeMenu();
+                            }
+
+                            @Override
+                            public void copy(String text) {
+                                AndroidUtilities.addToClipboard(text);
+                                BulletinFactory.of(ChatActivity.this).createCopyBulletin(LocaleController.getString(R.string.TextCopied)).show();
+                            }
+                        };
+                        int swipeBackIndex = popupLayout.addViewToSwipeBack(detailsPopupWrapper.swipeBack);
+                        cell.setRightIcon(R.drawable.msg_arrowright, v12 -> popupLayout.getSwipeBack().openForeground(swipeBackIndex));
                     }
                     if (option == nkbtn_translate && !NaConfig.INSTANCE.getShowTranslateMessageLLM().Bool()) {
                         MessageObject msg = getMessageForTranslate();

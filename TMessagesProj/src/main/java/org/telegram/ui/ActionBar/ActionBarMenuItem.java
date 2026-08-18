@@ -63,6 +63,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.WindowInsetsCompat;
 
+import app.exteraless.components.ActionRow;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.AnimationNotificationsLocker;
 import org.telegram.messenger.ChatObject;
@@ -354,7 +356,9 @@ public class ActionBarMenuItem extends FrameLayout {
                     View child = popupLayout.getItemAt(a);
                     child.getHitRect(rect);
                     Object tag = child.getTag();
-                    if (tag instanceof Integer && (Integer) tag < 3000 || tag == null && child.isClickable()) {
+                    if (child instanceof ActionRow) {
+                        updateActionRowSelection((ActionRow) child, x, y);
+                    } else if (tag instanceof Integer && (Integer) tag < 3000 || tag == null && child.isClickable()) {
                         if (!rect.contains((int) x, (int) y)) {
                             child.setPressed(false);
                             child.setSelected(false);
@@ -380,7 +384,17 @@ public class ActionBarMenuItem extends FrameLayout {
                 selectedView.setPressed(false);
                 selectedView.setSelected(false);
                 Object tag = selectedView.getTag();
-                if (tag instanceof Integer) {
+                if (tag instanceof ActionRow.ActionItem) {
+                    ActionRow.ActionItem item = (ActionRow.ActionItem) tag;
+                    if (processedPopupClick) {
+                        return super.onTouchEvent(event);
+                    }
+                    processedPopupClick = true;
+                    if (item.enabled && item.action != null) {
+                        AndroidUtilities.runOnUIThread(() -> item.action.onClick(selectedView));
+                    }
+                    popupWindow.dismiss(allowCloseAnimation);
+                } else if (tag instanceof Integer) {
                     if (parentMenu != null) {
                         parentMenu.onItemClick((Integer) tag);
                     } else if (delegate != null) {
@@ -401,6 +415,30 @@ public class ActionBarMenuItem extends FrameLayout {
             }
         }
         return super.onTouchEvent(event);
+    }
+
+    private void updateActionRowSelection(ActionRow actionRow, float x, float y) {
+        ViewGroup buttons = actionRow.getChildCount() > 0 && actionRow.getChildAt(0) instanceof ViewGroup ? (ViewGroup) actionRow.getChildAt(0) : null;
+        if (buttons == null) {
+            return;
+        }
+        actionRow.getHitRect(rect);
+        boolean insideRow = rect.contains((int) x, (int) y);
+        float localX = x - actionRow.getLeft() - buttons.getLeft();
+        float localY = y - actionRow.getTop() - buttons.getTop();
+        for (int a = 0; a < buttons.getChildCount(); a++) {
+            View button = buttons.getChildAt(a);
+            button.getHitRect(rect);
+            if (insideRow && rect.contains((int) localX, (int) localY)) {
+                button.setPressed(true);
+                button.setSelected(true);
+                button.drawableHotspotChanged(localX, localY - button.getTop());
+                selectedMenuView = button;
+            } else {
+                button.setPressed(false);
+                button.setSelected(false);
+            }
+        }
     }
 
     public void setDelegate(ActionBarMenuItemDelegate actionBarMenuItemDelegate) {
@@ -2534,6 +2572,7 @@ public class ActionBarMenuItem extends FrameLayout {
     public static final int VIEW_TYPE_COLORED_GAP = 1;
     public static final int VIEW_TYPE_SWIPEBACKITEM = 2;
     public static final int VIEW_TYPE_TEXT = 3;
+    public static final int VIEW_TYPE_CUSTOM = 4;
 
     private ArrayList<Item> lazyList;
     private HashMap<Integer, Item> lazyMap;
@@ -2548,6 +2587,8 @@ public class ActionBarMenuItem extends FrameLayout {
         public boolean dismiss, needCheck;
         public View viewToSwipeBack;
         public int textSizeDp;
+        public View customView;
+        public LinearLayout.LayoutParams customLayoutParams;
 
         private View view;
         private View.OnClickListener overrideClickListener;
@@ -2584,6 +2625,12 @@ public class ActionBarMenuItem extends FrameLayout {
             Item item = new Item(VIEW_TYPE_TEXT);
             item.text = text;
             item.textSizeDp = textSizeDp;
+            return item;
+        }
+        private static Item asCustom(View customView, LinearLayout.LayoutParams customLayoutParams) {
+            Item item = new Item(VIEW_TYPE_CUSTOM);
+            item.customView = customView;
+            item.customLayoutParams = customLayoutParams;
             return item;
         }
 
@@ -2669,6 +2716,9 @@ public class ActionBarMenuItem extends FrameLayout {
                 textView.setMaxWidth(dp(200));
                 parent.popupLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 8, 0, 0));
                 view = textView;
+            } else if (viewType == VIEW_TYPE_CUSTOM) {
+                parent.popupLayout.addView(customView, customLayoutParams);
+                view = customView;
             }
             if (view != null) {
                 view.setVisibility(visibility);
@@ -2775,6 +2825,9 @@ public class ActionBarMenuItem extends FrameLayout {
     }
     public Item lazilyAddText(CharSequence text, int textSizeDp) {
         return putLazyItem(Item.asText(text, textSizeDp));
+    }
+    public Item lazilyAddView(View view, LinearLayout.LayoutParams layoutParams) {
+        return putLazyItem(Item.asCustom(view, layoutParams));
     }
 
     private Item putLazyItem(Item item) {

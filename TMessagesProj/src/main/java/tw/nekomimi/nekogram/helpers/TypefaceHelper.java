@@ -16,6 +16,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
@@ -147,9 +148,11 @@ public class TypefaceHelper {
         }
         // openExtera: заголовок списка чатов (AppearanceConfig.titleText).
         // Перенесено из exteraGram 12.9.0, LocaleUtils.getActionBarTitle(int).
-        // 0 — имя приложения (NagramX customTitle), 1 — username, 2 — имя.
+        // 0 — имя приложения (NagramX customTitle), 1 — username, 2 — имя, 3 — «Чаты».
         final int oeTitleText = app.exteraless.appearance.AppearanceConfig.titleText();
-        if (oeTitleText != 0) {
+        if (oeTitleText == 3) {
+            title = LocaleController.getString(R.string.FilterChats);
+        } else if (oeTitleText != 0) {
             TLRPC.User self = UserConfig.getInstance(currentAccount).getCurrentUser();
             String username = oeTitleText == 1 ? UserObject.getPublicUsername(self) : null;
             if (!TextUtils.isEmpty(username)) {

@@ -14,6 +14,7 @@
     <!-- Chat List -->
     <string name="OEAppearanceChatList">Chat List</string>
     <string name="OEAppearanceForceSnow">Force Snowflakes</string>
+    <string name="OEAppearanceHideActionBarStatus">Hide Status</string>
     <string name="OEAppearanceCenterTitle">Center Title</string>
     <string name="OEAppearanceHideStories">Hide Stories</string>
     <string name="OEAppearanceHideFloatingButton">Hide Floating Button</string>

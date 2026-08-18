@@ -34,6 +34,7 @@ import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
 import org.telegram.ui.LaunchActivity;
+import org.telegram.ui.MainTabsLayout;
 
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
@@ -45,8 +46,8 @@ import xyz.nextalone.nagram.NaConfig;
  * только здесь есть перетаскивание строк, без которого редактор порядка пунктов
  * бокового меню не собрать.
  *
- * Режим нижней панели у нас двухпозиционный: плавающей панели в форке нет вовсе,
- * поэтому в селекторе только «Показать» и «Скрыть».
+ * Режим нижней панели трёхпозиционный, как в exteraGram: «Показать», «Скрыть»,
+ * «Плавающая». Хранит его {@link MainTabsLayout}.
  */
 public class OpenExteraAppNavigationActivity extends BaseFragment {
 
@@ -136,7 +137,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         items.add(UItem.asButton(ID_TABLET_MODE, getString(R.string.OETabletMode),
                 tabletModes()[clamp(NekoConfig.tabletMode.Int(), 3)]));
         items.add(UItem.asButton(ID_BOTTOM_NAVIGATION_BAR, getString(R.string.OEBottomNavigationBarMode),
-                bottomNavigationModes()[NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? 1 : 0]));
+                bottomNavigationModes()[MainTabsLayout.getBottomNavigationMode()]));
         // Вместо переключателя Spring Animations здесь трёхпозиционный
         // NaConfig.backAnimationStyle: он покрывает и Spring, и Classic.
         items.add(UItem.asButton(ID_BACK_ANIMATION, getString(R.string.OEBackAnimation),
@@ -246,8 +247,8 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         }
         if (id == ID_BOTTOM_NAVIGATION_BAR) {
             showChoice(getString(R.string.OEBottomNavigationBarMode), bottomNavigationModes(),
-                    NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? 1 : 0, which -> {
-                        NaConfig.INSTANCE.getHideBottomNavigationBar().setConfigBool(which == 1);
+                    MainTabsLayout.getBottomNavigationMode(), which -> {
+                        MainTabsLayout.setBottomNavigationMode(which);
                         // Со скрытой панелью «Настройки» доступны только из меню; следить за этим
                         // умеет сама раскладка (MainMenuLayout.ensureSettingsVisibility), поэтому
                         // достаточно перечитать список и пересобрать вьюхи.
@@ -412,7 +413,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     private boolean hasBottomTabs() {
         // Со скрытой нижней панелью «Настройки» — единственный вход в настройки,
         // и прятать их нельзя.
-        return !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
+        return MainTabsLayout.isBottomNavigationVisible();
     }
 
     private CharSequence[] tabletModes() {
@@ -424,13 +425,14 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     }
 
     /**
-     * Третий режим — «Floating», плавающая панель поверх контента; такого механизма
-     * в форке нет, поэтому показываем только реализуемые два.
+     * Порядок совпадает с константами {@code MainTabsLayout.BOTTOM_NAVIGATION_MODE_*}:
+     * индекс выбранного пункта и есть режим.
      */
     private CharSequence[] bottomNavigationModes() {
         return new CharSequence[]{
                 getString(R.string.OEBottomNavigationModeShow),
                 getString(R.string.OEBottomNavigationModeHide),
+                getString(R.string.OEBottomNavigationModeFloating),
         };
     }
 

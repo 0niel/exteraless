@@ -5,7 +5,8 @@ import java.util.Collections;
 import java.util.List;
 
 import app.exteraless.appearance.AppearanceConfig;
-import xyz.nextalone.nagram.NaConfig;
+
+import org.telegram.ui.MainTabsLayout;
 
 /**
  * Порядок и видимость пунктов главного меню.
@@ -102,8 +103,8 @@ public final class MainMenuLayout {
 
     private static boolean isBottomNavigationBarHidden() {
         try {
-            // Тот же смысл, что у BottomNavigationBar.hidden(), живёт в NagramX.
-            return NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
+            // Тот же смысл, что у BottomNavigationBar.hidden().
+            return MainTabsLayout.isBottomNavigationHidden();
         } catch (Exception e) {
             return false;
         }

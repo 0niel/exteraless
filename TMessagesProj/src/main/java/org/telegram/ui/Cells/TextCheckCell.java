@@ -31,9 +31,12 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import app.exteraless.components.VerticalImageSpan;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.AvatarSpan;
 import org.telegram.ui.Components.AnimationProperties;
@@ -48,6 +51,9 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public class TextCheckCell extends FrameLayout {
+
+    private static final String ARROW_PLACEHOLDER = "->";
+
     private boolean isAnimatingToThumbInsteadOfTouch;
 
     public int itemId;
@@ -128,7 +134,7 @@ public class TextCheckCell extends FrameLayout {
 
         checkBox = new Switch(context, resourcesProvider);
         checkBox.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked, Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
-        addView(checkBox, LayoutHelper.createFrame(38, 22, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0));
+        addView(checkBox, LayoutHelper.createFrame(37, 20, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0));
 
         setClipChildren(false);
         isRTL = LocaleController.isRTL;
@@ -229,16 +235,24 @@ public class TextCheckCell extends FrameLayout {
         }
         isRTL = LocaleController.isRTL;
 
+        if (imageView != null) {
+            removeView(imageView);
+            LayoutParams imageParams = (LayoutParams) imageView.getLayoutParams();
+            imageParams.gravity = (isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL;
+            addView(imageView, imageParams);
+        }
+        int textPadding = imageView != null && imageView.getVisibility() == VISIBLE ? 68 : padding;
+
         textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         removeView(textView);
-        addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 70 : padding, 0, LocaleController.isRTL ? padding : 70, 0));
+        addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 70 : textPadding, 0, LocaleController.isRTL ? textPadding : 70, 0));
 
         valueTextView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
         removeView(valueTextView);
-        addView(valueTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 64 : padding, 36, LocaleController.isRTL ? padding : 64, 0));
+        addView(valueTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 70 : textPadding, 35, LocaleController.isRTL ? textPadding : 70, 0));
 
         removeView(checkBox);
-        addView(checkBox, LayoutHelper.createFrame(38, 22, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0));
+        addView(checkBox, LayoutHelper.createFrame(37, 20, (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT) | Gravity.CENTER_VERTICAL, 22, 0, 22, 0));
     }
 
     public void setColors(int key, int switchKey, int switchKeyChecked, int switchThumb, int switchThumbChecked) {
@@ -274,7 +288,11 @@ public class TextCheckCell extends FrameLayout {
     public void setTextAndValueAndCheck(String text, String value, boolean checked, boolean multiline, boolean divider, boolean isNekoCell) {
         AvatarSpan.checkSpansParent(text, this);
         textView.setText(text);
-        valueTextView.setText(value);
+        if (value != null && value.contains(ARROW_PLACEHOLDER)) {
+            valueTextView.setText(VerticalImageSpan.createSpan(getContext(), R.drawable.search_arrow, value, ARROW_PLACEHOLDER, Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        } else {
+            valueTextView.setText(value);
+        }
         if (checkBox != null) {
             checkBox.setVisibility(View.VISIBLE);
             checkBox.setChecked(checked, false);

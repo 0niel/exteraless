@@ -147,6 +147,8 @@ import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.analytics.AnalyticsListener;
+import com.google.android.exoplayer2.text.Cue;
+import com.google.android.exoplayer2.text.CueGroup;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.video.VideoFrameMetadataListener;
 import com.google.android.exoplayer2.video.VideoSize;
@@ -281,6 +283,7 @@ import org.telegram.ui.Components.PhotoViewerWebView;
 import org.telegram.ui.Components.PickerBottomLayoutViewer;
 import org.telegram.ui.Components.PipVideoOverlay;
 import org.telegram.ui.Components.PlayPauseDrawable;
+import org.telegram.ui.Components.PopupSwipeBackLayout;
 import org.telegram.ui.Components.Premium.LimitReachedBottomSheet;
 import org.telegram.ui.Components.Premium.PremiumFeatureBottomSheet;
 import org.telegram.ui.Components.QuoteSpan;
@@ -355,6 +358,8 @@ import tw.nekomimi.nekogram.utils.AlertUtil;
 import tw.nekomimi.nekogram.utils.AndroidUtil;
 import tw.nekomimi.nekogram.utils.ProxyUtil;
 import xyz.nextalone.nagram.NaConfig;
+
+import app.exteraless.utils.VideoSubtitlesHelper;
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.streaming.MediaStreamingProvider;
 
@@ -923,6 +928,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private ActionBarMenuSubItem allMediaItem;
     private ActionBarMenuSlider.SpeedSlider speedItem;
     private ActionBarMenuSubItem loopItem;
+    private ActionBarMenuSubItem subtitlesItem;
+    private ChooseSubtitlesLayout chooseSubtitlesLayout;
     private ActionBarMenuSubItem galleryButton;
     private ActionBarPopupWindow.GapView galleryGap;
     private ActionBarMenuSubItem pipItem;
@@ -2109,6 +2116,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private String currentImagePath;
     private boolean currentVideoFinishedLoading;
     private TL_iv.PageBlock currentPageBlock;
+    private VideoSubtitlesHelper.SubtitleState currentSubtitleState;
+    private TextView videoSubtitlesView;
+    private CueGroup lastSubtitleCueGroup;
     private ImageReceiver.BitmapHolder currentThumb;
     private boolean ignoreDidSetImage;
     private boolean dontAutoPlay;
@@ -4560,6 +4570,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             if (captionTextViewSwitcher != null) {
                 captionTextViewSwitcher.invalidateViews();
             }
+        } else if (id == NotificationCenter.onActivityResultReceived) {
+            handleSubtitlePickerActivityResult((Integer) args[0], (Integer) args[1], (Intent) args[2]);
         } else if (id == NotificationCenter.filePreparingFailed) {
             MessageObject messageObject = (MessageObject) args[0];
             if (loadInitialVideo) {
@@ -6049,6 +6061,31 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             castItem.setSelectorColor(0x0fffffff);
             castItem.addView(castItemButton, 0, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         }
+
+        chooseSubtitlesLayout = new ChooseSubtitlesLayout(activityContext, videoItem.getPopupLayout().getSwipeBack(), new ChooseSubtitlesLayout.Callback() {
+            @Override
+            public void onChooseSubtitles() {
+                videoItem.closeSubMenu();
+                openSubtitlePicker();
+            }
+
+            @Override
+            public void onDisableSubtitles() {
+                videoItem.closeSubMenu();
+                disableExternalSubtitles();
+            }
+        });
+        subtitlesItem = videoItem.addSwipeBackItem(R.drawable.menu_quote_specific, null, getString(R.string.OESubtitles), chooseSubtitlesLayout.layout);
+        subtitlesItem.setColors(0xfffafafa, 0xfffafafa);
+        subtitlesItem.setSelectorColor(0x0fffffff);
+        subtitlesItem.setOnClickListener(v -> {
+            if (currentSubtitleState != null) {
+                subtitlesItem.openSwipeBack();
+            } else {
+                videoItem.closeSubMenu();
+                openSubtitlePicker();
+            }
+        });
 
         videoItem.redrawPopup(0xf9222222);
         videoItem.setOnMenuDismiss(byClick -> checkProgress(0, false, false));
@@ -9805,6 +9842,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             AndroidUtilities.removeFromParent(textureView);
             textureView.setVisibility(View.INVISIBLE);
             aspectRatioFrameLayout.addView(textureView);
+            bringVideoOverlayViewsToFront();
         }
 
         if (ApplicationLoader.mainInterfacePaused) {
@@ -10757,6 +10795,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         if (!preview) {
             currentPlayingVideoFile = uri;
             currentPlayingVideoQualityFiles = videoUrises;
+            restoreSavedExternalSubtitleForCurrentItem();
         }
         if (parentActivity == null) {
             return;
@@ -10907,6 +10946,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 }
                 newPlayerCreated = true;
             }
+            videoPlayer.setExternalSubtitle(currentSubtitleState != null ? currentSubtitleState.toExternalSubtitle() : null);
             if (videoTextureView != null) {
                 videoPlayer.setTextureView(videoTextureView);
             } else if (videoSurfaceView != null) {
@@ -10919,6 +10959,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             videoPlayer.setDelegate(new VideoPlayer.VideoPlayerDelegate() {
 
                 private boolean firstState = true;
+
+                @Override
+                public void onCues(CueGroup cueGroup) {
+                    updateVideoSubtitles(cueGroup);
+                }
 
                 @Override
                 public void onStateChanged(boolean playWhenReady, int playbackState) {
@@ -11292,6 +11337,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     }
                     firstFrameView.setPivotX(0);
                 }
+                updateVideoSubtitlesMaxWidth(getMeasuredWidth());
                 checkFullscreenButton();
             }
 
@@ -11353,6 +11399,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         firstFrameView.setScaleType(ImageView.ScaleType.FIT_XY);
         aspectRatioFrameLayout.addView(firstFrameView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.CENTER));
 
+        videoSubtitlesView = VideoSubtitlesHelper.createSubtitlesView(parentActivity);
+        aspectRatioFrameLayout.addView(videoSubtitlesView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 16, 0, 16, 16));
+        updateVideoSubtitlesMaxWidth(0);
+
         pipPlaceholderView = new View(parentActivity);
         aspectRatioFrameLayout.addView(pipPlaceholderView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
@@ -11366,10 +11416,12 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             pipSource.setContentView(aspectRatioFrameLayout);
             pipSource.setPlaceholderView(pipPlaceholderView);
         }
+        bringVideoOverlayViewsToFront();
     }
 
     private void releasePlayer(boolean onClose) {
         usedSurfaceView = false;
+        clearVideoSubtitlesView();
         if (pipSource != null) {
             pipSource.destroy();
             pipSource = null;
@@ -11435,6 +11487,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         }
         cancelFlashAnimations();
         flashView = null;
+        videoSubtitlesView = null;
         if (videoTextureView != null) {
             if (videoTextureView instanceof VideoEditTextureView) {
                 ((VideoEditTextureView) videoTextureView).release();
@@ -11453,6 +11506,264 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             setVideoPlayerControlVisible(false, true);
         }
         photoProgressViews[0].resetAlphas();
+    }
+
+    private boolean canUseExternalSubtitlesForCurrentItem() {
+        if (isEmbedVideo || photoViewerWebView != null) {
+            return false;
+        }
+        if (currentMessageObject != null) {
+            return currentMessageObject.isVideo() && !currentMessageObject.isLivePhoto();
+        }
+        if (pageBlocksAdapter != null && currentIndex >= 0) {
+            return pageBlocksAdapter.isVideo(currentIndex) || pageBlocksAdapter.isHardwarePlayer(currentIndex);
+        }
+        if (sendPhotoType == SELECT_TYPE_NO_SELECT && currentIndex >= 0 && currentIndex < imagesArrLocals.size()) {
+            Object object = imagesArrLocals.get(currentIndex);
+            return object instanceof MediaController.PhotoEntry && ((MediaController.PhotoEntry) object).isVideo;
+        }
+        return false;
+    }
+
+    private void openSubtitlePicker() {
+        if (parentActivity == null || !canUseExternalSubtitlesForCurrentItem()) {
+            return;
+        }
+        try {
+            Intent intent = VideoSubtitlesHelper.createPickerIntent();
+            if (parentFragment != null) {
+                parentFragment.startActivityForResult(intent, VideoSubtitlesHelper.SUBTITLE_PICKER_REQUEST_CODE);
+            } else {
+                parentActivity.startActivityForResult(intent, VideoSubtitlesHelper.SUBTITLE_PICKER_REQUEST_CODE);
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+            BulletinFactory.of(containerView, resourcesProvider).createErrorBulletin(getString(R.string.OESubtitlesLoadError)).show();
+        }
+    }
+
+    private void handleSubtitlePickerActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != VideoSubtitlesHelper.SUBTITLE_PICKER_REQUEST_CODE || !isVisibleOrAnimating || resultCode != Activity.RESULT_OK || data == null) {
+            return;
+        }
+        VideoSubtitlesHelper.SubtitleLoadResult result = VideoSubtitlesHelper.loadFromPickerIntent(data);
+        if (result.isSuccess()) {
+            applyExternalSubtitle(result.subtitleState());
+        } else {
+            BulletinFactory.of(containerView, resourcesProvider)
+                    .createErrorBulletin(getString(result.error() == VideoSubtitlesHelper.LoadError.UNSUPPORTED_FORMAT ? R.string.OESubtitlesUnsupportedFormat : R.string.OESubtitlesLoadError))
+                    .show();
+        }
+    }
+
+    private void applyExternalSubtitle(VideoSubtitlesHelper.SubtitleState subtitleState) {
+        if (!canUseExternalSubtitlesForCurrentItem() || subtitleState == null) {
+            return;
+        }
+        if (currentPlayingVideoFile == null && currentPlayingVideoQualityFiles == null) {
+            BulletinFactory.of(containerView, resourcesProvider).createErrorBulletin(getString(R.string.OESubtitlesLoadError)).show();
+            return;
+        }
+        if (VideoSubtitlesHelper.areSame(currentSubtitleState, subtitleState)) {
+            return;
+        }
+        String videoKey = VideoSubtitlesHelper.buildVideoKey(currentMessageObject, currentPathObject, currentPlayingVideoFile, currentPageBlock);
+        long position = videoPlayer != null ? Math.max(0, videoPlayer.getCurrentPosition()) : 0;
+        boolean playWhenReady = videoPlayer != null && videoPlayer.getPlayWhenReady();
+        currentSubtitleState = subtitleState;
+        if (!TextUtils.isEmpty(videoKey)) {
+            VideoSubtitlesHelper.save(videoKey, subtitleState);
+        }
+        restartCurrentVideoWithExternalSubtitle(position, playWhenReady);
+        updateExternalSubtitlesMenuItem();
+        BulletinFactory.of(containerView, resourcesProvider).createSimpleBulletin(R.raw.contact_check, getString(R.string.OESubtitlesAdded)).show();
+    }
+
+    private void disableExternalSubtitles() {
+        if (currentSubtitleState == null) {
+            return;
+        }
+        String videoKey = VideoSubtitlesHelper.buildVideoKey(currentMessageObject, currentPathObject, currentPlayingVideoFile, currentPageBlock);
+        long position = videoPlayer != null ? Math.max(0, videoPlayer.getCurrentPosition()) : 0;
+        boolean playWhenReady = videoPlayer != null && videoPlayer.getPlayWhenReady();
+        if (!TextUtils.isEmpty(videoKey)) {
+            VideoSubtitlesHelper.clear(videoKey);
+        }
+        clearCurrentExternalSubtitle(false);
+        restartCurrentVideoWithExternalSubtitle(position, playWhenReady);
+        updateExternalSubtitlesMenuItem();
+        BulletinFactory.of(containerView, resourcesProvider).createSimpleBulletin(R.raw.contact_check, getString(R.string.OESubtitlesRemoved)).show();
+    }
+
+    private void clearCurrentExternalSubtitle(boolean updateMenu) {
+        currentSubtitleState = null;
+        if (videoPlayer != null) {
+            videoPlayer.setExternalSubtitle(null);
+        }
+        clearVideoSubtitlesView();
+        if (updateMenu) {
+            updateExternalSubtitlesMenuItem();
+        }
+    }
+
+    private void clearVideoSubtitlesView() {
+        lastSubtitleCueGroup = null;
+        if (videoSubtitlesView == null) {
+            return;
+        }
+        videoSubtitlesView.setText((CharSequence) null);
+        videoSubtitlesView.setVisibility(View.GONE);
+    }
+
+    private void restartCurrentVideoWithExternalSubtitle(long position, boolean playWhenReady) {
+        if (videoPlayer != null) {
+            videoPlayer.setExternalSubtitle(currentSubtitleState != null ? currentSubtitleState.toExternalSubtitle() : null);
+            if (videoPlayer.reloadCurrentSource()) {
+                return;
+            }
+        }
+        if (currentPlayingVideoFile == null && currentPlayingVideoQualityFiles == null) {
+            return;
+        }
+        preparePlayer(currentPlayingVideoQualityFiles, currentPlayingVideoFile, playWhenReady, false, currentMessageObject != null && currentMessageObject.isLivePhoto());
+        if (videoPlayer != null && position > 0) {
+            videoPlayer.seekTo(position);
+        }
+    }
+
+    private void restoreSavedExternalSubtitleForCurrentItem() {
+        if (!canUseExternalSubtitlesForCurrentItem()) {
+            clearCurrentExternalSubtitle(true);
+            return;
+        }
+        String videoKey = VideoSubtitlesHelper.buildVideoKey(currentMessageObject, currentPathObject, currentPlayingVideoFile, currentPageBlock);
+        if (TextUtils.isEmpty(videoKey)) {
+            clearCurrentExternalSubtitle(true);
+            return;
+        }
+        currentSubtitleState = VideoSubtitlesHelper.restore(videoKey);
+        clearVideoSubtitlesView();
+        if (videoPlayer != null) {
+            videoPlayer.setExternalSubtitle(currentSubtitleState != null ? currentSubtitleState.toExternalSubtitle() : null);
+        }
+        updateExternalSubtitlesMenuItem();
+    }
+
+    private void updateExternalSubtitlesMenuItem() {
+        if (subtitlesItem == null) {
+            return;
+        }
+        if (!canUseExternalSubtitlesForCurrentItem()) {
+            subtitlesItem.setVisibility(View.GONE);
+            return;
+        }
+        subtitlesItem.setVisibility(View.VISIBLE);
+        subtitlesItem.setSubtext(getString(currentSubtitleState != null ? R.string.PasswordOn : R.string.PasswordOff));
+        subtitlesItem.setSubtextColor(0x7fffffff);
+        if (subtitlesItem.getRightIcon() != null) {
+            subtitlesItem.getRightIcon().setColorFilter(0xfffafafa);
+            subtitlesItem.getRightIcon().setVisibility(currentSubtitleState != null ? View.VISIBLE : View.GONE);
+        }
+        if (chooseSubtitlesLayout != null) {
+            chooseSubtitlesLayout.update(currentSubtitleState != null);
+        }
+    }
+
+    private void updateVideoSubtitles(CueGroup cueGroup) {
+        if (videoSubtitlesView == null) {
+            return;
+        }
+        if (cueGroup == null || cueGroup.cues == null || cueGroup.cues.isEmpty()) {
+            clearVideoSubtitlesView();
+            return;
+        }
+        SpannableStringBuilder text = new SpannableStringBuilder();
+        for (int a = 0; a < cueGroup.cues.size(); a++) {
+            Cue cue = cueGroup.cues.get(a);
+            if (!TextUtils.isEmpty(cue.text)) {
+                if (text.length() > 0) {
+                    text.append('\n');
+                }
+                text.append(cue.text);
+            }
+        }
+        if (text.length() == 0) {
+            clearVideoSubtitlesView();
+            return;
+        }
+        lastSubtitleCueGroup = cueGroup;
+        videoSubtitlesView.setText(text);
+        videoSubtitlesView.setVisibility(View.VISIBLE);
+    }
+
+    private void updateVideoSubtitlesMaxWidth(int parentWidth) {
+        if (videoSubtitlesView == null) {
+            return;
+        }
+        if (parentWidth <= 0) {
+            parentWidth = AndroidUtilities.displaySize.x;
+        }
+        videoSubtitlesView.setMaxWidth((int) (Math.max(dp(160), parentWidth - dp(32)) * 0.78f));
+    }
+
+    private void bringVideoOverlayViewsToFront() {
+        if (firstFrameView != null) {
+            firstFrameView.bringToFront();
+        }
+        if (videoSubtitlesView != null) {
+            videoSubtitlesView.bringToFront();
+        }
+        if (pipPlaceholderView != null) {
+            pipPlaceholderView.bringToFront();
+        }
+        if (flashView != null) {
+            flashView.bringToFront();
+        }
+    }
+
+    private static class ChooseSubtitlesLayout {
+
+        public interface Callback {
+            void onChooseSubtitles();
+            void onDisableSubtitles();
+        }
+
+        public final ActionBarPopupWindow.ActionBarPopupWindowLayout layout;
+        private final ActionBarMenuSubItem disableItem;
+
+        public ChooseSubtitlesLayout(Context context, PopupSwipeBackLayout swipeBackLayout, Callback callback) {
+            layout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context, 0, null);
+            layout.setFitItems(true);
+
+            ActionBarMenuSubItem backItem = ActionBarMenuItem.addItem(layout, R.drawable.msg_arrow_back, getString(R.string.Back), false, null);
+            backItem.setOnClickListener(view -> swipeBackLayout.closeForeground());
+            backItem.setColors(0xfffafafa, 0xfffafafa);
+            backItem.setSelectorColor(0x0fffffff);
+
+            FrameLayout gap = new FrameLayout(context);
+            gap.setMinimumWidth(dp(196));
+            gap.setBackgroundColor(0xff181818);
+            layout.addView(gap);
+            LinearLayout.LayoutParams gapLayoutParams = (LinearLayout.LayoutParams) gap.getLayoutParams();
+            gapLayoutParams.gravity = LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT;
+            gapLayoutParams.width = LayoutHelper.MATCH_PARENT;
+            gapLayoutParams.height = dp(8);
+            gap.setLayoutParams(gapLayoutParams);
+
+            ActionBarMenuSubItem chooseItem = ActionBarMenuItem.addItem(layout, R.drawable.msg_folders, getString(R.string.OEChooseSubtitles), false, null);
+            chooseItem.setColors(0xfffafafa, 0xfffafafa);
+            chooseItem.setSelectorColor(0x0fffffff);
+            chooseItem.setOnClickListener(view -> callback.onChooseSubtitles());
+
+            disableItem = ActionBarMenuItem.addItem(layout, R.drawable.msg_cancel, getString(R.string.OEDisableSubtitles), false, null);
+            disableItem.setColors(0xfffafafa, 0xfffafafa);
+            disableItem.setSelectorColor(0x0fffffff);
+            disableItem.setOnClickListener(view -> callback.onDisableSubtitles());
+        }
+
+        public void update(boolean hasSubtitles) {
+            disableItem.setVisibility(hasSubtitles ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void setVideoPlayerControlVisible(boolean visible, boolean animated) {
@@ -18046,6 +18357,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.dialogPhotosUpdate);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.messagesDeleted);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.onActivityResultReceived);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.filePreparingFailed);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.fileNewChunkAvailable);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.replaceMessagesObjects);
@@ -19153,6 +19465,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.dialogPhotosUpdate);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.messagesDeleted);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.onActivityResultReceived);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.filePreparingFailed);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.fileNewChunkAvailable);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.replaceMessagesObjects);
@@ -24162,6 +24475,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             videoPlayer.setTextureView(videoTextureView);
         } else if (videoSurfaceView != null) {
             videoPlayer.setSurfaceView(videoSurfaceView);
+        }
+        bringVideoOverlayViewsToFront();
+        if (currentSubtitleState != null && lastSubtitleCueGroup != null) {
+            updateVideoSubtitles(lastSubtitleCueGroup);
         }
     }
 

@@ -9,6 +9,7 @@
 package org.telegram.ui;
 
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.components.TranslateBeforeSendWrapper;
 import app.exteraless.drawer.DrawerContainer;
 import app.exteraless.drawer.MainMenuHelper;
 import app.exteraless.drawer.MainMenuItem;
@@ -300,7 +301,9 @@ import tw.nekomimi.nekogram.helpers.PasscodeHelper;
 import tw.nekomimi.nekogram.helpers.TypefaceHelper;
 import tw.nekomimi.nekogram.helpers.remote.EmojiHelper;
 import tw.nekomimi.nekogram.settings.GhostModeActivity;
+import tw.nekomimi.nekogram.translate.Translator;
 import tw.nekomimi.nekogram.ui.BookmarkManagerActivity;
+import tw.nekomimi.nekogram.utils.AlertUtil;
 import xyz.nextalone.nagram.NaConfig;
 
 public class DialogsActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, FloatingDebugProvider, FactorAnimator.Target, MainTabsActivity.TabFragmentDelegate {
@@ -3033,8 +3036,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         BirthdayController.getInstance(currentAccount).check();
-        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
-        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
+        additionNavigationBarHeight = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() && !MainTabsLayout.isBottomNavigationFloating() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         LastSeenHelper.preload();
 
@@ -3303,8 +3306,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         filterTabsView = null;
         selectedDialogs.clear();
 
-        additionNavigationBarHeight = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
-        additionFloatingButtonOffset = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
+        additionNavigationBarHeight = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() && !MainTabsLayout.isBottomNavigationFloating() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp()) : 0;
+        additionFloatingButtonOffset = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() ? dp(app.exteraless.appearance.MainTabsUiHelper.getTabsFabOffsetDp()) : 0;
 
         maximumVelocity = ViewConfiguration.get(context).getScaledMaximumFlingVelocity();
 
@@ -4724,7 +4727,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                                     goingDown = firstVisiblePosition > prevPosition;
                                 }
                                 if (changed && scrollUpdated && (goingDown || scrollingManually)) {
-                                    hideFloatingButton(goingDown);
+                                    hideFloatingButton(goingDown, true);
                                 }
                                 prevPosition = firstVisiblePosition;
                                 prevTop = firstViewTop;
@@ -7390,6 +7393,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     (dialogStoriesCell != null && dialogStoriesCellVisible ? (int) ((1f - dialogStoriesCell.getCollapsedProgress()) * dp(DialogStoriesCell.HEIGHT_IN_DP)) : 0) +
                     (getIdleSearchFieldHeight())
                 );
+            }
+
+            @Override
+            public boolean bottomOffsetAnimated() {
+                return !MainTabsLayout.isBottomNavigationFloating();
             }
 
             @Override
@@ -11409,8 +11417,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     boolean floatingButtonHidden;
+    private boolean mainTabsHiddenByScroll;
 
     private void hideFloatingButton(boolean hide) {
+        hideFloatingButton(hide, false);
+    }
+
+    private void hideFloatingButton(boolean hide, boolean byScroll) {
+        final boolean hideByScroll = hide;
         if (NaConfig.INSTANCE.getDisableDialogsFloatingButton().Bool()) {
             floatingForceVisible = false;
             hide = true;
@@ -11424,7 +11438,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         floatingButtonHidden = hide;
+        if (byScroll) {
+            mainTabsHiddenByScroll = MainTabsLayout.isBottomNavigationFloating() && hideByScroll;
+        }
         updateFloatingButtonVisibility(true);
+        checkUi_mainTabsVisible();
 
         if (hide) {
             if (storyHint != null) {
@@ -12200,6 +12218,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final boolean onlyMyselfFinal = onlyMyself;
         boolean sendWithoutSoundNax = NaConfig.INSTANCE.getSilentMessageByDefault().Bool();
         final ItemOptions options = ItemOptions.makeOptions(this, view);
+        if (commentView != null && !TextUtils.isEmpty(commentView.getFieldText())) {
+            options.addView(new TranslateBeforeSendWrapper(getContext(), true, false, getResourceProvider()) {
+                @Override
+                public void onClick() {
+                    options.dismiss();
+                    translateComment();
+                }
+            });
+        }
         final ActionBarMenuSubItem[] showSendersNameItem = new ActionBarMenuSubItem[1];
         final ActionBarMenuSubItem[] hideSendersNameItem = new ActionBarMenuSubItem[1];
         options
@@ -12257,6 +12284,38 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             .show();
 
         return true;
+    }
+
+    private void translateComment() {
+        final Activity parentActivity = getParentActivity();
+        if (parentActivity == null || commentView == null) {
+            return;
+        }
+        final CharSequence[] text = new CharSequence[]{ commentView.getFieldText() };
+        if (TextUtils.isEmpty(text[0])) {
+            return;
+        }
+        final ArrayList<TLRPC.MessageEntity> entities = MediaDataController.getInstance(currentAccount).getEntities(text, true);
+        final AlertDialog progressDialog = AlertUtil.showProgress(parentActivity);
+        progressDialog.showDelayed(150);
+        Translator.translate(TranslateBeforeSendWrapper.getTargetLanguage(), text[0].toString(), entities, new Translator.Companion.TranslateCallBack2() {
+            @Override
+            public void onSuccess(TLRPC.TL_textWithEntities finalText) {
+                progressDialog.dismiss();
+                SpannableStringBuilder result = SpannableStringBuilder.valueOf(finalText.text);
+                MessageObject.addEntitiesToText(result, finalText.entities, true, true, false, true);
+                if (commentView != null) {
+                    commentView.setFieldText(result);
+                    commentView.setSelection(result.length());
+                }
+            }
+
+            @Override
+            public void onFailed(boolean unsupported, String message) {
+                progressDialog.dismiss();
+                AlertUtil.showTransFailedDialog(parentActivity, unsupported, message, DialogsActivity.this::translateComment);
+            }
+        });
     }
 
     private float getRightSlidingProgress() {
@@ -14390,7 +14449,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void checkUi_mainTabsVisible() {
-        final boolean mainTabsVisible = !searching && (blurredView == null || blurredView.getBackground() == null || blurredView.getAlpha() < 0.01f || blurredView.getVisibility() == View.GONE);
+        final boolean mainTabsVisible = !searching && !mainTabsHiddenByScroll && MainTabsLayout.isBottomNavigationVisible()
+                && (blurredView == null || blurredView.getBackground() == null || blurredView.getAlpha() < 0.01f || blurredView.getVisibility() == View.GONE);
         if (mainTabsActivityController != null) {
             mainTabsActivityController.setTabsVisible(mainTabsVisible);
         }
@@ -14477,7 +14537,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
      * Свайп не ловится в полосе нижних вкладок и не конфликтует со свайпом папок.
      */
     public boolean canOpenDrawerBySwipe(MotionEvent ev) {
-        final boolean bottomBarVisible = hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
+        final boolean bottomBarVisible = hasMainTabs && MainTabsLayout.isBottomNavigationVisible() && !mainTabsHiddenByScroll;
         if (ev != null && bottomBarVisible && fragmentView != null) {
             final Rect bounds = AndroidUtilities.rectTmp2;
             if (fragmentView.getGlobalVisibleRect(bounds)) {
@@ -14633,7 +14693,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), lerp(actionBarHeight, actionBarHeightSearch, animatorSearchVisible.getFloatValue()) + additionalList );
 
         boolean hasBottomBlur = false;
-        if (hasMainTabs && !NaConfig.INSTANCE.getHideBottomNavigationBar().Bool()) {
+        if (hasMainTabs && MainTabsLayout.isBottomNavigationVisible()) {
             app.exteraless.appearance.MainTabsUiHelper.setBlurBounds(iBlur3PositionMainTabs, fragmentView, navigationBarHeight);
             iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -dp(48));
 
@@ -14666,8 +14726,19 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         } else if (communityId != 0) {
             return navigationBarHeight + dp(12 + 48 + 12);
         } else {
-            return navigationBarHeight + additionNavigationBarHeight;
+            return navigationBarHeight + additionNavigationBarHeight + getListViewFloatingTabsPadding();
         }
+    }
+
+    /**
+     * В режиме «Плавающая» панель не входит в additionNavigationBarHeight — она лежит поверх
+     * списка, — поэтому её высоту список добирает отдельно.
+     */
+    private int getListViewFloatingTabsPadding() {
+        if (commentView != null || !hasMainTabs || !MainTabsLayout.isBottomNavigationFloating()) {
+            return 0;
+        }
+        return dp(app.exteraless.appearance.MainTabsUiHelper.getTabsViewHeightDp());
     }
 
     @Override

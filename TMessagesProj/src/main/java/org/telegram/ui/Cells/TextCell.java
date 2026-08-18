@@ -58,10 +58,11 @@ public class TextCell extends FrameLayout {
     private ImageView valueImageView;
     public int leftPadding;
     private boolean needDivider;
-    public int offsetFromImage = 58;
+    public int offsetFromImage = 71;
     public int heightDp = 50;
-    public int imageLeft = 16;
+    public int imageLeft = 21;
     private boolean inDialogs;
+    private boolean isIcon;
     private boolean prioritizeTitleOverValue;
     private Theme.ResourcesProvider resourcesProvider;
     private boolean attached;
@@ -204,10 +205,18 @@ public class TextCell extends FrameLayout {
             subtitleView.measure(MeasureSpec.makeMeasureSpec(width - dp(71 + leftPadding) - valueWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.EXACTLY));
         }
         if (imageView.getVisibility() == VISIBLE) {
-            imageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+            if (isIcon) {
+                imageView.measure(MeasureSpec.makeMeasureSpec(dp(24), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(31), MeasureSpec.EXACTLY));
+            } else {
+                imageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+            }
         }
         if (valueImageView.getVisibility() == VISIBLE) {
-            valueImageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+            if (isIcon) {
+                valueImageView.measure(MeasureSpec.makeMeasureSpec(dp(24), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(31), MeasureSpec.EXACTLY));
+            } else {
+                valueImageView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+            }
         }
         if (checkBox != null) {
             checkBox.measure(MeasureSpec.makeMeasureSpec(dp(37), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.EXACTLY));
@@ -335,8 +344,36 @@ public class TextCell extends FrameLayout {
 
     private CharSequence valueText;
 
+    public void reset() {
+        textView.setText("");
+        subtitleView.setText("");
+        valueTextView.setText("", false);
+        valueSpoilersTextView.setText("");
+        imageView.setVisibility(GONE);
+        valueTextView.setVisibility(GONE);
+        valueSpoilersTextView.setVisibility(GONE);
+        valueImageView.setVisibility(GONE);
+        subtitleView.setVisibility(GONE);
+        if (checkBox != null) {
+            checkBox.setVisibility(GONE);
+        }
+        imageView.setImageDrawable(null);
+        imageView.setColorFilter(new PorterDuffColorFilter(Theme.getColor(inDialogs ? Theme.key_dialogIcon : Theme.key_windowBackgroundWhiteGrayIcon, resourcesProvider), PorterDuff.Mode.SRC_IN));
+        imageView.setBackground(null);
+        if (emojiDrawable != null) {
+            emojiDrawable.set((Drawable) null, false);
+        }
+        textView.setRightDrawable(null);
+        prioritizeTitleOverValue = false;
+        offsetFromImage = 71;
+        heightDp = 50;
+        imageLeft = 21;
+        isIcon = false;
+        imageView.setScaleType(ImageView.ScaleType.CENTER);
+    }
+
     public void setText(CharSequence text, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         textView.setText(text);
         textView.setRightDrawable(null);
         valueTextView.setText(valueText = null, false);
@@ -361,7 +398,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndIcon(CharSequence text, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -385,8 +422,8 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndColorfulIcon(CharSequence text, int resId, int color, boolean divider) {
-        imageLeft = 16;
-        offsetFromImage = 58;
+        imageLeft = 21;
+        offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
         valueTextView.setText(valueText = null, false);
@@ -401,7 +438,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndIcon(CharSequence text, Drawable drawable, boolean divider) {
-        offsetFromImage = 58;
+        offsetFromImage = 71;
         imageLeft = 18;
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -424,7 +461,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndIcon(CharSequence text, CharSequence value, Drawable drawable, boolean divider) {
-        offsetFromImage = 58;
+        offsetFromImage = 71;
         imageLeft = 18;
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -454,12 +491,18 @@ public class TextCell extends FrameLayout {
         this.imageLeft = imageLeft;
     }
 
+    public void setIsIcon(boolean value) {
+        isIcon = value;
+        imageView.setScaleType(value ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER);
+        valueImageView.setScaleType(value ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER);
+    }
+
     public void setTextAndValue(CharSequence text, CharSequence value, boolean divider) {
         setTextAndValue(text, value, false, divider);
     }
 
     public void setTextAndValue(CharSequence text, CharSequence value, boolean animated, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -484,7 +527,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndColorfulIcon(String text, CharSequence value, boolean animated, int resId, int colorTop, int colorBottom, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -504,7 +547,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndColorfulIcon(CharSequence text, boolean checked, int resId, int color, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -529,7 +572,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSpoilersValueAndIcon(String text, CharSequence value, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -553,7 +596,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSpoilersValueAndColorfulIcon(String text, CharSequence value, int resId, int color, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -577,7 +620,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueAndIcon(CharSequence text, CharSequence value, boolean animated, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -638,7 +681,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheck(CharSequence text, boolean checked, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -656,7 +699,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndIcon(CharSequence text, boolean checked, int resId, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -678,7 +721,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndCheckAndIcon(CharSequence text, boolean checked, Drawable resDrawable, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -700,7 +743,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndValueDrawable(CharSequence text, Drawable drawable, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -722,7 +765,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSticker(CharSequence text, TLRPC.Document document, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -741,7 +784,7 @@ public class TextCell extends FrameLayout {
     }
 
     public void setTextAndSticker(CharSequence text, String localPath, boolean divider) {
-        imageLeft = 16;
+        imageLeft = 21;
         offsetFromImage = getOffsetFromImage(false);
         textView.setText(text);
         textView.setRightDrawable(null);
@@ -829,7 +872,7 @@ public class TextCell extends FrameLayout {
     }
 
     protected int getOffsetFromImage(boolean colourful) {
-        return colourful ? 52 : 58;
+        return colourful ? 65 : 71;
     }
 
     @Override
@@ -839,7 +882,7 @@ public class TextCell extends FrameLayout {
             if (paint == null) {
                 paint = Theme.dividerPaint;
             }
-            canvas.drawLine(LocaleController.isRTL ? 0 : dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 58) : 20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 58) : 20) : 0), getMeasuredHeight() - 1, paint);
+            canvas.drawLine(LocaleController.isRTL ? 0 : dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 68) : 20), getMeasuredHeight() - 1, getMeasuredWidth() - (LocaleController.isRTL ? dp(imageView.getVisibility() == VISIBLE ? (inDialogs ? 72 : 68) : 20) : 0), getMeasuredHeight() - 1, paint);
         }
     }
 

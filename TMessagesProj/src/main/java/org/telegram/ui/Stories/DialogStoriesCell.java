@@ -101,6 +101,7 @@ import java.util.Objects;
 import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 import me.vkryl.android.animator.ReplaceAnimator;
+import app.exteraless.appearance.AppearanceConfig;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.helpers.TypefaceHelper;
 
@@ -2179,7 +2180,10 @@ public class DialogStoriesCell extends FrameLayout implements NotificationCenter
             return;
         }
         Long emojiStatusId = UserObject.getEmojiStatusDocumentId(user);
-        if (emojiStatusId != null) {
+        if (AppearanceConfig.hideActionBarStatus()) {
+            statusDrawable.set((Drawable) null, animated);
+            statusDrawable.setParticles(false, animated);
+        } else if (emojiStatusId != null) {
             final boolean isCollectible = user.emoji_status instanceof TLRPC.TL_emojiStatusCollectible;
             statusDrawable.set(emojiStatusId, animated);
             statusDrawable.setParticles(isCollectible, animated);

@@ -41,6 +41,7 @@ import java.util.Map;
 
 import app.exteraless.icons.picker.IconPickerController;
 import app.exteraless.icons.picker.ReplaceIconBottomSheet;
+import app.exteraless.icons.ui.NewIconPackBottomSheet;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.icons.IconsResources;
 
@@ -65,8 +66,9 @@ import tw.nekomimi.nekogram.ui.icons.IconsResources;
  *       ({@code TextCell.setTextAndIconAndValueDrawable} в форке нет), тип строки — 100;</li>
  *   <li>«сохранить и выйти» ({@code :195}) сделан пунктом меню, как в exteraGram, но завершает
  *       редактирование через {@link IconPickerController#finishEditing()};</li>
- *   <li>пункт «Edit» (переименование пака) требует {@code NewIconPackBottomSheet},
- *       которого в форке нет — не перенесён;</li>
+ *   <li>пункт «Edit» открывает {@link NewIconPackBottomSheet} в режиме правки метаданных, как
+ *       в exteraGram ({@code :317}); список обновляется через колбэк, потому что
+ *       {@code NotificationCenter.iconPackUpdated} в форке нет;</li>
  *   <li>подписи фильтров ждут строк {@code IconPickerAllIcons} / {@code IconPickerReplacedIcons} /
  *       {@code IconPickerNotReplacedIcons} / {@code IconPickerFilter} / {@code IconPickerSaveAndExit}:
  *       строки правит только координатор, поэтому резолвим их по имени и до появления
@@ -80,6 +82,7 @@ public class IconPacksEditorActivity extends BaseNekoSettingsActivity {
     private static final int MENU_SEARCH = 0;
     private static final int MENU_OTHER = 1;
     private static final int MENU_SAVE_AND_EXIT = 2;
+    private static final int MENU_EDIT_INFO = 3;
     private static final int MENU_FILTER_BASE = 10;
 
     /** Фильтры списка иконок. */
@@ -179,6 +182,7 @@ public class IconPacksEditorActivity extends BaseNekoSettingsActivity {
         filterItems[FILTER_NOT_REPLACED] = otherItem.addSubItem(MENU_FILTER_BASE + FILTER_NOT_REPLACED, R.drawable.msg_select,
                 localized("IconPickerNotReplacedIcons", "Not replaced icons"), true);
         updateFilterChecks();
+        otherItem.addSubItem(MENU_EDIT_INFO, R.drawable.msg_edit, getString(R.string.Edit));
         if (IconPacksConfig.isEditing()) {
             ActionBarMenuSubItem saveItem = otherItem.addSubItem(MENU_SAVE_AND_EXIT, R.drawable.ic_ab_done,
                     localized("IconPickerSaveAndExit", "Save and exit"));
@@ -197,6 +201,8 @@ public class IconPacksEditorActivity extends BaseNekoSettingsActivity {
                 } else if (id == MENU_SAVE_AND_EXIT) {
                     IconPickerController.finishEditing();
                     finishFragment();
+                } else if (id == MENU_EDIT_INFO) {
+                    showPackInfoSheet();
                 } else if (id >= MENU_FILTER_BASE) {
                     setIconFilter(id - MENU_FILTER_BASE);
                 }
@@ -215,6 +221,21 @@ public class IconPacksEditorActivity extends BaseNekoSettingsActivity {
         }
         actionBar.closeSearchField();
         return false;
+    }
+
+    /** Пункт «Edit» из меню: та же шторка, что создаёт паки, но в режиме правки метаданных. */
+    private void showPackInfoSheet() {
+        Context context = getParentActivity();
+        if (context == null || pack == null) {
+            return;
+        }
+        NewIconPackBottomSheet sheet = new NewIconPackBottomSheet(this, context, pack);
+        sheet.setOnDone(() -> {
+            pack = IconPackStorage.findPackById(packId);
+            actionBar.setTitle(getActionBarTitle());
+            updateList();
+        });
+        showDialog(sheet);
     }
 
     // ---- данные ----

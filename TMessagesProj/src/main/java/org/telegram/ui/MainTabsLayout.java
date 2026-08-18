@@ -5,6 +5,7 @@ import static org.telegram.messenger.AndroidUtilities.lerp;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.view.MotionEvent;
@@ -21,6 +22,7 @@ import androidx.dynamicanimation.animation.SpringForce;
 import android.util.Log;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedLinearLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
@@ -35,8 +37,62 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.ListAnimator;
 import me.vkryl.android.util.ClickHelper;
 
+import tw.nekomimi.nekogram.NekoConfig;
+import xyz.nextalone.nagram.NaConfig;
+
 @SuppressLint("ViewConstructor")
 public class MainTabsLayout extends AnimatedLinearLayout {
+
+    public static final int BOTTOM_NAVIGATION_MODE_SHOW = 0;
+    public static final int BOTTOM_NAVIGATION_MODE_HIDE = 1;
+    public static final int BOTTOM_NAVIGATION_MODE_FLOATING = 2;
+
+    private static final String KEY_BOTTOM_NAVIGATION_FLOATING = "OEAppearanceBottomNavigationFloating";
+
+    private static Boolean bottomNavigationFloating;
+
+    public static int getBottomNavigationMode() {
+        if (isBottomNavigationHidden()) {
+            return BOTTOM_NAVIGATION_MODE_HIDE;
+        }
+        return isBottomNavigationFloating() ? BOTTOM_NAVIGATION_MODE_FLOATING : BOTTOM_NAVIGATION_MODE_SHOW;
+    }
+
+    public static void setBottomNavigationMode(int mode) {
+        NaConfig.INSTANCE.getHideBottomNavigationBar().setConfigBool(mode == BOTTOM_NAVIGATION_MODE_HIDE);
+        final boolean floating = mode == BOTTOM_NAVIGATION_MODE_FLOATING;
+        bottomNavigationFloating = floating;
+        final SharedPreferences preferences = getBottomNavigationPreferences();
+        if (preferences != null) {
+            preferences.edit().putBoolean(KEY_BOTTOM_NAVIGATION_FLOATING, floating).apply();
+        }
+    }
+
+    public static boolean isBottomNavigationHidden() {
+        return NaConfig.INSTANCE.getHideBottomNavigationBar().Bool();
+    }
+
+    public static boolean isBottomNavigationVisible() {
+        return !isBottomNavigationHidden();
+    }
+
+    public static boolean isBottomNavigationFloating() {
+        if (isBottomNavigationHidden()) {
+            return false;
+        }
+        if (bottomNavigationFloating == null) {
+            final SharedPreferences preferences = getBottomNavigationPreferences();
+            if (preferences == null) {
+                return false;
+            }
+            bottomNavigationFloating = preferences.getBoolean(KEY_BOTTOM_NAVIGATION_FLOATING, false);
+        }
+        return bottomNavigationFloating;
+    }
+
+    private static SharedPreferences getBottomNavigationPreferences() {
+        return ApplicationLoader.applicationContext == null ? null : NekoConfig.getPreferences();
+    }
 
     private final Theme.ResourcesProvider resourcesProvider;
 
@@ -332,9 +388,23 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         super.dispatchDraw(canvas);
+
+        if (drawTopDivider && MainTabsUiHelper.isMaterial3NavigationBar()) {
+            dividerPaint.setColor(Theme.getDividerColor(resourcesProvider));
+            canvas.drawLine(0, 1, getMeasuredWidth(), 1, dividerPaint);
+        }
     }
 
+    private boolean drawTopDivider = true;
 
+    public void setDrawTopDivider(boolean value) {
+        if (drawTopDivider != value) {
+            drawTopDivider = value;
+            invalidate();
+        }
+    }
+
+    final Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     final Paint selectorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.RectF selectorRect = new android.graphics.RectF();
     final SpringAnimation scaleX = new SpringAnimation(this, DynamicAnimation.SCALE_X, 1f);

@@ -53,7 +53,15 @@ object AppearanceConfig {
     val senderMiniAvatars =
         addConfig("OEAppearanceSenderMiniAvatars", ConfigItem.configTypeBool, true)
 
-    /** Текст заголовка списка чатов: 0 — имя приложения, 1 — username, 2 — имя. Только UI. */
+    /** Прятать эмодзи-статус рядом с заголовком шапки. Дефолт false, как в exteraGram. */
+    @JvmField
+    val hideActionBarStatus =
+        addConfig("OEAppearanceHideActionBarStatus", ConfigItem.configTypeBool, false)
+
+    /**
+     * Текст заголовка списка чатов: 0 — имя приложения, 1 — username, 2 — имя,
+     * 3 — «Чаты». Только UI.
+     */
     @JvmField
     val titleText =
         addConfig("OEAppearanceTitleText", ConfigItem.configTypeInt, 0)
@@ -243,11 +251,18 @@ object AppearanceConfig {
         return senderMiniAvatars.Bool()
     }
 
-    /** Текст заголовка списка чатов: 0 — имя приложения, 1 — username, 2 — имя. */
+    /** Текст заголовка списка чатов: 0 — имя приложения, 1 — username, 2 — имя, 3 — «Чаты». */
     @JvmStatic
     fun titleText(): Int {
         ensureLoaded()
         return titleText.Int()
+    }
+
+    /** Прятать ли эмодзи-статус в шапке списка чатов. */
+    @JvmStatic
+    fun hideActionBarStatus(): Boolean {
+        ensureLoaded()
+        return hideActionBarStatus.Bool()
     }
 
     /** true, если аватарки должны остаться обычными кругами — быстрый выход из хот-пути. */

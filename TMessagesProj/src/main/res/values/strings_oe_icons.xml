@@ -43,7 +43,11 @@
     <string name="IconPackPriorityUp">Higher priority</string>
     <string name="IconPackPriorityDown">Lower priority</string>
     <string name="IconPackAuthor">Author</string>
+    <string name="IconPackAuthorOptional">Author (optional)</string>
+    <string name="IconPackNoAuthor">Unknown</string>
     <string name="IconPackVersion">Version</string>
+    <string name="IconPackEditInfo">Edit Pack Info</string>
+    <string name="IconPackNameCannotBeEmpty">Pack name can\'t be empty.</string>
     <string name="IconPackRename">Rename</string>
     <string name="IconPackIconsCount">%1$d icons</string>
 </resources>

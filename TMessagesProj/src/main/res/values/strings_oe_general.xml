@@ -13,6 +13,9 @@
     <string name="OEGeneralDoNotTranslate">Do Not Translate</string>
     <string name="OEGeneralTranslateInfo">The \'Translate\' button will appear in the message context menu.</string>
 
+    <!-- App Navigation -->
+    <string name="OEBottomNavigationModeFloating">Floating</string>
+
     <!-- General -->
     <string name="OEGeneralSectionHeader">General</string>
     <string name="OEGeneralDisableNumberRounding">Disable Number Rounding</string>

@@ -83,6 +83,7 @@ import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
 import me.vkryl.android.animator.ReplaceAnimator;
 
+import app.exteraless.appearance.AppearanceConfig;
 import tw.nekomimi.nekogram.NekoConfig;
 import xyz.nextalone.nagram.NaConfig;
 
@@ -591,14 +592,20 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 if (attached && lastRightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) {
                     ((AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) lastRightDrawable).setParentView(null);
                 }
-                titleTextView[0].setRightDrawable(lastRightDrawable = rightDrawable);
-                if (attached && lastRightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) {
-                    ((AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) lastRightDrawable).setParentView(titleTextView[0]);
+                lastRightDrawable = rightDrawable;
+                final Drawable visibleRightDrawable = getVisibleTitleRightDrawable(rightDrawable);
+                titleTextView[0].setRightDrawable(visibleRightDrawable);
+                if (attached && visibleRightDrawable instanceof AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) {
+                    ((AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable) visibleRightDrawable).setParentView(titleTextView[0]);
                 }
-                titleTextView[0].setRightDrawableOnClick(rightDrawableOnClickListener);
+                titleTextView[0].setRightDrawableOnClick(visibleRightDrawable != null ? rightDrawableOnClickListener : null);
             }
         }
         fromBottom = false;
+    }
+
+    private Drawable getVisibleTitleRightDrawable(Drawable drawable) {
+        return AppearanceConfig.hideActionBarStatus() ? null : drawable;
     }
 
     public void setRightDrawableOnClick(OnClickListener onClickListener) {
@@ -1717,7 +1724,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
 
         CharSequence textToSet = title != null ? LocaleController.getString(title, titleId) : lastTitle;
-        Drawable rightDrawableToSet = title != null ? null : lastRightDrawable;
+        Drawable rightDrawableToSet = title != null ? null : getVisibleTitleRightDrawable(lastRightDrawable);
         boolean ellipsize = false;
         if (title != null) {
             int index = TextUtils.indexOf(textToSet, "...");

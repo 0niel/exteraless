@@ -84,4 +84,18 @@
     <string name="OEChatsChatSettingsInfo">Media Settings, App Icon and other</string>
     <string name="OEStickerSizeSmall">Small</string>
     <string name="OEStickerSizeLarge">Large</string>
+
+    <string name="OEDetailsDate">Date</string>
+    <string name="OEDetailsForwardedDate">Forward Date</string>
+    <string name="OEDetailsEditedDate">Edit Date</string>
+    <string name="OEDetailsFileSize">File Size</string>
+    <string name="OEDetailsMimeType">Mime Type</string>
+    <string name="OEDetailsFileName">File Name</string>
+    <string name="OEDetailsFilePath">File Path</string>
+    <string name="OEDetailsPlatform">Platform</string>
+    <string name="OEDetailsResolution">Resolution</string>
+    <string name="OEDetailsBitrate">Bitrate</string>
+    <string name="OEDetailsBitrateValue">%1$d Kbps</string>
+    <string name="OEDetailsDuration">Duration</string>
+    <string name="OEDetailsDatacenter">Datacenter</string>
 </resources>

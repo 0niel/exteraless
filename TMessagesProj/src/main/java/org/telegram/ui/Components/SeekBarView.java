@@ -85,6 +85,8 @@ public class SeekBarView extends FrameLayout {
     private int previewingState = -1;
     private int lineWidthDp = 3;
     private boolean hasCustomLineWidthValue = false;
+    private int customInnerColor;
+    private boolean hasCustomInnerColor;
     private int sliderStyleOverride = -1;
 
     private Path path = new Path();
@@ -187,6 +189,8 @@ public class SeekBarView extends FrameLayout {
     }
 
     public void setColors(int inner, int outer) {
+        hasCustomInnerColor = true;
+        customInnerColor = inner;
         innerPaint1.setColor(inner);
         outerPaint1.setColor(outer);
         if (hoverDrawable != null) {
@@ -203,6 +207,8 @@ public class SeekBarView extends FrameLayout {
     }
 
     public void setInnerColor(int color) {
+        hasCustomInnerColor = true;
+        customInnerColor = color;
         innerPaint1.setColor(color);
     }
 
@@ -349,6 +355,11 @@ public class SeekBarView extends FrameLayout {
             }
         }
         return false;
+    }
+
+    /** Цвет неактивной дорожки: выставленный снаружи, иначе тема. */
+    private int getInnerTrackColor() {
+        return hasCustomInnerColor ? customInnerColor : getThemedColor(Theme.key_player_progressBackground);
     }
 
     private int minThumbX() {
@@ -549,7 +560,7 @@ public class SeekBarView extends FrameLayout {
             thumbX = (int) (Math.round((thumbX) / step) * step);
         }
         int y = (getMeasuredHeight() - thumbSize) / 2;
-        innerPaint1.setColor(getThemedColor(Theme.key_player_progressBackground));
+        innerPaint1.setColor(getInnerTrackColor());
 
         float centerY = getMeasuredHeight() / 2f;
         float left = selectorWidth / 2f, right = getMeasuredWidth() - selectorWidth / 2;

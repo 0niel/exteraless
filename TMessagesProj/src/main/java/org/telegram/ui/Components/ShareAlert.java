@@ -68,6 +68,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import app.exteraless.components.TranslateBeforeSendWrapper;
+
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -141,6 +143,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tw.nekomimi.nekogram.NekoConfig;
+import tw.nekomimi.nekogram.translate.Translator;
+import tw.nekomimi.nekogram.utils.AlertUtil;
 import xyz.nextalone.nagram.NaConfig;
 
 public class ShareAlert extends BottomSheet implements NotificationCenter.NotificationCenterDelegate {
@@ -2340,6 +2344,23 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
         });
         sendPopupLayout2.setShownFromBottom(false);
 
+        if (commentTextView != null && commentTextView.getText() != null && commentTextView.getText().toString().trim().length() != 0) {
+            TranslateBeforeSendWrapper translateBeforeSend = new TranslateBeforeSendWrapper(getContext(), true, true, resourcesProvider) {
+                @Override
+                public void onClick() {
+                    if (sendPopupWindow != null && sendPopupWindow.isShowing()) {
+                        sendPopupWindow.dismiss();
+                    }
+                    translateComment();
+                }
+            };
+            if (darkTheme) {
+                translateBeforeSend.setTextColor(getThemedColor(Theme.key_voipgroup_nameText));
+                translateBeforeSend.setIconColor(getThemedColor(Theme.key_windowBackgroundWhiteHintText));
+            }
+            sendPopupLayout2.addView(translateBeforeSend, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 56));
+        }
+
         ActionBarMenuSubItem sendWithoutSound = new ActionBarMenuSubItem(getContext(), true, true, resourcesProvider);
         if (darkTheme) {
             sendWithoutSound.setTextColor(getThemedColor(Theme.key_voipgroup_nameText));
@@ -2400,6 +2421,32 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
         } catch (Exception ignored) {}
 
         return true;
+    }
+
+    private void translateComment() {
+        if (commentTextView == null) {
+            return;
+        }
+        final CharSequence[] text = new CharSequence[]{ commentTextView.getText() };
+        final ArrayList<TLRPC.MessageEntity> entities = MediaDataController.getInstance(currentAccount).getEntities(text, true);
+        final AlertDialog progressDialog = AlertUtil.showProgress(getContext());
+        progressDialog.showDelayed(150);
+        Translator.translate(TranslateBeforeSendWrapper.getTargetLanguage(), text[0].toString(), entities, new Translator.Companion.TranslateCallBack2() {
+            @Override
+            public void onSuccess(TLRPC.TL_textWithEntities finalText) {
+                progressDialog.dismiss();
+                SpannableStringBuilder result = SpannableStringBuilder.valueOf(finalText.text);
+                MessageObject.addEntitiesToText(result, finalText.entities, true, true, false, true);
+                commentTextView.setText(result);
+                commentTextView.setSelection(result.length());
+            }
+
+            @Override
+            public void onFailed(boolean unsupported, String message) {
+                progressDialog.dismiss();
+                AlertUtil.showTransFailedDialog(getContext(), unsupported, message, ShareAlert.this::translateComment);
+            }
+        });
     }
 
     protected void sendInternal(boolean withSound) {

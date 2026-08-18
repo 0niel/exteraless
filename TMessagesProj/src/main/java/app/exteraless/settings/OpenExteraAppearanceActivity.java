@@ -92,6 +92,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int chatListHeaderRow;
     private int chatListPreviewRow;
     private int forceSnowRow;
+    private int hideActionBarStatusRow;
     private int centerTitleRow;
     // Material Design 3: сворачиваемая группа и пять вложенных стилей.
     private int md3GroupRow;
@@ -151,6 +152,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         chatListHeaderRow = addRow("chatListHeader");
         chatListPreviewRow = addRow("chatListPreview");
         forceSnowRow = addRow("forceSnow");
+        // Строка есть только у премиума — так же гейтит её exteraGram
+        // (AppearancePreferencesActivity.fillItems :440-442).
+        hideActionBarStatusRow = getUserConfig().isPremium() ? addRow("hideActionBarStatus") : -1;
         centerTitleRow = addRow("centerTitle");
         hideStoriesRow = addRow("hideStories");
         hideFloatingButtonRow = addRow("hideFloatingButton");
@@ -298,7 +302,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         return new CharSequence[]{
                 getString(R.string.OEAppearanceTitleTextApp),
                 getString(R.string.OEAppearanceTitleTextUsername),
-                getString(R.string.OEAppearanceTitleTextName)
+                getString(R.string.OEAppearanceTitleTextName),
+                getString(R.string.FilterChats)
         };
     }
 
@@ -496,6 +501,16 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 // (:3645), по уведомлению он не переустанавливается — нужна пересборка вьюх.
                 rebuildAll();
             });
+            return;
+        } else if (position == hideActionBarStatusRow) {
+            boolean hidden = AppearanceConfig.hideActionBarStatus.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(hidden);
+            }
+            if (chatListPreviewCell != null) {
+                chatListPreviewCell.updateStatus(true);
+            }
+            rebuildAll();
             return;
         } else if (position == forceSnowRow) {
             boolean enabled = NekoConfig.actionBarDecoration.Int() != 1;
@@ -721,6 +736,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSingleCornerRadius), AppearanceConfig.singleCornerRadius.Bool(), false);
                     } else if (position == forceSnowRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceForceSnow), getString(R.string.OEAppearanceForceSnowInfo), NekoConfig.actionBarDecoration.Int() == 1, true, true);
+                    } else if (position == hideActionBarStatusRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceHideActionBarStatus), AppearanceConfig.hideActionBarStatus.Bool(), true);
                     } else if (position == hideStoriesRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceHideStories), NaConfig.INSTANCE.getHideStoriesFromHeader().Bool(), true);
                     } else if (position == hideFloatingButtonRow) {
@@ -788,7 +805,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         String[] v = {getString(R.string.Disable), getString(R.string.FilterMuted), getString(R.string.FilterAllChatsShort)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceTabCounter), v[clamp(NaConfig.INSTANCE.getIgnoreUnreadCount().Int(), v.length)], true);
                     } else if (position == titleTextRow) {
-                        String[] v = {getString(R.string.OEAppearanceTitleTextApp), getString(R.string.OEAppearanceTitleTextUsername), getString(R.string.OEAppearanceTitleTextName)};
+                        String[] v = {getString(R.string.OEAppearanceTitleTextApp), getString(R.string.OEAppearanceTitleTextUsername), getString(R.string.OEAppearanceTitleTextName), getString(R.string.FilterChats)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceTitleText), v[clamp(AppearanceConfig.titleText.Int(), v.length)], false);
                     }
                     break;
