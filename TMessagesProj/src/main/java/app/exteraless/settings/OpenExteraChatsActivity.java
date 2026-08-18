@@ -809,11 +809,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     private void toggleHighQualityPhoto(View view) {
-        boolean value = !SharedConfig.photoHighQualityDefault;
-        SharedConfig.photoHighQualityDefault = value;
-        SharedPreferences prefs = ApplicationLoader.applicationContext
-                .getSharedPreferences("mainconfig", Context.MODE_PRIVATE);
-        prefs.edit().putBoolean("photoHighQualityDefault", value).apply();
+        boolean value = !ChatsConfig.alwaysSendInHD.Bool();
+        ChatsConfig.alwaysSendInHD.setConfigBool(value);
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
         }
@@ -1422,7 +1419,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == staticZoomRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsStaticZoom), ChatsConfig.staticZoom.Bool(), false);
             } else if (position == alwaysSendHdRow) {
-                cell.setTextAndCheck(getString(R.string.OEChatsAlwaysSendInHD), SharedConfig.photoHighQualityDefault, true);
+                cell.setTextAndCheck(getString(R.string.OEChatsAlwaysSendInHD), ChatsConfig.alwaysSendInHD.Bool(), true);
             } else if (position == hideCameraTileRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsHideCameraTile), ChatsConfig.hideCameraTile.Bool(), false);
             } else if (position == preferOriginalQualityRow) {

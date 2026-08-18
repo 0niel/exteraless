@@ -357,7 +357,7 @@ public final class EtgBackup {
         bool(list, "showCopyPhotoButton", NaConfig.INSTANCE.getShowCopyPhoto());
         bool(list, "showSaveMessageButton", NekoConfig.showAddToSavedMessages);
         bool(list, "showRepeatMessageButton", NekoConfig.showRepeat);
-        bool(list, "showClearButton", NaConfig.INSTANCE.getChatMenuItemClearDeleted());
+        bool(list, "showClearButton", NekoConfig.showDeleteDownloadedFile);
         bool(list, "showHistoryButton", NekoConfig.showViewHistory);
         bool(list, "showReportButton", NekoConfig.showReport);
         bool(list, "showDetailsButton", NekoConfig.showMessageDetails);
