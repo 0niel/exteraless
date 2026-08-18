@@ -485,12 +485,15 @@ public class PluginsController {
         List<Plugin> snapshot = getPlugins();
         for (Plugin p : snapshot) {
             if (p.loaded) {
+                unregisterPluginHooks(p.id);
                 PythonPluginsEngine.getInstance().unloadPlugin(p);
             }
         }
         sendMessageHooks.clear();
         requestHooks.clear();
         requestHooksSubstring.clear();
+        updateHooks.clear();
+        updatesContainerHooks.clear();
         synchronized (menuItems) {
             menuItems.clear();
         }
@@ -547,10 +550,39 @@ public class PluginsController {
         void onResult(boolean ok, String error, Plugin plugin);
     }
 
-    /**
-     * Установить плагин из .py/.plugin-файла. Асинхронно, колбэк на UI-потоке.
-     * Валидация метаданных — до копирования; при совпадении id — перезапись.
-     */
+    private boolean awaitEngineStarted() {
+        PythonPluginsEngine engine = PythonPluginsEngine.getInstance();
+        if (engine.isStarted()) {
+            return true;
+        }
+        final Object lock = new Object();
+        final boolean[] started = {false};
+        final boolean[] done = {false};
+        engine.ensureStarted(appContext, ok -> {
+            synchronized (lock) {
+                started[0] = ok;
+                done[0] = true;
+                lock.notify();
+            }
+        });
+        synchronized (lock) {
+            long deadline = System.currentTimeMillis() + 30_000;
+            while (!done[0]) {
+                long wait = deadline - System.currentTimeMillis();
+                if (wait <= 0) {
+                    break;
+                }
+                try {
+                    lock.wait(wait);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        return started[0];
+    }
+
     /**
      * Прочитать метаданные файла, не устанавливая его. Разбор идёт AST-парсером,
      * без выполнения кода плагина — можно показывать пользователю до согласия.
@@ -560,8 +592,7 @@ public class PluginsController {
         fileExecutor.execute(() -> {
             Plugin plugin = null;
             try {
-                PythonPluginsEngine engine = PythonPluginsEngine.getInstance();
-                if (engine.isStarted()) {
+                if (awaitEngineStarted()) {
                     plugin = readPluginMetadata(source);
                 }
             } catch (Throwable t) {
@@ -573,28 +604,16 @@ public class PluginsController {
         });
     }
 
+    /**
+     * Установить плагин из .py/.plugin-файла. Асинхронно, колбэк на UI-потоке.
+     * Валидация метаданных — до копирования; при совпадении id — перезапись.
+     */
     public void installPlugin(File source, InstallCallback callback) {
         fileExecutor.execute(() -> {
             PythonPluginsEngine engine = PythonPluginsEngine.getInstance();
-            if (!engine.isStarted()) {
-                final Object lock = new Object();
-                final boolean[] started = {false};
-                engine.ensureStarted(appContext, ok -> {
-                    synchronized (lock) {
-                        started[0] = ok;
-                        lock.notify();
-                    }
-                });
-                synchronized (lock) {
-                    try {
-                        lock.wait(30_000);
-                    } catch (InterruptedException ignored) {
-                    }
-                }
-                if (!started[0]) {
-                    deliver(callback, false, "Python engine failed to start", null);
-                    return;
-                }
+            if (!awaitEngineStarted()) {
+                deliver(callback, false, "Python engine failed to start", null);
+                return;
             }
             String json = engine.readMetadataJson(source.getAbsolutePath());
             if (json == null) {
@@ -635,11 +654,12 @@ public class PluginsController {
                 p.enabled = true;
                 preferences.edit().putBoolean(PluginsConstants.KEY_PLUGIN_ENABLED_PREFIX + id, true).apply();
                 // Согласие пользователя записывает диалог установки (PluginPermissions.setGranted).
-                // Если он этого не сделал, а плагин объявил __permissions__ — фиксируем
-                // объявленное как выданное: иначе запись не появится вовсе и плагин уедет
-                // в режим совместимости, где ему дают всё.
-                if (!PluginPermissions.hasRecord(id) && p.permissionsDeclared) {
-                    PluginPermissions.setGranted(id, p.permissions);
+                // Если он этого не сделал, запись всё равно должна появиться: без неё
+                // свежепоставленный плагин уедет в режим совместимости, где ему дают всё.
+                // Объявленное считаем выданным, необъявленное — пустым набором.
+                if (!PluginPermissions.hasRecord(id)) {
+                    PluginPermissions.setGranted(id,
+                            p.permissionsDeclared ? p.permissions : new ArrayList<>());
                 }
                 synchronized (this) {
                     plugins.put(id, p);
@@ -839,19 +859,31 @@ public class PluginsController {
         }
     }
 
+    /**
+     * Опустевший ключ удаляется вместе со списком: иначе hasAnyRequestHooks() и
+     * hasAnyUpdateHooks() остаются true навсегда, и каждый запрос платит за поиск
+     * по карте, в которой уже никого нет.
+     */
+    private static void dropPluginFrom(Map<String, List<String>> hooks, String pluginId) {
+        hooks.values().removeIf(list -> {
+            list.remove(pluginId);
+            return list.isEmpty();
+        });
+    }
+
     public void unregisterPluginHooks(String pluginId) {
         sendMessageHooks.remove(pluginId);
         synchronized (requestHooks) {
-            requestHooks.values().forEach(l -> l.remove(pluginId));
+            dropPluginFrom(requestHooks, pluginId);
         }
         synchronized (requestHooksSubstring) {
-            requestHooksSubstring.values().forEach(l -> l.remove(pluginId));
+            dropPluginFrom(requestHooksSubstring, pluginId);
         }
         synchronized (updateHooks) {
-            updateHooks.values().forEach(l -> l.remove(pluginId));
+            dropPluginFrom(updateHooks, pluginId);
         }
         synchronized (updatesContainerHooks) {
-            updatesContainerHooks.values().forEach(l -> l.remove(pluginId));
+            dropPluginFrom(updatesContainerHooks, pluginId);
         }
         synchronized (menuItems) {
             menuItems.removeIf(item -> item.pluginId.equals(pluginId));

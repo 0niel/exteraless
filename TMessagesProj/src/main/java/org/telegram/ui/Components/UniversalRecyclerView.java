@@ -133,10 +133,13 @@ public class UniversalRecyclerView extends RecyclerListView {
         }
         setAdapter(adapter = new UniversalAdapter(this, context, currentAccount, classGuid, dialog, fillItems, resourcesProvider));
 
+        // setEnabled(false) гасил строку только внешне: RecyclerListView отдаёт
+        // клик, не спрашивая адаптер, поэтому выключенный переключатель всё
+        // равно переключался. Здесь и отсекаем — на всех экранах разом.
         if (onClick != null) {
             setOnItemClickListener((view, position, x, y) -> {
                 UItem item = adapter.getItem(position);
-                if (item == null) return;
+                if (item == null || !item.enabled) return;
                 onClick.run(item, view, position, x, y);
             });
         }
@@ -144,7 +147,7 @@ public class UniversalRecyclerView extends RecyclerListView {
         if (onLongClick != null) {
             setOnItemLongClickListener((view, position, x, y) -> {
                 UItem item = adapter.getItem(position);
-                if (item == null) return false;
+                if (item == null || !item.enabled) return false;
                 return onLongClick.run(item, view, position, x, y);
             });
         }

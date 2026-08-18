@@ -37,7 +37,6 @@
     <string name="PluginsPythonSdkInfo">The SDK is bundled with the app, so there is nothing to download or update.</string>
     <string name="PluginsLinks">Links</string>
     <string name="PluginsDocumentation">Documentation</string>
-    <string name="PluginsTrusted">Trusted Plugins</string>
     <string name="PluginsPoweredBy">Powered by Chaquopy.</string>
     <string name="PluginsEmptyHint">You can find plugins in @exteraPlugins.</string>
     <string name="PluginsNotFound">No plugins found</string>

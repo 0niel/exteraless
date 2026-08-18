@@ -31,6 +31,7 @@ import java.util.Map;
 
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginCapabilityScan;
+import app.exteraless.plugins.PluginPermissions;
 
 /**
  * Лист установки плагина.
@@ -121,7 +122,7 @@ public class PluginInstallSheet extends BottomSheet {
                     PluginPermissionsActivity.infoOf(permission),
                     PluginCapabilityScan.evidenceOf(capabilities, permission),
                     i < permissions.size() - 1);
-            cell.setChecked(true, false);
+            cell.setChecked(!PluginPermissions.isDangerous(permission), false);
             cell.setOnToggle(() -> cell.setChecked(!cell.isChecked(), true));
             cells.add(cell);
             content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,

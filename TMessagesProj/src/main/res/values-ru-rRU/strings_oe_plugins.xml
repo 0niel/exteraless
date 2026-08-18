@@ -37,7 +37,6 @@
     <string name="PluginsPythonSdkInfo">SDK встроен в приложение — скачивать и обновлять нечего.</string>
     <string name="PluginsLinks">Ссылки</string>
     <string name="PluginsDocumentation">Документация</string>
-    <string name="PluginsTrusted">Доверенные плагины</string>
     <string name="PluginsPoweredBy">Работает на Chaquopy.</string>
     <string name="PluginsEmptyHint">Плагины можно найти в @exteraPlugins.</string>
     <string name="PluginsNotFound">Плагины не найдены</string>

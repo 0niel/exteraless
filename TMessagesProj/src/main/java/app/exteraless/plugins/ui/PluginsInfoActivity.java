@@ -51,10 +51,8 @@ public class PluginsInfoActivity extends BaseFragment {
     private static final int ID_SDK_VERSION = 5;
     private static final int ID_INSTALL_FROM_FILE = 6;
     private static final int ID_DOCUMENTATION = 7;
-    private static final int ID_TRUSTED = 8;
 
     private static final String DOCS_URL = "https://plugins.exteragram.app";
-    private static final String TRUSTED_URL = "https://plugins.exteragram.app/trusted";
 
     private UniversalRecyclerView listView;
 
@@ -121,10 +119,8 @@ public class PluginsInfoActivity extends BaseFragment {
 
         items.add(UItem.asHeader(getString(R.string.PluginsLinks)));
         items.add(UItem.asButton(ID_DOCUMENTATION, getString(R.string.PluginsDocumentation))
-                .setIcon(R.drawable.menu_intro));
-        items.add(UItem.asButton(ID_TRUSTED, getString(R.string.PluginsTrusted))
                 .accent()
-                .setIcon(R.drawable.msg2_policy));
+                .setIcon(R.drawable.menu_intro));
         items.add(UItem.asShadow(getString(R.string.PluginsPoweredBy)));
     }
 
@@ -150,9 +146,6 @@ public class PluginsInfoActivity extends BaseFragment {
             return;
         } else if (item.id == ID_DOCUMENTATION) {
             openUrl(DOCS_URL);
-            return;
-        } else if (item.id == ID_TRUSTED) {
-            openUrl(TRUSTED_URL);
             return;
         } else {
             return;
