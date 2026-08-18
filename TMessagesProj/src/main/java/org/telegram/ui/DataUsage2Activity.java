@@ -1051,12 +1051,11 @@ public class DataUsage2Activity extends BaseFragment {
             } else {
                 imageView.setVisibility(View.VISIBLE);
 
-                final boolean border = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
                 SettingsActivity.SettingCell.Background drawable = new SettingsActivity.SettingCell.Background();
-                drawable.setColor(imageColorTop, imageColorBottom);
-                drawable.setDrawBorder(border);
                 imageView.setBackground(drawable);
                 imageView.setImageResource(imageResId);
+                SettingsActivity.SettingCell.applyIconColors(imageView, drawable,
+                        imageColorTop, imageColorBottom, resourcesProvider);
             }
 
             textView.setText(title);

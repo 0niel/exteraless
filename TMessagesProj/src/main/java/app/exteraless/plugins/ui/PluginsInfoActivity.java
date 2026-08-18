@@ -6,9 +6,7 @@ import android.content.Context;
 import android.view.View;
 import android.widget.FrameLayout;
 
-import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.browser.Browser;
 import org.telegram.ui.ActionBar.ActionBar;
@@ -51,8 +49,10 @@ public class PluginsInfoActivity extends BaseFragment {
     private static final int ID_SDK_VERSION = 5;
     private static final int ID_INSTALL_FROM_FILE = 6;
     private static final int ID_DOCUMENTATION = 7;
+    private static final int ID_TRUSTED = 8;
 
     private static final String DOCS_URL = "https://plugins.exteragram.app";
+    private static final String TRUSTED_URL = "https://t.me/addlist/pPhOtEq00KhjYTc6";
 
     private UniversalRecyclerView listView;
 
@@ -90,21 +90,24 @@ public class PluginsInfoActivity extends BaseFragment {
         boolean safeMode = controller.isSafeMode();
 
         items.add(UItem.asHeader(getString(R.string.Settings)));
-        items.add(UItem.asCheck(ID_DEVELOPER_MODE, getString(R.string.PluginsDeveloperMode),
+        items.add(PluginUiItem.check(ID_DEVELOPER_MODE,
+                        getString(R.string.PluginsDeveloperMode),
                         R.drawable.msg_settings)
                 .setChecked(controller.isDeveloperMode())
                 .setEnabled(engineOn && !safeMode));
-        items.add(UItem.asCheck(ID_COMPACT_VIEW, getString(R.string.PluginsCompactView),
+        items.add(PluginUiItem.check(ID_COMPACT_VIEW,
+                        getString(R.string.PluginsCompactView),
                         R.drawable.msg_topics)
                 .setChecked(controller.isCompactView())
                 .setEnabled(engineOn));
-        items.add(UItem.asCheck(ID_COMPATIBILITY, getString(R.string.PluginsCompatibilityMode),
+        items.add(PluginUiItem.check(ID_COMPATIBILITY,
+                        getString(R.string.PluginsCompatibilityMode),
                         R.drawable.msg_link2)
                 .setChecked(controller.isCompatibilityMode())
                 .setValue(getString(R.string.PluginsCompatibilityModeInfo))
                 .setMultiline(true)
                 .setEnabled(engineOn));
-        items.add(UItem.asCheck(ID_SAFE_MODE, getString(R.string.PluginsSafeMode),
+        items.add(PluginUiItem.check(ID_SAFE_MODE, getString(R.string.PluginsSafeMode),
                         R.drawable.msg_secret)
                 .setChecked(safeMode));
         items.add(UItem.asShadow(getString(R.string.PluginsSafeModeSummary)));
@@ -119,12 +122,17 @@ public class PluginsInfoActivity extends BaseFragment {
 
         items.add(UItem.asHeader(getString(R.string.PluginsLinks)));
         items.add(UItem.asButton(ID_DOCUMENTATION, getString(R.string.PluginsDocumentation))
-                .accent()
                 .setIcon(R.drawable.menu_intro));
+        items.add(UItem.asButton(ID_TRUSTED, getString(R.string.PluginsTrusted))
+                .accent()
+                .setIcon(R.drawable.msg2_policy));
         items.add(UItem.asShadow(getString(R.string.PluginsPoweredBy)));
     }
 
     private void onItemClick(UItem item, View view, int position, float x, float y) {
+        if (!item.enabled) {
+            return;
+        }
         PluginsController controller = PluginsController.getInstance();
         if (item.id == ID_DEVELOPER_MODE) {
             controller.setDeveloperMode(!controller.isDeveloperMode());
@@ -147,6 +155,9 @@ public class PluginsInfoActivity extends BaseFragment {
         } else if (item.id == ID_DOCUMENTATION) {
             openUrl(DOCS_URL);
             return;
+        } else if (item.id == ID_TRUSTED) {
+            openUrl(TRUSTED_URL);
+            return;
         } else {
             return;
         }
@@ -168,6 +179,19 @@ public class PluginsInfoActivity extends BaseFragment {
         super.onResume();
         if (listView != null) {
             listView.adapter.update(false);
+        }
+    }
+
+    @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public void onInsets(int left, int top, int right, int bottom) {
+        if (listView != null) {
+            listView.setPadding(0, 0, 0, bottom);
+            listView.setClipToPadding(false);
         }
     }
 }

@@ -19,7 +19,11 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.Switch;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginsController;
@@ -67,9 +71,93 @@ public class PluginCell extends FrameLayout {
     private final ImageView deleteButton;
     private final Switch switchView;
 
-    private Plugin plugin;
+    private String pluginId;
+    private String pluginIcon;
     private Delegate delegate;
     private boolean compact;
+
+    static final class Model {
+        final Plugin plugin;
+        final String id;
+        final String name;
+        final String subtitle;
+        final String description;
+        final String loadError;
+        final String icon;
+        final boolean enabled;
+        final boolean hasSettings;
+        final boolean pinned;
+        final boolean compact;
+
+        Model(Plugin plugin, boolean pinned, boolean compact) {
+            this.plugin = plugin;
+            id = plugin.id;
+            name = plugin.getDisplayName();
+            subtitle = plugin.getSubtitle();
+            description = plugin.description;
+            loadError = plugin.loadError;
+            icon = plugin.icon;
+            enabled = plugin.enabled;
+            hasSettings = plugin.hasSettings;
+            this.pinned = pinned;
+            this.compact = compact;
+        }
+
+        boolean sameContent(Model other) {
+            return other != null
+                    && TextUtils.equals(name, other.name)
+                    && TextUtils.equals(subtitle, other.subtitle)
+                    && TextUtils.equals(description, other.description)
+                    && TextUtils.equals(loadError, other.loadError)
+                    && TextUtils.equals(icon, other.icon)
+                    && enabled == other.enabled
+                    && hasSettings == other.hasSettings
+                    && pinned == other.pinned
+                    && compact == other.compact;
+        }
+    }
+
+    public static final class Factory extends UItem.UItemFactory<PluginCell> {
+        static {
+            setup(new Factory());
+        }
+
+        @Override
+        public PluginCell createView(Context context, RecyclerListView listView, int currentAccount,
+                                     int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            return new PluginCell(context);
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter,
+                             UniversalRecyclerView listView) {
+            PluginCell cell = (PluginCell) view;
+            cell.setDelegate((Delegate) item.object2);
+            cell.setModel((Model) item.object);
+        }
+
+        @Override
+        public boolean equals(UItem first, UItem second) {
+            Model a = first.object instanceof Model ? (Model) first.object : null;
+            Model b = second.object instanceof Model ? (Model) second.object : null;
+            return a != null && b != null && TextUtils.equals(a.id, b.id);
+        }
+
+        @Override
+        public boolean contentsEquals(UItem first, UItem second) {
+            Model a = first.object instanceof Model ? (Model) first.object : null;
+            Model b = second.object instanceof Model ? (Model) second.object : null;
+            return a != null && a.sameContent(b);
+        }
+
+        static UItem of(Plugin plugin, boolean pinned, boolean compact, Delegate delegate) {
+            UItem item = UItem.ofFactory(Factory.class);
+            item.object = new Model(plugin, pinned, compact);
+            item.object2 = delegate;
+            item.transparent = true;
+            return item;
+        }
+    }
 
     public PluginCell(Context context) {
         super(context);
@@ -79,7 +167,7 @@ public class PluginCell extends FrameLayout {
         // высокая карточка превращалась в «таблетку» с полукруглыми боками.
         card = new View(context);
         addView(card, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT,
-                Gravity.FILL, 8, 0, 8, 8));
+                Gravity.FILL, 12, 0, 12, 8));
 
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -187,7 +275,11 @@ public class PluginCell extends FrameLayout {
     private enum Action { TOGGLE, SHARE, PIN, SETTINGS, PERMISSIONS, DELETE }
 
     private void callDelegate(Action action) {
-        if (delegate == null || plugin == null) {
+        if (delegate == null || pluginId == null) {
+            return;
+        }
+        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
+        if (plugin == null) {
             return;
         }
         switch (action) {
@@ -247,30 +339,38 @@ public class PluginCell extends FrameLayout {
         this.delegate = delegate;
     }
 
-    public void setPlugin(Plugin plugin, boolean compact) {
-        this.plugin = plugin;
-        this.compact = compact;
-        if (plugin == null) {
+    private void setModel(Model model) {
+        if (model == null || model.plugin == null) {
+            pluginId = null;
+            pluginIcon = null;
             return;
         }
-        PluginsController controller = PluginsController.getInstance();
+        boolean updateIcon = !TextUtils.equals(pluginId, model.id)
+                || !TextUtils.equals(pluginIcon, model.icon);
+        pluginId = model.id;
+        pluginIcon = model.icon;
+        compact = model.compact;
 
-        imageView.setVisibility(GONE);
-        PluginIcons.apply(imageView, plugin, this::requestLayout);
+        if (updateIcon) {
+            imageView.setTag(null);
+            imageView.setImageDrawable(null);
+            imageView.setVisibility(GONE);
+            PluginIcons.apply(imageView, model.plugin, this::requestLayout);
+        }
 
-        nameView.setText(plugin.getDisplayName());
-        subtitleView.setText(plugin.getSubtitle());
+        nameView.setText(model.name);
+        subtitleView.setText(model.subtitle);
 
-        if (plugin.loadError != null) {
+        if (model.loadError != null) {
             // Ошибка вытесняет описание: если плагин не поднялся, всё остальное
             // про него сейчас неважно.
-            descriptionView.setText(plugin.loadError);
+            descriptionView.setText(model.loadError);
             descriptionView.setTextColor(Theme.getColor(Theme.key_text_RedRegular));
             descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
             descriptionView.setTypeface(AndroidUtilities.getTypeface("fonts/rmono.ttf"));
             descriptionView.setVisibility(VISIBLE);
-        } else if (!TextUtils.isEmpty(plugin.description)) {
-            descriptionView.setText(plugin.description);
+        } else if (!TextUtils.isEmpty(model.description)) {
+            descriptionView.setText(model.description);
             descriptionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
             descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
             descriptionView.setTypeface(android.graphics.Typeface.DEFAULT);
@@ -279,10 +379,10 @@ public class PluginCell extends FrameLayout {
             descriptionView.setVisibility(GONE);
         }
 
-        pinButton.setImageResource(controller.isPluginPinned(plugin.id)
+        pinButton.setImageResource(model.pinned
                 ? R.drawable.msg_unpin : R.drawable.msg_pin);
-        settingsButton.setVisibility(plugin.enabled && plugin.hasSettings ? VISIBLE : GONE);
-        switchView.setChecked(plugin.enabled, false);
+        settingsButton.setVisibility(model.enabled && model.hasSettings ? VISIBLE : GONE);
+        switchView.setChecked(model.enabled, false);
 
         updateLayout();
     }

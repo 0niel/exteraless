@@ -45,7 +45,7 @@ import java.util.Arrays;
 
 import xyz.nextalone.nagram.NaConfig;
 
-public abstract class BlurredBackgroundDrawable extends Drawable {
+public abstract class BlurredBackgroundDrawable extends Drawable implements GlassOutlineStyle.Listener {
     public BlurredBackgroundDrawable() {
         boundProps.strokeWidthTop = dpf2(1);
         boundProps.strokeWidthBottom = dpf2(2 / 3f);
@@ -193,6 +193,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
     protected int strokeColorFull;
 
     public BlurredBackgroundDrawable setColorProvider(BlurredBackgroundColorProvider colorProvider) {
+        GlassOutlineStyle.addListener(this);
         this.colorProvider = colorProvider;
         updateColors();
 
@@ -202,6 +203,11 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
             // параметры тени выставляет updateColors()
         }
         return this;
+    }
+
+    @Override
+    public void onGlassOutlineStyleChanged() {
+        updateColors();
     }
 
     /**
@@ -450,7 +456,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         float[] radii, float strokeWidth, boolean isTop,
         Paint paint
     ) {
-        if (!NaConfig.INSTANCE.getStrokeOnViews().Bool()) return;
+        if (!NaConfig.INSTANCE.getStrokeOnViews().Bool() || GlassOutlineStyle.current() != GlassOutlineStyle.GLARE) return;
 
         final boolean radiiAreSame = isTop ?
             radii[0] == radii[1] && radii[1] == radii[2] && radii[2] == radii[3]:
@@ -552,7 +558,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
 
     public static void drawStroke(Canvas canvas, float left, float top, float right, float bottom,
                                      float radii, float strokeWidth, boolean isTop, Paint paint) {
-        if (!NaConfig.INSTANCE.getStrokeOnViews().Bool()) return;
+        if (!NaConfig.INSTANCE.getStrokeOnViews().Bool() || GlassOutlineStyle.current() != GlassOutlineStyle.GLARE) return;
         final float strokeHalf = strokeWidth / 2f;
         canvas.save();
         if (isTop) {
@@ -706,7 +712,9 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
             return;
         }
 
-        final NinePatchDrawable ninePatchDrawable = checkNinePatchDrawable(fillColor, NaConfig.INSTANCE.getStrokeOnViews().Bool());
+        final boolean withStroke = boundProps.useFullStroke ||
+                NaConfig.INSTANCE.getStrokeOnViews().Bool() && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE;
+        final NinePatchDrawable ninePatchDrawable = checkNinePatchDrawable(fillColor, withStroke);
         ninePatchDrawable.setBounds(
             boundProps.boundsWithPadding.left - ninePatchDrawablePadding.left,
             boundProps.boundsWithPadding.top - ninePatchDrawablePadding.top,
@@ -761,7 +769,8 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
     }
 
     private void drawStrokeInternalIfNeeded(Canvas canvas) {
-        if (!NaConfig.INSTANCE.getStrokeOnViews().Bool()) return;
+        if (!boundProps.useFullStroke &&
+                (!NaConfig.INSTANCE.getStrokeOnViews().Bool() || GlassOutlineStyle.current() != GlassOutlineStyle.GLARE)) return;
 
         if (boundProps.useFullStroke) {
             final int strokeColorFull = Theme.multAlpha(this.strokeColorFull, alpha / 255f);

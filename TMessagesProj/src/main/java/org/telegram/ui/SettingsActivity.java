@@ -59,7 +59,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
-import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -131,6 +130,7 @@ import org.telegram.ui.Components.UndoView;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
+import org.telegram.ui.Components.blur3.GlassOutlineStyle;
 import org.telegram.ui.Components.blur3.ViewGroupPartRenderer;
 import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
@@ -1296,14 +1296,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             titleView.setTranslationX(icon == 0 ? dp(2) : 0);
             subtitleView.setTranslationX(icon == 0 ? dp(2) : 0);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet()) {
-                int flatHarmonizedColor = MonetHelper.harmonizeColor(ColorUtils.blendARGB(iconColorTop, iconColorBottom, 0.5f));
-                iconColorTop = flatHarmonizedColor;
-                iconColorBottom = flatHarmonizedColor;
-            }
-
-            iconBackground.setColor(iconColorTop, iconColorBottom);
             iconView.setImageResource(icon);
+            applyIconColors(iconView, iconBackground, iconColorTop, iconColorBottom, resourcesProvider);
             // exteraGram, SettingsActivity.java:577 — строке-входу в настройки форка ставится
             // CENTER_CROP, чтобы логотип занял всю плашку, остальным CENTER.
             iconView.setScaleType(icon == R.drawable.exteraless_icon_tile
@@ -1312,6 +1306,24 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             subtitleView.setVisibility((twoLines = !TextUtils.isEmpty(subtitle)) ? View.VISIBLE : View.GONE);
             subtitleView.setText(subtitle);
             setValue(value);
+        }
+
+        public static void applyIconColors(
+                ImageView iconView,
+                Background iconBackground,
+                int iconColorTop,
+                int iconColorBottom,
+                Theme.ResourcesProvider resourcesProvider
+        ) {
+            final boolean dark = resourcesProvider != null ? resourcesProvider.isDark() : Theme.isCurrentThemeDark();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Theme.getActiveTheme().isMonet()) {
+                iconBackground.setMonetColor(MonetHelper.getColor(dark ? "a1_200" : "a1_600"));
+                iconView.setColorFilter(MonetHelper.getColor(dark ? "a1_800" : "a1_100"), PorterDuff.Mode.SRC_IN);
+            } else {
+                iconBackground.setColor(iconColorTop, iconColorBottom);
+                iconView.clearColorFilter();
+            }
+            iconBackground.setDrawBorder(dark);
         }
 
         public void setValue(CharSequence value) {
@@ -1327,7 +1339,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             );
         }
 
-        public static class Background extends Drawable {
+        public static class Background extends Drawable implements GlassOutlineStyle.Listener {
             private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             private LinearGradient gradient, strokeGradient;
@@ -1337,11 +1349,21 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 strokePaint.setStyle(Paint.Style.STROKE);
                 strokeGradient = new LinearGradient(0, 0, 0, dp(28), new int[] { 0x4dffffff, 0, 0x1affffff }, new float[] { 0, 0.5f, 1 }, Shader.TileMode.CLAMP);
                 strokePaint.setShader(strokeGradient);
+                GlassOutlineStyle.addListener(this);
             }
 
             public void setColor(int topColor, int bottomColor) {
+                monet = false;
                 gradient = new LinearGradient(0, 0, 0, dp(28), new int[] { topColor, bottomColor }, new float[] { 0, 1 }, Shader.TileMode.CLAMP);
                 paint.setShader(gradient);
+            }
+
+            private boolean monet;
+            public void setMonetColor(int color) {
+                monet = true;
+                gradient = null;
+                paint.setShader(null);
+                paint.setColor(color);
             }
 
             private boolean border;
@@ -1357,7 +1379,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 matrix.postTranslate(AndroidUtilities.rectTmp.left, AndroidUtilities.rectTmp.top);
                 canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, paint);
 
-                if (border) {
+                if (!monet && GlassOutlineStyle.current() == GlassOutlineStyle.GLARE && border) {
                     final float sw = dp(1);
                     strokePaint.setStrokeWidth(sw);
                     matrix.reset();
@@ -1365,6 +1387,11 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     AndroidUtilities.rectTmp.inset(sw / 2.0f, sw / 2.0f);
                     canvas.drawRoundRect(AndroidUtilities.rectTmp, r, r, strokePaint);
                 }
+            }
+
+            @Override
+            public void onGlassOutlineStyleChanged() {
+                invalidateSelf();
             }
 
             @Override

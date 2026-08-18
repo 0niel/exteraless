@@ -651,7 +651,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     view = chatListPreviewCell;
                     break;
                 case TYPE_FOLDERS:
-                    foldersPreviewCell = new FoldersPreviewCell(mContext);
+                    foldersPreviewCell = new FoldersPreviewCell(mContext, resourcesProvider);
                     view = foldersPreviewCell;
                     break;
                 case TYPE_FAB_SHAPE:

@@ -915,6 +915,7 @@ public class FilterTabsView extends FrameLayout {
     private final int listViewPaddingH;
     private final LinearLayoutManager layoutManager;
     private final ListAdapter adapter;
+    private boolean horizontalScrollingEnabled = true;
 
     private FilterTabsViewDelegate delegate;
 
@@ -1173,6 +1174,11 @@ public class FilterTabsView extends FrameLayout {
         listView.setLayoutManager(layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false) {
 
             @Override
+            public boolean canScrollHorizontally() {
+                return horizontalScrollingEnabled && super.canScrollHorizontally();
+            }
+
+            @Override
             public boolean supportsPredictiveItemAnimations() {
                 return true;
             }
@@ -1203,7 +1209,7 @@ public class FilterTabsView extends FrameLayout {
 
             @Override
             public int scrollHorizontallyBy(int dx, RecyclerView.Recycler recycler, RecyclerView.State state) {
-                if (delegate.isTabMenuVisible()) {
+                if (!horizontalScrollingEnabled || delegate.isTabMenuVisible()) {
                     dx = 0;
                 }
                 return super.scrollHorizontallyBy(dx, recycler, state);
@@ -1353,6 +1359,13 @@ public class FilterTabsView extends FrameLayout {
 
     public RecyclerListView getTabsContainer() {
         return listView;
+    }
+
+    public void setHorizontalScrollingEnabled(boolean enabled) {
+        horizontalScrollingEnabled = enabled;
+        if (!enabled) {
+            listView.stopScroll();
+        }
     }
 
     public int getNextPageId(boolean forward) {
