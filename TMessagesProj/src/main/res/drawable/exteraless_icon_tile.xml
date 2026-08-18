@@ -1,33 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Логотип для плашек в списках: та же композиция, что у иконки лаунчера,
-     но холст обрезан по знаку — иначе в плашке 30dp знак вдвое мельче
-     соседних глифов. Центр берётся по знаку, а не по знаку со следом:
-     у пары общий центр ниже-левее, и знак уезжал вверх-вправо. След уходит
-     за нижний левый угол, как и на иконке под маской лаунчера. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="82dp"
-    android:height="82dp"
-    android:viewportWidth="82"
-    android:viewportHeight="82">
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <group
-        android:translateX="-12.25"
-        android:translateY="-13.07">
+        android:translateX="4.500"
+        android:translateY="5.477"
+        android:scaleX="0.052817"
+        android:scaleY="0.052817">
         <path
             android:fillColor="#FFFFFFFF"
-            android:pathData="M48.5055 58.815C51.0655 61.365 53.4555 65.675 55.2755 69.525C56.4955 72.115 60.5055 72.015 61.4155 69.305L71.1955 39.955C71.9855 37.615 69.7455 35.385 67.3955 36.155L38.0955 45.955C35.3855 46.855 35.2955 50.875 37.8755 52.095C41.6955 53.895 45.9655 56.265 48.5055 58.815Z"/>
-        <path android:pathData="M10.1004 73.4974L36.9566 46.6412L60.7352 70.4198L33.879 97.276L10.1004 73.4974Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:type="linear"
-                    android:startX="21.2058"
-                    android:startY="84.6028"
-                    android:endX="44.9531"
-                    android:endY="55.4985">
-                    <item android:offset="0" android:color="#00FFFFFF"/>
-                    <item android:offset="1" android:color="#B0FFFFFF"/>
-                </gradient>
-            </aapt:attr>
-        </path>
+            android:pathData="M122.661 123.5L261.364 67.4608C279.286 60.2198 287.945 39.8198 280.704 21.8978C273.463 3.97575 253.064 -4.68325 235.141 2.55775L21.8888 88.7168C15.0532 91.4785 9.26419 96.3283 5.34756 102.574C1.43092 108.82 -0.413356 116.144 0.0777699 123.5C-0.413356 130.856 1.43092 138.179 5.34756 144.425C9.26419 150.671 15.0532 155.521 21.8888 158.283L235.141 244.442C253.064 251.683 273.463 243.024 280.704 225.102C287.945 207.179 279.286 186.78 261.364 179.539L122.661 123.5Z"/>
     </group>
 </vector>
