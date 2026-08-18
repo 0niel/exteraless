@@ -981,11 +981,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 return;
             }
 
-            if (position != 0 || !needCamera || selectedAlbumEntry != galleryAlbumEntry) {
+            if (position != 0 || !needCamera || selectedAlbumEntry != galleryAlbumEntry || !showCameraTile()) {
                 if (adapter.hasCameraSpaceRow && position > itemsPerRow) {
                     position--;
                 }
-                if (selectedAlbumEntry == galleryAlbumEntry && needCamera) {
+                if (selectedAlbumEntry == galleryAlbumEntry && needCamera && showCameraTile()) {
                     position--;
                 }
                 if (showAvatarConstructor) {
@@ -1110,7 +1110,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             if (parentAlert.storyMediaPicker) {
                 return false;
             }
-            if (position == 0 && selectedAlbumEntry == galleryAlbumEntry) {
+            if (position == 0 && needCamera && selectedAlbumEntry == galleryAlbumEntry && showCameraTile() && !noCameraPermissions) {
                 if (parentAlert.delegate != null) {
                     parentAlert.delegate.didPressedButton(0, false, true, 0, 0, 0, parentAlert.isCaptionAbove(), false, 0);
                 }
@@ -3084,7 +3084,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (holder != null) {
             holder.itemView.invalidateOutline();
         }
-        if (!adapter.needCamera || !deviceHasGoodCamera || selectedAlbumEntry != galleryAlbumEntry) {
+        if (!adapter.needCamera || !deviceHasGoodCamera || selectedAlbumEntry != galleryAlbumEntry || !showCameraTile() || noCameraPermissions) {
             holder = gridView.findViewHolderForAdapterPosition(0);
             if (holder != null) {
                 holder.itemView.invalidateOutline();
