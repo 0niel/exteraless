@@ -156,6 +156,18 @@ object AppearanceConfig {
             }
         })
 
+    /** Стеклянные плашки в шапке чата — фича NagramX. У exteraGram шапка обычная,
+     *  поэтому дефолт false: ChatActivity просто не зовёт setupGlass. */
+    @JvmField
+    val glassChatHeader =
+        addConfig("OEAppearanceGlassChatHeader", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun glassChatHeader(): Boolean {
+        ensureLoaded()
+        return glassChatHeader.Bool()
+    }
+
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
     val glassMessageMenu =

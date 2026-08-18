@@ -4859,23 +4859,33 @@ public class ChatActivity extends BaseFragment implements
                         LocaleController.getString(R.string.EventLog),
                         LocaleController.getString(R.string.Statistics)
                 };
-                ArrayList<ActionRow.ActionItem> adminActions = new ArrayList<>();
-                ArrayList<Integer> adminOverflow = new ArrayList<>();
+                ArrayList<Integer> adminShortcuts = new ArrayList<>();
                 for (int a = 0; a < shortcutIds.length; a++) {
-                    if (!shortcutEnabled[a]) {
-                        continue;
-                    }
-                    if (adminActions.size() < ActionRow.MAX_ITEMS) {
-                        final int shortcutId = shortcutIds[a];
-                        adminActions.add(new ActionRow.ActionItem(shortcutIcons[a], true, view -> {
-                            headerItem.closeSubMenu();
-                            nkbtn_onclick_actionbar(shortcutId);
-                        }));
-                    } else {
-                        adminOverflow.add(a);
+                    if (shortcutEnabled[a]) {
+                        adminShortcuts.add(a);
                     }
                 }
-                if (!adminActions.isEmpty()) {
+                if (adminShortcuts.size() < 2) {
+                    for (int a : adminShortcuts) {
+                        headerItem.lazilyAddSubItem(shortcutIds[a], shortcutIcons[a], shortcutTitles[a]);
+                    }
+                    if (!adminShortcuts.isEmpty()) {
+                        headerItem.lazilyAddColoredGap();
+                    }
+                } else {
+                    ArrayList<ActionRow.ActionItem> adminActions = new ArrayList<>();
+                    ArrayList<Integer> adminOverflow = new ArrayList<>();
+                    for (int a : adminShortcuts) {
+                        if (adminActions.size() < ActionRow.MAX_ITEMS) {
+                            final int shortcutId = shortcutIds[a];
+                            adminActions.add(new ActionRow.ActionItem(shortcutIcons[a], true, view -> {
+                                headerItem.closeSubMenu();
+                                nkbtn_onclick_actionbar(shortcutId);
+                            }));
+                        } else {
+                            adminOverflow.add(a);
+                        }
+                    }
                     headerItem.lazilyAddView(new ActionRow(context, themeDelegate, adminActions), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 56));
                     for (int a : adminOverflow) {
                         headerItem.lazilyAddSubItem(shortcutIds[a], shortcutIcons[a], shortcutTitles[a]);
@@ -5113,10 +5123,12 @@ public class ChatActivity extends BaseFragment implements
 
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
-        actionBar.setupGlass(
-            glassBackgroundDrawableFactory,
-            BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
-            ChatObject.isForum(currentChat));
+        if (!isFeedSearch() && app.exteraless.appearance.AppearanceConfig.glassChatHeader()) {
+            actionBar.setupGlass(
+                glassBackgroundDrawableFactory,
+                BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
+                ChatObject.isForum(currentChat));
+        }
         //actionBar.setChatAvatarContainer(avatarContainer);
         //avatarContainer.setActionBar(actionBar);
 
@@ -32586,7 +32598,7 @@ public class ChatActivity extends BaseFragment implements
             final boolean isReactionsAvailableFinal = !suggestEdit && isReactionsAvailable;
 
             int flags = 0;
-            if (isReactionsViewAvailable || showMessageSeen || showSponsorInfo || options.contains(OPTION_REPLY) || options.contains(OPTION_COPY) || options.contains(OPTION_COPY_PHOTO) || options.contains(OPTION_FORWARD) || options.contains(nkbtn_translate)) {
+            if (isReactionsViewAvailable || showMessageSeen || showSponsorInfo || options.contains(OPTION_REPLY) || options.contains(OPTION_COPY) || options.contains(OPTION_COPY_PHOTO) || options.contains(OPTION_FORWARD) || options.contains(nkbtn_translate) || options.contains(nkbtn_detail)) {
                 flags |= ActionBarPopupWindow.ActionBarPopupWindowLayout.FLAG_USE_SWIPEBACK;
             }
 

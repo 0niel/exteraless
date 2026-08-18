@@ -73,8 +73,10 @@
     <string name="OEAppearanceGlassOutlineGlare">Glare</string>
     <string name="OEAppearanceGlassOutlineSolid">Solid</string>
     <string name="OEAppearanceGlassOutlineHidden">Hidden</string>
+    <string name="OEAppearanceGlassChatHeader">Glass Chat Header</string>
     <string name="OEAppearanceGlassMessageMenu">Glass Message Menu</string>
     <string name="OEAppearanceGlassMessageMenuInfo">The message menu and the reactions bar become frosted glass.</string>
+    <string name="OEAppearanceGlassChatHeaderInfo">The title, avatar and buttons at the top of a chat sit on frosted glass pills.</string>
     <string name="OEAppearanceGlassMessageMenuBlurOff">Glass menus need blur, which is currently off.</string>
     <string name="OEAppearanceIconPacks">Icon Packs</string>
     <string name="OEAppearanceIconPacksInfo">Customize icons across the app</string>

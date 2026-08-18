@@ -79,6 +79,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int blurHeaderRow;
     private int glassOutlineRow;
     private int glassMessageMenuRow;
+    private int glassChatHeaderRow;
     private int forceBlurRow;
     private int disableAvatarBlurRow;
     private int blurDividerRow;
@@ -208,6 +209,7 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         blurHeaderRow = addRow("blurHeader");
         glassOutlineRow = addRow("glassOutline");
         glassMessageMenuRow = addRow("glassMessageMenu");
+        glassChatHeaderRow = addRow("glassChatHeader");
         forceBlurRow = addRow("forceBlur");
         disableAvatarBlurRow = addRow("disableAvatarBlur");
         blurDividerRow = addRow();
@@ -528,6 +530,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
             rebuildAll();
             return;
+        } else if (position == glassChatHeaderRow) {
+            boolean enabled = AppearanceConfig.glassChatHeader.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(enabled);
+            }
+            return;
         } else if (position == glassMessageMenuRow) {
             boolean enabled = AppearanceConfig.glassMessageMenu.toggleConfigBool();
             if (view instanceof TextCheckCell) {
@@ -726,6 +734,8 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == separateHeadersRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSeparateHeaders), AppearanceConfig.separateHeaders.Bool(), true);
+                    } else if (position == glassChatHeaderRow) {
+                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassChatHeader), getString(R.string.OEAppearanceGlassChatHeaderInfo), AppearanceConfig.glassChatHeader.Bool(), true, true);
                     } else if (position == glassMessageMenuRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassMessageMenu), getString(R.string.OEAppearanceGlassMessageMenuInfo), AppearanceConfig.glassMessageMenu.Bool(), true, true);
                     } else if (position == forceBlurRow) {
