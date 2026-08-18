@@ -49,6 +49,7 @@ import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.ImageLoader;
+import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
@@ -768,6 +769,18 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         occupyStatusBar = value;
     }
 
+    public void setFeedAvatar() {
+        feedMode = true;
+        avatarDrawable.setInfo(UserConfig.getInstance(currentAccount).getClientUserId());
+        avatarDrawable.setAvatarType(AvatarDrawable.AVATAR_TYPE_SAVED);
+        avatarDrawable.setCustomIcon(ContextCompat.getDrawable(getContext(), R.drawable.ic_feed_filled));
+        if (avatarImageView != null) {
+            avatarImageView.setImage((ImageLocation) null, (String) null, avatarDrawable, (Object) null);
+        }
+    }
+
+    private boolean feedMode;
+
     public void setTitleColors(int title, int subtitle) {
         titleTextView.setTextColor(title);
         subtitleTextView.setTextColor(subtitle);
@@ -1247,6 +1260,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     private boolean showingSavedMessagesHint;
 
     public void updateSubtitle(boolean animated) {
+        if (feedMode) {
+            return;
+        }
         if (parentFragment == null) {
             return;
         }

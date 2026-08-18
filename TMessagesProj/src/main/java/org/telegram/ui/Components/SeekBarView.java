@@ -357,7 +357,6 @@ public class SeekBarView extends FrameLayout {
         return false;
     }
 
-    /** Цвет неактивной дорожки: выставленный снаружи, иначе тема. */
     private int getInnerTrackColor() {
         return hasCustomInnerColor ? customInnerColor : getThemedColor(Theme.key_player_progressBackground);
     }

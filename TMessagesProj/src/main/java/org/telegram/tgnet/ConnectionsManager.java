@@ -14,6 +14,8 @@ import android.util.Base64;
 
 import androidx.annotation.Keep;
 
+import app.exteraless.feed.FeedRequestNormalizer;
+
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 
 import com.radolyn.ayugram.utils.AyuGhostUtils;
@@ -424,9 +426,10 @@ public class ConnectionsManager extends BaseController {
         // --- exteraless plugins ---
 
         try {
-            NativeByteBuffer buffer = new NativeByteBuffer(object.getObjectSize());
-            object.serializeToStream(buffer);
-            object.freeResources();
+            final TLObject normalizedObject = FeedRequestNormalizer.normalize(currentAccount, object);
+            NativeByteBuffer buffer = new NativeByteBuffer(normalizedObject.getObjectSize());
+            normalizedObject.serializeToStream(buffer);
+            normalizedObject.freeResources();
 
             long startRequestTime = 0;
             if (BuildVars.DEBUG_PRIVATE_VERSION && BuildVars.LOGS_ENABLED || (connectionType & ConnectionTypeDownload) != 0) {
@@ -445,7 +448,7 @@ public class ConnectionsManager extends BaseController {
                         responseSize = buff.limit();
                         int magic = buff.readInt32(true);
                         try {
-                            resp = object.deserializeResponse(buff, magic, true);
+                            resp = normalizedObject.deserializeResponse(buff, magic, true);
                         } catch (Exception e2) {
                             if (BuildVars.DEBUG_PRIVATE_VERSION) {
                                 throw e2;
@@ -458,10 +461,10 @@ public class ConnectionsManager extends BaseController {
                         error.code = errorCode;
                         error.text = errorText;
                         if (BuildVars.LOGS_ENABLED && error.code != -2000) {
-                            FileLog.e(object + " got error " + error.code + " " + error.text);
+                            FileLog.e(normalizedObject + " got error " + error.code + " " + error.text);
                         }
                         if (NaConfig.INSTANCE.getShowRPCError().Bool()) {
-                            ErrorDatabase.showErrorToast(object, errorText);
+                            ErrorDatabase.showErrorToast(normalizedObject, errorText);
                         }
                     }
                     if ((connectionType & ConnectionTypeDownload) != 0 && VideoPlayer.activePlayers.isEmpty()) {
@@ -475,7 +478,7 @@ public class ConnectionsManager extends BaseController {
                             FileLog.d("Cleanup keys for " + currentAccount + " because of CONNECTION_NOT_INITED");
                         }
                         cleanup(true);
-                        sendRequest(object, onComplete, onCompleteTimestamp, onQuickAck, onWriteToSocket, flags, datacenterId, connectionType, immediate);
+                        sendRequest(normalizedObject, onComplete, onCompleteTimestamp, onQuickAck, onWriteToSocket, flags, datacenterId, connectionType, immediate);
                         return;
                     }
                     if (resp != null) {
@@ -483,7 +486,7 @@ public class ConnectionsManager extends BaseController {
                     }
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.d("java received " + resp + (error != null ? " error = " + error : "") + " messageId = 0x" + Long.toHexString(requestMsgId));
-                        FileLog.dumpResponseAndRequest(currentAccount, object, resp, error, requestMsgId, finalStartRequestTime, requestToken);
+                        FileLog.dumpResponseAndRequest(currentAccount, normalizedObject, resp, error, requestMsgId, finalStartRequestTime, requestToken);
                     }
                     final TLObject finalResponse = resp;
                     final TLRPC.TL_error finalError = error;
@@ -491,7 +494,7 @@ public class ConnectionsManager extends BaseController {
                         // exteraless plugins: post_request_hook
                         if (app.exteraless.plugins.PluginsController.getInstance().hasAnyRequestHooks()) {
                             app.exteraless.plugins.PluginsController.getInstance()
-                                    .executePostRequestHook(currentAccount, object.getClass().getSimpleName(), finalResponse, finalError);
+                                    .executePostRequestHook(currentAccount, normalizedObject.getClass().getSimpleName(), finalResponse, finalError);
                         }
                         if (onComplete != null) {
                             onComplete.run(finalResponse, finalError);

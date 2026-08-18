@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.function.IntPredicate;
 
 import app.exteraless.components.QRCodeSheet;
+import app.exteraless.feed.ui.FeedActivity;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
@@ -47,9 +48,8 @@ import org.telegram.ui.web.SearchEngine;
  * Резолвер пунктов главного меню: id из {@link MainMenuLayout} → иконка, подпись и действие.
  *
  * exteraGram: {@code com/exteragram/messenger/utils/chats/MainMenuHelper.java} (12.9.0, 819 строк).
- * Не переносится ветка {@code FEED} — этой подсистемы в форке нет. Ветки
- * {@code PLUGINS} тоже нет, но по другой причине: движок есть, а пункта меню под
- * него не заведено (см. {@link MainMenuItem}). Из {@code MenuContext} убран
+ * Не переносится ветка {@code PLUGINS}: движок есть, а пункта меню под него не
+ * заведено (см. {@link MainMenuItem}). Из {@code MenuContext} убран
  * {@code pluginContextData} — он нужен как раз ветке PLUGINS.
  */
 public final class MainMenuHelper {
@@ -244,6 +244,9 @@ public final class MainMenuHelper {
                     args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
                     fragment.presentFragment(new ChatActivity(args));
                 }, null);
+            case FEED:
+                return new MenuItemInfo(R.drawable.ic_feed, LocaleController.getString(R.string.Feed),
+                        () -> FeedActivity.presentFeed(fragment), null);
             case SETTINGS:
                 return new MenuItemInfo(R.drawable.msg_settings, LocaleController.getString(R.string.Settings),
                         () -> fragment.presentFragment(new SettingsActivity()), null);
@@ -338,6 +341,7 @@ public final class MainMenuHelper {
             case NEW_CHANNEL -> new MenuItemInfo(R.drawable.msg_channel, LocaleController.getString(R.string.NewChannel), null, null);
             case CALLS -> new MenuItemInfo(R.drawable.msg_calls, LocaleController.getString(R.string.Calls), null, null);
             case SAVED -> new MenuItemInfo(R.drawable.msg_saved, LocaleController.getString(R.string.SavedMessages), null, null);
+            case FEED -> new MenuItemInfo(R.drawable.ic_feed, LocaleController.getString(R.string.Feed), null, null);
             case SETTINGS -> new MenuItemInfo(R.drawable.msg_settings, LocaleController.getString(R.string.Settings), null, null);
             case BROWSER -> new MenuItemInfo(R.drawable.msg2_language, LocaleController.getString(R.string.BrowserSettingsTitle), null, null);
             case QR -> new MenuItemInfo(R.drawable.msg_qrcode, LocaleController.getString(R.string.AuthAnotherClient), null, null);

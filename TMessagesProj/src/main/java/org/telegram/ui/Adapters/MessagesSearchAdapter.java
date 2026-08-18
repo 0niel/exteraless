@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
+import app.exteraless.feed.FeedMessageUtils;
 import org.telegram.messenger.HashtagSearchController;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaDataController;
@@ -149,6 +150,9 @@ public class MessagesSearchAdapter extends RecyclerListView.SelectionAdapter imp
 
     @Override
     public void notifyDataSetChanged() {
+        if (searchType == FeedMessageUtils.SEARCH_TYPE_FEED) {
+            return;
+        }
         final int oldItemsCount = getItemCount();
 
         containsStories = false;//storiesList != null && storiesList.getCount() > 0;

@@ -219,6 +219,21 @@ object AppearanceConfig {
     val mainMenuLayout =
         addConfig("OEAppearanceMainMenuLayout", ConfigItem.configTypeString, "")
 
+    // ---- Лента ----
+
+    /**
+     * Показывать ленту нижней вкладкой — на месте вкладки «Контакты».
+     * Дефолт false, как в exteraGram (BooleanPref(0)).
+     */
+    @JvmField
+    val showFeedTab = addConfig("OEAppearanceShowFeedTab", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun showFeedTab(): Boolean {
+        ensureLoaded()
+        return showFeedTab.Bool()
+    }
+
     @JvmStatic
     fun navigationDrawer(): Boolean {
         ensureLoaded()

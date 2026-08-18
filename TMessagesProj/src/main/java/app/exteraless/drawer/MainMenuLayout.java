@@ -30,7 +30,7 @@ public final class MainMenuLayout {
     /**
      * Дефолтная раскладка: состав зависит от того, скрыта ли нижняя панель. Когда она
      * видна, «Профиль», «Контакты» и «Настройки» уже лежат во вкладках и в меню не
-     * дублируются. {@code FEED} выкинут вместе с фидом.
+     * дублируются. Порядок пунктов — как в {@code ExteraConfig.getDefaultMainMenuLayout()}.
      */
     public static List<Integer> getDefaultLayout() {
         final boolean bottomBarHidden = isBottomNavigationBarHidden();
@@ -44,6 +44,7 @@ public final class MainMenuLayout {
             layout.add(MainMenuItem.CONTACTS.getId());
         }
         layout.add(MainMenuItem.SAVED.getId());
+        layout.add(MainMenuItem.FEED.getId());
         layout.add(MainMenuItem.BOTS.getId());
         if (bottomBarHidden) {
             layout.add(MainMenuItem.SETTINGS.getId());

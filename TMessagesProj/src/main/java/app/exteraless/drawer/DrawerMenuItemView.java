@@ -12,6 +12,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import app.exteraless.feed.FeedController;
 import app.exteraless.utils.UIUtil;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -21,8 +22,6 @@ import org.telegram.ui.Components.LayoutHelper;
 
 /**
  * Один пункт бокового меню: иконка 24dp слева, жирная подпись 15sp, бейдж непрочитанных справа.
- *
- * Ветка {@code FEED} из {@code resolveUnreadCounter()} выкинута — фида в форке нет.
  */
 public class DrawerMenuItemView extends FrameLayout {
 
@@ -88,10 +87,12 @@ public class DrawerMenuItemView extends FrameLayout {
         unreadBadge.draw(this, canvas);
     }
 
-    /** Остался только «Архив». */
     private int resolveUnreadCounter(int currentAccount) {
         if (layoutButtonId == MainMenuItem.ARCHIVE.getId()) {
             return MessagesStorage.getInstance(currentAccount).getArchiveUnreadCount();
+        }
+        if (layoutButtonId == MainMenuItem.FEED.getId()) {
+            return FeedController.getInstance(currentAccount).getUnreadCount();
         }
         return 0;
     }

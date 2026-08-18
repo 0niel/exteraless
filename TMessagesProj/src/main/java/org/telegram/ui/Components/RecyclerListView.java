@@ -3269,11 +3269,6 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         return sectionsItemDecoration != null;
     }
 
-    /**
-     * Убирает HeaderCell из набора классов, которым ThemeDescription красит фон ячейки.
-     * Вынесенный заголовок стоит вне карточки и подложки не имеет, а смена темы иначе
-     * возвращала бы ему белый прямоугольник.
-     */
     public static Class[] filterThemeDescription(int changeFlags, Class[] classes) {
         if (classes == null
                 || changeFlags != ThemeDescription.FLAG_CELLBACKGROUNDCOLOR
@@ -3515,11 +3510,6 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
     private boolean segmentedSectionsEnabled = true;
 
-    /**
-     * Точечный отказ от сегментов для списка, которому такая разбивка не подходит:
-     * настройка внешнего вида остаётся включённой, но этот список рисуется цельными
-     * карточками.
-     */
     public void setSegmentedSectionsEnabled(boolean enabled) {
         if (segmentedSectionsEnabled == enabled) {
             return;

@@ -14730,10 +14730,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    /**
-     * В режиме «Плавающая» панель не входит в additionNavigationBarHeight — она лежит поверх
-     * списка, — поэтому её высоту список добирает отдельно.
-     */
     private int getListViewFloatingTabsPadding() {
         if (commentView != null || !hasMainTabs || !MainTabsLayout.isBottomNavigationFloating()) {
             return 0;

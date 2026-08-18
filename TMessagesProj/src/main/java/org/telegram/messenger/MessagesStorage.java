@@ -31,6 +31,8 @@ import androidx.annotation.UiThread;
 
 import androidx.collection.LongSparseArray;
 
+import app.exteraless.feed.FeedController;
+
 import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteDatabase;
@@ -4939,14 +4941,20 @@ public class MessagesStorage extends BaseController {
         });
     }
 
+    private int resolveFeedMessageId(long dialogId, int messageId) {
+        FeedController feedController = FeedController.peekInstance(currentAccount);
+        return feedController == null ? messageId : feedController.resolveRealMessageId(dialogId, messageId);
+    }
+
     public void toggleTodo(long dialogId, int messageId, int taskId, boolean enable, long send_as) {
         final long myself = getUserConfig().getClientUserId();
         final int date = getConnectionsManager().getCurrentTime();
+        final int mid = resolveFeedMessageId(dialogId, messageId);
         storageQueue.postRunnable(() -> {
             SQLiteCursor cursor = null;
             SQLitePreparedStatement state = null;
             try {
-                cursor = database.queryFinalized("SELECT data FROM messages_v2 WHERE uid = " + dialogId + " AND mid = " + messageId);
+                cursor = database.queryFinalized("SELECT data FROM messages_v2 WHERE uid = " + dialogId + " AND mid = " + mid);
                 if (cursor.next()) {
                     NativeByteBuffer data = cursor.byteBufferValue(0);
                     if (data != null) {
@@ -4966,7 +4974,7 @@ public class MessagesStorage extends BaseController {
                             MessageObject.normalizeFlags(message);
                             message.serializeToStream(data);
                             state.bindByteBuffer(1, data);
-                            state.bindInteger(2, messageId);
+                            state.bindInteger(2, mid);
                             state.bindLong(3, dialogId);
                             state.step();
                             state.dispose();
@@ -4989,7 +4997,7 @@ public class MessagesStorage extends BaseController {
             }
             if (isForum(dialogId, FORUM_TYPE_DIRECT | FORUM_TYPE_CHAT)) {
                 try {
-                    cursor = database.queryFinalized("SELECT data FROM messages_topics WHERE uid = " + dialogId + " AND mid = " + messageId);
+                    cursor = database.queryFinalized("SELECT data FROM messages_topics WHERE uid = " + dialogId + " AND mid = " + mid);
                     if (cursor.next()) {
                         NativeByteBuffer data = cursor.byteBufferValue(0);
                         if (data != null) {
@@ -5008,7 +5016,7 @@ public class MessagesStorage extends BaseController {
                                 data = new NativeByteBuffer(message.getObjectSize());
                                 message.serializeToStream(data);
                                 state.bindByteBuffer(1, data);
-                                state.bindInteger(2, messageId);
+                                state.bindInteger(2, mid);
                                 state.bindLong(3, dialogId);
                                 state.step();
                                 state.dispose();
@@ -5519,11 +5527,12 @@ public class MessagesStorage extends BaseController {
     }
 
     public void updateMessageVoiceTranscriptionOpen(long dialogId, int msgId, TLRPC.Message saveFromMessage) {
+        final int mid = resolveFeedMessageId(dialogId, msgId);
         storageQueue.postRunnable(() -> {
             SQLitePreparedStatement state = null;
             try {
                 database.beginTransaction();
-                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(msgId, dialogId);
+                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(mid, dialogId);
                 message.voiceTranscriptionOpen = saveFromMessage.voiceTranscriptionOpen;
                 message.voiceTranscriptionRated = saveFromMessage.voiceTranscriptionRated;
                 message.voiceTranscriptionFinal = saveFromMessage.voiceTranscriptionFinal;
@@ -5543,7 +5552,7 @@ public class MessagesStorage extends BaseController {
                     } else {
                         state.bindNull(1);
                     }
-                    state.bindInteger(2, msgId);
+                    state.bindInteger(2, mid);
                     state.bindLong(3, dialogId);
                     state.step();
                     state.dispose();
@@ -5567,11 +5576,12 @@ public class MessagesStorage extends BaseController {
     }
 
     public void updateMessageVoiceTranscription(long dialogId, int messageId, String text, long transcriptionId, boolean isFinal) {
+        final int mid = resolveFeedMessageId(dialogId, messageId);
         storageQueue.postRunnable(() -> {
             SQLitePreparedStatement state = null;
             try {
                 database.beginTransaction();
-                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(messageId, dialogId);
+                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(mid, dialogId);
                 message.voiceTranscriptionFinal = isFinal;
                 message.voiceTranscriptionId = transcriptionId;
                 message.voiceTranscription = text;
@@ -5584,7 +5594,7 @@ public class MessagesStorage extends BaseController {
                 } else {
                     state.bindNull(1);
                 }
-                state.bindInteger(2, messageId);
+                state.bindInteger(2, mid);
                 state.bindLong(3, dialogId);
                 state.step();
                 state.dispose();
@@ -5607,11 +5617,12 @@ public class MessagesStorage extends BaseController {
     }
 
     public void updateMessageVoiceTranscription(long dialogId, int messageId, String text, TLRPC.Message saveFromMessage) {
+        final int mid = resolveFeedMessageId(dialogId, messageId);
         storageQueue.postRunnable(() -> {
             SQLitePreparedStatement state = null;
             try {
                 database.beginTransaction();
-                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(messageId, dialogId);
+                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(mid, dialogId);
                 message.voiceTranscriptionOpen = saveFromMessage.voiceTranscriptionOpen;
                 message.voiceTranscriptionRated = saveFromMessage.voiceTranscriptionRated;
                 message.voiceTranscriptionFinal = saveFromMessage.voiceTranscriptionFinal;
@@ -5632,7 +5643,7 @@ public class MessagesStorage extends BaseController {
                     } else {
                         state.bindNull(1);
                     }
-                    state.bindInteger(2, messageId);
+                    state.bindInteger(2, mid);
                     state.bindLong(3, dialogId);
                     state.step();
                     state.dispose();
@@ -5656,11 +5667,16 @@ public class MessagesStorage extends BaseController {
     }
 
     public void updateMessageCustomParams(long dialogId, TLRPC.Message saveFromMessage) {
+        updateMessageCustomParams(dialogId, saveFromMessage, saveFromMessage.id);
+    }
+
+    public void updateMessageCustomParams(long dialogId, TLRPC.Message saveFromMessage, int messageId) {
+        final int mid = resolveFeedMessageId(dialogId, messageId);
         storageQueue.postRunnable(() -> {
             SQLitePreparedStatement state = null;
             try {
                 database.beginTransaction();
-                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(saveFromMessage.id, dialogId);
+                TLRPC.Message message = getMessageWithCustomParamsOnlyInternal(mid, dialogId);
                 MessageCustomParamsHelper.copyParams(saveFromMessage, message);
 
                 for (int i = 0; i < 2; i++) {
@@ -5676,7 +5692,7 @@ public class MessagesStorage extends BaseController {
                     } else {
                         state.bindNull(1);
                     }
-                    state.bindInteger(2, saveFromMessage.id);
+                    state.bindInteger(2, mid);
                     state.bindLong(3, dialogId);
                     state.step();
                     state.dispose();
