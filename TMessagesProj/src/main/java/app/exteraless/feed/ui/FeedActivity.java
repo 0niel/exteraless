@@ -144,21 +144,22 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         rootLayout.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
         if (hasMainTabs) {
             ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (view, insets) -> extendInsetsByTabsHeight(insets));
-            rootLayout.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-                @Override
-                public void onViewAttachedToWindow(View view) {
-                    if (lastWindowInsets != null) {
-                        ViewCompat.dispatchApplyWindowInsets(view, lastWindowInsets);
-                    } else {
-                        view.requestApplyInsets();
-                    }
-                }
-
-                @Override
-                public void onViewDetachedFromWindow(View view) {
-                }
-            });
         }
+        rootLayout.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View view) {
+                if (lastWindowInsets != null) {
+                    ViewCompat.dispatchApplyWindowInsets(view, lastWindowInsets);
+                } else {
+                    view.requestApplyInsets();
+                }
+                invalidateEmbeddedActionBar();
+            }
+
+            @Override
+            public void onViewDetachedFromWindow(View view) {
+            }
+        });
 
         final FrameLayout chatLayout = new FrameLayout(context);
         rootLayout.addView(chatLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
@@ -396,6 +397,28 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         chatContainer.chatActivity.reattachCurrentFeedVideoTexture();
     }
 
+    /**
+     * Пересобрать запись RenderNode у шапки встроенного чата.
+     *
+     * Пока лента вынута из окна, инвалидация детей экшн-бара до него самого не доходит:
+     * дети остаются грязными, а он — чистым, и при повторном подключении переиспользует
+     * старую запись, в которой детей ещё не было. Видно как пустые стеклянные пилюли
+     * без аватарки, заголовка и кнопок.
+     */
+    private void invalidateEmbeddedActionBar() {
+        if (chatContainer == null || chatContainer.chatActivity == null) {
+            return;
+        }
+        final ActionBar chatActionBar = chatContainer.chatActivity.getActionBar();
+        if (chatActionBar == null) {
+            return;
+        }
+        chatActionBar.invalidate();
+        for (int i = 0; i < chatActionBar.getChildCount(); i++) {
+            chatActionBar.getChildAt(i).invalidate();
+        }
+    }
+
     private void invalidateParentTabsGlass() {
         if (parentTabsGlassInvalidationCallback != null) {
             parentTabsGlassInvalidationCallback.run();
@@ -432,10 +455,15 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             uiResumedHeld = true;
             FeedController.getInstance(currentAccount).setUiResumed(true);
         }
-        if (hasMainTabs && fragmentView != null && lastWindowInsets != null) {
-            ViewCompat.dispatchApplyWindowInsets(fragmentView, lastWindowInsets);
+        if (fragmentView != null) {
+            if (lastWindowInsets != null) {
+                ViewCompat.dispatchApplyWindowInsets(fragmentView, lastWindowInsets);
+            } else {
+                fragmentView.requestApplyInsets();
+            }
         }
         reattachCurrentFeedVideoTexture();
+        invalidateEmbeddedActionBar();
 
         final int generation = FeedConfig.getInstance(currentAccount).getGeneration();
         if (generation != lastConfigGeneration) {
@@ -473,6 +501,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         viewportFullyVisible = true;
         updateFeedViewportActive(true);
         reattachCurrentFeedVideoTexture();
+        invalidateEmbeddedActionBar();
     }
 
     @Override
@@ -484,6 +513,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
     @Override
     public void onTransitionAnimationStart(boolean isOpen, boolean backward) {
+        invalidateEmbeddedActionBar();
         if (hasMainTabs) {
             viewportFullyVisible = false;
             updateFeedViewportActive(false);
@@ -492,8 +522,15 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     }
 
     @Override
+    public void onTransitionAnimationProgress(boolean isOpen, float progress) {
+        super.onTransitionAnimationProgress(isOpen, progress);
+        invalidateEmbeddedActionBar();
+    }
+
+    @Override
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
         super.onTransitionAnimationEnd(isOpen, backward);
+        invalidateEmbeddedActionBar();
         if (hasMainTabs) {
             viewportFullyVisible = isOpen;
             updateFeedViewportActive(isOpen);

@@ -711,6 +711,9 @@ public class FeedController implements NotificationCenter.NotificationCenterDele
     }
 
     public int getUnreadCount() {
+        if (!app.exteraless.appearance.AppearanceConfig.showFeedUnreadCounter()) {
+            return 0;
+        }
         return unreadTracker.getUnreadCount();
     }
 

@@ -50,6 +50,7 @@ public class FeedChannelsActivity extends BaseFragment implements NotificationCe
     private static final int MENU_OTHER = 3;
 
     private static final int ID_BOTTOM_TAB = Integer.MAX_VALUE - 1;
+    private static final int ID_UNREAD_COUNTER = Integer.MAX_VALUE - 2;
     private static final int ID_INCLUDE_ARCHIVED = Integer.MAX_VALUE;
 
     private static final Comparator<TLRPC.Chat> BY_TITLE =
@@ -218,6 +219,8 @@ public class FeedChannelsActivity extends BaseFragment implements NotificationCe
             items.add(UItem.asCheck(ID_BOTTOM_TAB, getString(R.string.FeedBottomTab),
                     getString(R.string.FeedBottomTabInfo), true)
                     .setChecked(AppearanceConfig.showFeedTab()));
+            items.add(UItem.asCheck(ID_UNREAD_COUNTER, getString(R.string.FeedUnreadCounter))
+                    .setChecked(AppearanceConfig.showFeedUnreadCounter()));
             items.add(UItem.asCheck(ID_INCLUDE_ARCHIVED, getString(R.string.FeedIncludeArchived))
                     .setChecked(config.getIncludeArchived()));
             items.add(UItem.asShadow(getString(R.string.FeedIncludeArchivedInfo)));
@@ -255,6 +258,14 @@ public class FeedChannelsActivity extends BaseFragment implements NotificationCe
         if (item.id == ID_BOTTOM_TAB) {
             AppearanceConfig.showFeedTab.toggleConfigBool();
             update();
+            NotificationCenter.getInstance(currentAccount)
+                    .postNotificationName(NotificationCenter.feedTabVisibleToggled);
+        } else if (item.id == ID_UNREAD_COUNTER) {
+            AppearanceConfig.showFeedUnreadCounter.toggleConfigBool();
+            update();
+            // Своего события для счётчика нет, а перестроение вкладок заодно
+            // пересчитывает бейджи — берём его вместо новой константы в общем
+            // NotificationCenter.
             NotificationCenter.getInstance(currentAccount)
                     .postNotificationName(NotificationCenter.feedTabVisibleToggled);
         } else if (item.id == ID_INCLUDE_ARCHIVED) {

@@ -9,6 +9,7 @@
     <string name="FeedChannelsInfo">Снимите галочку, чтобы скрыть посты канала из ленты. Новые каналы показываются автоматически.</string>
     <string name="FeedHiddenChannels">Скрытые</string>
     <string name="FeedHideChannel">Скрыть из ленты</string>
+    <string name="FeedUnreadCounter">Счётчик непрочитанных</string>
     <string name="FeedIncludeArchived">Показывать чаты из архива</string>
     <string name="FeedIncludeArchivedInfo">Также добавлять в ленту каналы из архивированных чатов.</string>
     <string name="FeedMarkAllRead">Отметить всё прочитанным</string>

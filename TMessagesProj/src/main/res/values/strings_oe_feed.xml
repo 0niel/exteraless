@@ -9,6 +9,7 @@
     <string name="FeedChannelsInfo">Uncheck a channel to hide its posts from the feed. New channels are shown automatically.</string>
     <string name="FeedHiddenChannels">Hidden</string>
     <string name="FeedHideChannel">Hide from Feed</string>
+    <string name="FeedUnreadCounter">Unread Post Counter</string>
     <string name="FeedIncludeArchived">Show Chats From Archive</string>
     <string name="FeedIncludeArchivedInfo">Also include channels from your archived chats in the feed.</string>
     <string name="FeedMarkAllRead">Mark All as Read</string>
