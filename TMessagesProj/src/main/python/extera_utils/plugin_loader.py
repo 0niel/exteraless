@@ -768,6 +768,11 @@ def _install_jclass_guard() -> None:
 
         def jclass(name, *args, **kwargs):
             try:
+                from .class_aliases import resolve
+                name = resolve(name)
+            except Exception:
+                pass
+            try:
                 if isinstance(name, str) and not guard_java_class(name):
                     needed = java_class_permission(name)
                     if isinstance(needed, tuple):
@@ -812,6 +817,8 @@ def _install_sandbox() -> None:
         audit_gate.install(sys.modules[__name__])
         _install_thread_marking()
         _install_jclass_guard()
+        from . import class_aliases
+        class_aliases.install_import_hook()
         if not any(isinstance(finder, _PermissionFinder) for finder in sys.meta_path):
             # В начало: elyx_runtime ставит свой финдер тоже в начало и может
             # оказаться перед нами — это безопасно, для не-ElyxPlugins имён он

@@ -16,6 +16,11 @@ def find_class(name: str):
     отсутствующий класс, и обрабатывается его же кодом.
     """
     try:
+        from extera_utils.class_aliases import resolve
+        name = resolve(name)
+    except Exception:
+        pass
+    try:
         from extera_utils.plugin_loader import guard_java_class
         if not guard_java_class(name):
             return None
