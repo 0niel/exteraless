@@ -185,6 +185,23 @@ def current_plugin_id() -> Optional[str]:
     return getattr(_context_state, "plugin_id", None)
 
 
+def _ensure_plugins_dir_on_path() -> None:
+    """Каталог плагинов — в конец sys.path.
+
+    Плагины кладут туда вспомогательные пакеты и импортируют их по имени
+    (zwylib пишет `zwylib_companion/__init__.py`). Сами плагины лежат там
+    файлами `.plugin` и по имени не импортируются, поэтому видимыми становятся
+    только такие пакеты. Путь идёт в конец: модули SDK не должны перекрываться.
+    """
+    try:
+        import file_utils
+        plugins_dir = file_utils.get_plugins_dir()
+    except Exception:
+        return
+    if plugins_dir and plugins_dir not in sys.path:
+        sys.path.append(plugins_dir)
+
+
 # Песочница: разрешения плагинов
 #
 # Граница честная и узкая: проверки ловят обращения ЧЕРЕЗ SDK и импорты из кода
@@ -935,6 +952,7 @@ def _import_module(path: str, plugin_id: str):
     # with "cannot create a module spec". The file is plain Python source
     # whatever it is called, so name the loader instead of guessing.
     loader = importlib.machinery.SourceFileLoader(module_name, path)
+    _ensure_plugins_dir_on_path()
     spec = importlib.util.spec_from_file_location(module_name, path, loader=loader)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot create a module spec for {path!r}")
