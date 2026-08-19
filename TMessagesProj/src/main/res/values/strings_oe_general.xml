@@ -60,8 +60,8 @@
     <!-- Google -->
 
     <!-- Settings Management -->
-    <string name="OEGeneralExportEtgSettings">Export for exteraGram</string>
-    <string name="OEGeneralImportEtgSettings">Import from exteraGram</string>
+    <string name="OEGeneralExportEtgSettings">Export</string>
+    <string name="OEGeneralImportEtgSettings">Import</string>
     <string name="OEGeneralEtgSettingsInfo">exteraGram exchanges settings through .extera files. Only settings that both apps have are transferred; the rest is left as is.</string>
     <string name="OEGeneralImportEtgConfirm">%1$d settings from this file will replace the current ones.</string>
     <string name="OEGeneralImportEtgEmpty">No exteraGram settings found in this file.</string>

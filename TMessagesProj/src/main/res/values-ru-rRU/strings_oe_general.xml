@@ -56,8 +56,8 @@
     <!-- Google -->
 
     <!-- Settings Management -->
-    <string name="OEGeneralExportEtgSettings">Экспорт для exteraGram</string>
-    <string name="OEGeneralImportEtgSettings">Импорт из exteraGram</string>
+    <string name="OEGeneralExportEtgSettings">Экспорт</string>
+    <string name="OEGeneralImportEtgSettings">Импорт</string>
     <string name="OEGeneralEtgSettingsInfo">exteraGram обменивается настройками через файлы .extera. Переносится только то, что есть в обоих приложениях, остальное остаётся как было.</string>
     <string name="OEGeneralImportEtgConfirm">Настроек в файле: %1$d. Текущие значения будут заменены.</string>
     <string name="OEGeneralImportEtgEmpty">В файле нет настроек exteraGram.</string>
