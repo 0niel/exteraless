@@ -40,6 +40,11 @@ public final class PythonBridge {
         controller().importPluginSettings(pluginId, json, reloadSettings);
     }
 
+    /** Полная перезапись: нужна модулю plugin_settings, чтобы удалять ключи. */
+    public static void replaceSettings(String pluginId, String json) {
+        controller().replacePluginSettings(pluginId, json);
+    }
+
     // ---------- логирование ----------
 
     public static void log(String pluginId, String message) {

@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.telegram.messenger.FileLog;
 
 import java.lang.reflect.Member;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -181,6 +182,43 @@ public final class XposedHooks {
             }
         }
         return ids.toString();
+    }
+
+    /**
+     * Взять под учёт хук, поставленный плагином напрямую через XposedBridge.
+     *
+     * Плагины каталога (zwylib) цепляют метод сами и лишь отдают нам Unhook,
+     * чтобы он снялся при выгрузке плагина. Повторная регистрация того же
+     * объекта ничего не меняет.
+     */
+    public static String addPluginUnhook(String pluginId, XC_MethodHook.Unhook unhook) {
+        if (pluginId == null || unhook == null) {
+            return null;
+        }
+        for (Map.Entry<String, XC_MethodHook.Unhook> entry : UNHOOKS.entrySet()) {
+            if (entry.getValue() == unhook) {
+                return entry.getKey();
+            }
+        }
+        return register(pluginId, unhook);
+    }
+
+    /** Снимает ранее учтённый хук по самому объекту Unhook. */
+    public static void removePluginUnhook(String pluginId, XC_MethodHook.Unhook unhook) {
+        if (unhook == null) {
+            return;
+        }
+        for (Map.Entry<String, XC_MethodHook.Unhook> entry : UNHOOKS.entrySet()) {
+            if (entry.getValue() == unhook) {
+                unhook(entry.getKey());
+                return;
+            }
+        }
+        try {
+            unhook.unhook();
+        } catch (Throwable t) {
+            FileLog.e("XposedHooks.removePluginUnhook failed for " + pluginId, t);
+        }
     }
 
     // ---------- снятие хуков ----------

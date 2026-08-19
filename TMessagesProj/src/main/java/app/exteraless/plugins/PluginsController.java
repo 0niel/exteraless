@@ -825,6 +825,49 @@ public class PluginsController {
         return obj.toString();
     }
 
+    /** Переписывает настройки плагина целиком: ключи, которых нет в json, исчезают. */
+    public void replacePluginSettings(String pluginId, String json) {
+        if (appContext == null) {
+            return;
+        }
+        try {
+            JSONObject obj = new JSONObject(json);
+            SharedPreferences.Editor editor = pluginPrefs(pluginId).edit();
+            editor.clear();
+            java.util.Iterator<String> keys = obj.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                editor.putString(key, obj.optString(key));
+            }
+            editor.apply();
+        } catch (Exception e) {
+            FileLog.e("PluginsController: replaceSettings failed for " + pluginId, e);
+        }
+    }
+
+    public void addXposedHook(String pluginId, de.robv.android.xposed.XC_MethodHook.Unhook unhook) {
+        app.exteraless.plugins.xposed.XposedHooks.addPluginUnhook(pluginId, unhook);
+    }
+
+    public void removeXposedHook(String pluginId, de.robv.android.xposed.XC_MethodHook.Unhook unhook) {
+        app.exteraless.plugins.xposed.XposedHooks.removePluginUnhook(pluginId, unhook);
+    }
+
+    /** Имя из SDK exteraGram; у нас перерисовка экрана и есть перезагрузка настроек. */
+    public void loadPluginSettings(String pluginId) {
+        reloadSettingsScreen(pluginId);
+    }
+
+    /**
+     * Движки по имени языка. У нас он один, но плагины каталога берут его
+     * через карту: PluginUtils.get_python_engine() в zwylib.
+     */
+    public static Map<String, PythonPluginsEngine> getEngines() {
+        Map<String, PythonPluginsEngine> engines = new ConcurrentHashMap<>();
+        engines.put(PluginsConstants.PYTHON, PythonPluginsEngine.getInstance());
+        return engines;
+    }
+
     public void importPluginSettings(String pluginId, String json, boolean reloadSettings) {
         if (appContext == null) {
             return;

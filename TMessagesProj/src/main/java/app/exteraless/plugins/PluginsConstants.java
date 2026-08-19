@@ -70,6 +70,9 @@ public final class PluginsConstants {
      */
     public static final String SDK_VERSION = "1.4.5.0";
 
+    /** Имя движка в карте getEngines(); плагины каталога берут его отсюда. */
+    public static final String PYTHON = "python";
+
     /** События приложения (строки протокола, как у exteraGram). */
     public static final String EVENT_APP_START = "app_start";
     public static final String EVENT_APP_STOP = "app_stop";
