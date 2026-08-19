@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.hardware.Camera;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -102,6 +103,12 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
     private boolean switchingCamera;
     private boolean animateNextConfiguration;
     private int bindRetries;
+
+    private final Runnable zoomFlushRunnable = this::flushPendingZoom;
+    private float pendingZoom = Float.NaN;
+    private float lastAppliedZoom = Float.NaN;
+    private long lastZoomAppliedAt;
+    private boolean zoomFlushScheduled;
 
     public InstantCameraZoomSlider(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -235,7 +242,73 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
 
     // ---------- зум ----------
 
+    /**
+     * Ставит зум в очередь вместо немедленной отправки в камеру.
+     *
+     * Слайдер двигается по каждому событию касания, а камера принимает изменения
+     * не чаще кадра записи; без очереди лишние вызовы копятся в очереди камеры
+     * и зум отстаёт от пальца.
+     */
     private void applyZoom(float value) {
+        pendingZoom = value;
+        scheduleZoomFlush();
+    }
+
+    private void scheduleZoomFlush() {
+        if (zoomFlushScheduled) {
+            return;
+        }
+        zoomFlushScheduled = true;
+        postOnAnimation(zoomFlushRunnable);
+    }
+
+    private void discardPendingZoom() {
+        removeCallbacks(zoomFlushRunnable);
+        zoomFlushScheduled = false;
+        pendingZoom = Float.NaN;
+    }
+
+    private void resetZoomThrottle() {
+        discardPendingZoom();
+        lastAppliedZoom = Float.NaN;
+        lastZoomAppliedAt = 0L;
+    }
+
+    private long getZoomUpdateIntervalMs() {
+        int frameRate = 0;
+        if (backend == Backend.CAMERA_X && cameraXSession != null) {
+            frameRate = cameraXSession.getRecordingFrameRate();
+        } else if (backend == Backend.CAMERA_2 && camera2Session != null) {
+            frameRate = camera2Session.getRecordingFrameRate();
+        }
+        if (frameRate <= 0) {
+            frameRate = 30;
+        }
+        return Math.max(1L, 1000L / frameRate);
+    }
+
+    private void flushPendingZoom() {
+        zoomFlushScheduled = false;
+        final float value = pendingZoom;
+        if (Float.isNaN(value) || backend == Backend.NONE) {
+            return;
+        }
+        final long now = SystemClock.uptimeMillis();
+        if (!Float.isNaN(lastAppliedZoom)) {
+            if (value == lastAppliedZoom) {
+                return;
+            }
+            if (now - lastZoomAppliedAt < getZoomUpdateIntervalMs()) {
+                scheduleZoomFlush();
+                return;
+            }
+        }
+        lastAppliedZoom = value;
+        lastZoomAppliedAt = now;
+        sendZoomToCamera(value);
+    }
+
+    private void sendZoomToCamera(float value) {
         float reported = value;
         switch (backend) {
             case CAMERA_X:
@@ -424,6 +497,7 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
 
     private void resetBinding(boolean hide) {
         setExternalZoomGestureActive(false);
+        resetZoomThrottle();
         backend = Backend.NONE;
         detachCameraXZoomObserver();
         setZoom(getZoom());
@@ -546,6 +620,7 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         if (backend != Backend.CAMERA_X) {
             return;
         }
+        discardPendingZoom();
         setZoom(getZoom());
     }
 
@@ -595,6 +670,10 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
 
     private void showAnimated() {
         setEnabled(true);
+        if (!app.exteraless.chats.ChatsConfig.zoomSlider.Bool()) {
+            hideImmediately();
+            return;
+        }
         if (getVisibility() != VISIBLE) {
             setVisibility(VISIBLE);
         }
@@ -690,6 +769,7 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         removeCallbacks(bindRunnable);
+        discardPendingZoom();
         detachCameraXZoomObserver();
         if (appearAnimator != null) {
             cancelAppearAnimation();

@@ -25,6 +25,8 @@
     <string name="OEChatsCameraMirrorMode">Зеркальный режим</string>
     <string name="OEChatsStartWithWideAngle">Начинать с широкоугольной</string>
     <string name="OEChatsExtendedFps">Расширенный диапазон FPS</string>
+    <string name="OEChatsZoomSlider">Плашка зума</string>
+    <string name="OEChatsZoomSliderInfo">Показывать управление зумом под камерой видеосообщений.</string>
     <string name="OEChatsStaticZoom">Статичный зум</string>
     <string name="OEChatsStaticZoomInfo">При записи видеосообщений уровень зума не сбрасывается, когда вы убираете пальцы.</string>
 

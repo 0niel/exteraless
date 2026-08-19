@@ -26,6 +26,8 @@
     <string name="OEChatsCameraMirrorMode">Mirror Mode</string>
     <string name="OEChatsStartWithWideAngle">Start with Wide Angle</string>
     <string name="OEChatsExtendedFps">Extended FPS Range</string>
+    <string name="OEChatsZoomSlider">Zoom Slider</string>
+    <string name="OEChatsZoomSliderInfo">Show the zoom control under the video message camera.</string>
     <string name="OEChatsStaticZoom">Static Zoom</string>
     <string name="OEChatsStaticZoomInfo">When recording video messages, the zoom level will not reset if you release your fingers.</string>
 

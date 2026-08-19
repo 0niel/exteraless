@@ -91,6 +91,10 @@ object ChatsConfig {
     @JvmField
     val extendedFramesPerSecond = addConfig("OEChatsExtendedFps", ConfigItem.configTypeBool, false)
 
+    /** Показывать плашку зума под камерой кружков. */
+    @JvmField
+    val zoomSlider = addConfig("OEChatsZoomSlider", ConfigItem.configTypeBool, true)
+
     /** Статичный зум: уровень не сбрасывается после отпускания пальца. */
     @JvmField
     val staticZoom = addConfig("OEChatsStaticZoom", ConfigItem.configTypeBool, false)

@@ -174,6 +174,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int startWithWideAngleRow;
     private int videoMessagesCameraRow;
     private int rememberLastUsedCameraRow;
+    private int zoomSliderRow;
     private int staticZoomRow;
     private int cameraDividerRow;
 
@@ -320,6 +321,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         } else {
             rememberLastUsedCameraRow = -1;
         }
+        zoomSliderRow = addRow("zoomSlider");
         staticZoomRow = addRow("staticZoom");
         cameraDividerRow = addRow();
 
@@ -1034,6 +1036,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == cameraMirrorModeRow) return ChatsConfig.cameraMirrorMode;
         if (position == startWithWideAngleRow) return ChatsConfig.startWithWideAngleCamera;
         if (position == rememberLastUsedCameraRow) return ChatsConfig.rememberLastUsedCamera;
+        if (position == zoomSliderRow) return ChatsConfig.zoomSlider;
         if (position == staticZoomRow) return ChatsConfig.staticZoom;
         if (position == hideCameraTileRow) return ChatsConfig.hideCameraTile;
         if (position == preferOriginalQualityRow) return ChatsConfig.preferOriginalQuality;
@@ -1416,6 +1419,10 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setTextAndValueAndCheck(getString(R.string.OEChatsRememberLastUsedCamera),
                         getString(R.string.OEChatsRememberLastUsedCameraInfo),
                         ChatsConfig.rememberLastUsedCamera.Bool(), true, true);
+            } else if (position == zoomSliderRow) {
+                cell.setTextAndValueAndCheck(getString(R.string.OEChatsZoomSlider),
+                        getString(R.string.OEChatsZoomSliderInfo),
+                        ChatsConfig.zoomSlider.Bool(), true, true);
             } else if (position == staticZoomRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsStaticZoom), ChatsConfig.staticZoom.Bool(), false);
             } else if (position == alwaysSendHdRow) {
