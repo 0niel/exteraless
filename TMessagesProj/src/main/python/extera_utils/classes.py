@@ -496,8 +496,13 @@ def _ensure_java_class(info):
         spec_json = json.dumps(info.build_spec())
         key = PluginServices.generateProxyClass(_current_plugin_id(), spec_json)
         if key is None:
+            try:
+                reason = PluginServices.getProxyError()
+            except Exception:
+                reason = None
             raise RuntimeError(
-                f"generateProxyClass failed for {info.cls.__name__}; see logcat")
+                f"generateProxyClass failed for {info.cls.__name__}: "
+                f"{reason or 'no permission or generator error, see logcat'}")
         info.class_key = key
         _CLASSES[key] = info.cls
         return info.class_key

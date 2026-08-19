@@ -101,6 +101,18 @@ public final class ClassProxyFactory {
     private static final MethodId PRECONSTRUCT_ID = SELF_ID.getMethod(OBJECT_ARRAY_ID, "preConstruct",
             TypeId.STRING, TypeId.STRING, OBJECT_ARRAY_ID);
 
+    /** Текст последнего отказа генератора: питон видит только «see logcat». */
+    private static volatile String lastError;
+
+    public static String getLastError() {
+        return lastError;
+    }
+
+    /** Отказ до генератора (нет прав, нет контекста) тоже должен доезжать до плагина. */
+    public static void setLastError(String error) {
+        lastError = error;
+    }
+
     private ClassProxyFactory() {
     }
 
@@ -110,7 +122,11 @@ public final class ClassProxyFactory {
         try {
             return generateInternal(pluginId, specJson);
         } catch (Throwable t) {
+            // Через logcat, а не только FileLog: причина нужна и тогда, когда логи выключены,
+            // иначе плагин видит лишь «see logcat», а в logcat пусто.
+            android.util.Log.e(TAG, "generateProxyClass failed for plugin " + pluginId, t);
             FileLog.e(TAG + ": generateProxyClass failed for plugin " + pluginId, t);
+            lastError = t.getClass().getSimpleName() + ": " + t.getMessage();
             return null;
         }
     }
@@ -669,6 +685,14 @@ public final class ClassProxyFactory {
         Local sizeLocal = code.newLocal(TypeId.INT);
         Local indexLocal = code.newLocal(TypeId.INT);
         Local resultLocal = code.newLocal(OBJECT_ID);
+        // dexmaker разрешает заводить локальные только до первой инструкции,
+        // поэтому и боксы аргументов, и переменная возврата объявляются здесь.
+        Local[] boxedLocals = new Local[paramTypes.length];
+        for (int i = 0; i < paramTypes.length; i++) {
+            boxedLocals[i] = code.newLocal(OBJECT_ID);
+        }
+        Local returnLocal = returnType == void.class || returnType == Void.class
+                ? null : code.newLocal(retTypeId);
 
         code.iget(peerField, peerLocal, thisLocal);
         code.loadConstant(classKeyLocal, classKey);
@@ -677,14 +701,13 @@ public final class ClassProxyFactory {
         code.newArray(argsLocal, sizeLocal);
         for (int i = 0; i < paramTypes.length; i++) {
             Local param = code.getParameter(i, paramTypeIds[i]);
-            Local boxed = code.newLocal(OBJECT_ID);
-            boxValue(code, paramTypes[i], paramTypeIds[i], param, boxed);
+            boxValue(code, paramTypes[i], paramTypeIds[i], param, boxedLocals[i]);
             code.loadConstant(indexLocal, i);
-            code.aput(argsLocal, indexLocal, boxed);
+            code.aput(argsLocal, indexLocal, boxedLocals[i]);
         }
         code.invokeStatic(DISPATCH_ID, resultLocal, classKeyLocal, methodKeyLocal, peerLocal,
                 thisLocal, argsLocal);
-        emitReturn(code, returnType, retTypeId, resultLocal);
+        emitReturn(code, returnType, resultLocal, returnLocal);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -726,9 +749,13 @@ public final class ClassProxyFactory {
         Local indexLocal = code.newLocal(TypeId.INT);
         Local elemLocal = code.newLocal(OBJECT_ID);
         Local[] typedParams = new Local[paramTypes.length];
-
+        Local[] boxedParams = new Local[paramTypes.length];
         for (int i = 0; i < paramTypes.length; i++) {
             typedParams[i] = code.newLocal(paramTypeIds[i]);
+            boxedParams[i] = code.newLocal(OBJECT_ID);
+        }
+
+        for (int i = 0; i < paramTypes.length; i++) {
             code.move(typedParams[i], code.getParameter(i, paramTypeIds[i]));
         }
         code.loadConstant(classKeyLocal, classKey);
@@ -736,10 +763,9 @@ public final class ClassProxyFactory {
         code.loadConstant(sizeLocal, paramTypes.length);
         code.newArray(argsLocal, sizeLocal);
         for (int i = 0; i < paramTypes.length; i++) {
-            Local boxed = code.newLocal(OBJECT_ID);
-            boxValue(code, paramTypes[i], paramTypeIds[i], typedParams[i], boxed);
+            boxValue(code, paramTypes[i], paramTypeIds[i], typedParams[i], boxedParams[i]);
             code.loadConstant(indexLocal, i);
-            code.aput(argsLocal, indexLocal, boxed);
+            code.aput(argsLocal, indexLocal, boxedParams[i]);
         }
         code.loadConstant(nullLocal, null);
         code.invokeStatic(PRECONSTRUCT_ID, replacedLocal, classKeyLocal, ctorKeyLocal, argsLocal);
@@ -797,13 +823,13 @@ public final class ClassProxyFactory {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void emitReturn(Code code, Class<?> returnType, TypeId<?> retTypeId,
-                                   Local resultLocal) {
-        if (returnType == void.class || returnType == Void.class) {
+    private static void emitReturn(Code code, Class<?> returnType,
+                                   Local resultLocal, Local typed) {
+        if (typed == null) {
             code.returnVoid();
             return;
         }
-        Local typed = code.newLocal(retTypeId);
+        TypeId<?> retTypeId = TypeId.get(returnType);
         if (returnType.isPrimitive()) {
             MethodId unbox = HELPER_ID.getMethod(retTypeId,
                     "unbox" + capitalize(returnType.getName()), OBJECT_ID);

@@ -82,9 +82,17 @@ public final class PluginServices {
     /** Сгенерировать Java-класс по JSON-спецификации. @return classKey или null. */
     public static String generateProxyClass(String pluginId, String specJson) {
         if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "generateProxyClass")) {
+            ClassProxyFactory.setLastError(pluginId == null
+                    ? "no current plugin: called outside plugin context"
+                    : "permission 'hooks' not granted to " + pluginId);
             return null;
         }
         return ClassProxyFactory.generateProxyClass(pluginId, specJson);
+    }
+
+    /** Причина последнего отказа генератора прокси-классов; null, если отказов не было. */
+    public static String getProxyError() {
+        return ClassProxyFactory.getLastError();
     }
 
     /** Создать инстанс сгенерированного класса; python-сторона получает peer. */
