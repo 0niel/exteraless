@@ -96,7 +96,9 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
         listView.setSections();
         listView.adapter.setApplyBackground(false);
         listView.allowReorder(true);
-        listView.adapter.listenReorder(this::onReordered);
+        // Именно на списке, а не на адаптере: ItemTouchHelper создаётся и цепляется
+        // только здесь, у адаптера одноимённый метод лишь запоминает колбэк.
+        listView.listenReorder(this::onReordered);
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         actionBar.setAdaptiveBackground(listView);
 
