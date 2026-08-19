@@ -58,7 +58,6 @@
     <string name="OEAppearanceGlassOutlineGlare">Блик</string>
     <string name="OEAppearanceGlassOutlineSolid">Сплошной</string>
     <string name="OEAppearanceGlassOutlineHidden">Скрыт</string>
-    <string name="OEAppearanceGlassChatHeader">Стеклянная шапка чата</string>
     <string name="OEAppearanceGlassMessageMenu">Стеклянное меню сообщения</string>
     <string name="OEAppearanceIconPacks">Наборы иконок</string>
     <string name="OEAppearanceIconPacksInfo">Заменить иконки приложения на свой набор.</string>
@@ -94,7 +93,6 @@
     <string name="OEAppearanceTitleTextUsername">Имя пользователя</string>
     <string name="OEAppearanceTitleTextName">Имя</string>
     <string name="OEAppearanceGlassMessageMenuInfo">Меню сообщения и панель реакций становятся матовым стеклом.</string>
-    <string name="OEAppearanceGlassChatHeaderInfo">Название, аватарка и кнопки сверху чата лежат на матовых стеклянных плашках.</string>
     <string name="OEAppearanceGlassMessageMenuBlurOff">Стеклянным меню нужно размытие, а оно сейчас выключено.</string>
     <string name="OEBottomNavigationBarMode">Нижняя панель навигации</string>
     <string name="OEBottomNavigationModeShow">Показывать</string>

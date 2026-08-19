@@ -11,7 +11,7 @@ import org.telegram.ui.Components.chat.layouts.ChatActivityFadeView;
  * exteraGram: com/exteragram/messenger/utils/ui/ChatHeaderUiHelper.java (233 строки).
  *
  * Перенесены только те методы, у которых в нашем дереве есть на что опереться;
- * applyChatHeaderGlassStyle (:141-146) и ProfileTransitionState опущены — см. notes.
+ * ProfileTransitionState опущен — см. notes.
  */
 public final class ChatHeaderUiHelper {
 
@@ -103,6 +103,14 @@ public final class ChatHeaderUiHelper {
             color = actionBar.getBackgroundColor();
         }
         return AndroidUtilities.computePerceivedBrightness(color) > 0.721f;
+    }
+
+    /** M3 убирает среднюю стеклянную плашку под заголовком и её тень. */
+    public static void applyChatHeaderGlassStyle(ActionBar actionBar) {
+        if (isMaterial3ChatHeaderStyle()) {
+            actionBar.setDrawGlassMiddlePill(false);
+            actionBar.setGlassShadowAlpha(0.0f);
+        }
     }
 
     public static void setupGlassAvatarContainer(ChatAvatarContainer avatarContainer) {

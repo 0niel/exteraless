@@ -4614,7 +4614,7 @@ public class ChatActivity extends BaseFragment implements
                 return isInPreviewMode();
             }
         };
-        avatarContainer.setGlassMode();
+        app.exteraless.appearance.ChatHeaderUiHelper.setupGlassAvatarContainer(avatarContainer);
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
         avatarContainer.allowDrawStories = dialog_id < 0 && !isTopic;
@@ -5123,12 +5123,11 @@ public class ChatActivity extends BaseFragment implements
 
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
-        if (!isFeedSearch() && app.exteraless.appearance.AppearanceConfig.glassChatHeader()) {
-            actionBar.setupGlass(
-                glassBackgroundDrawableFactory,
-                BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
-                ChatObject.isForum(currentChat));
-        }
+        actionBar.setupGlass(
+            glassBackgroundDrawableFactory,
+            BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
+            ChatObject.isForum(currentChat));
+        app.exteraless.appearance.ChatHeaderUiHelper.applyChatHeaderGlassStyle(actionBar);
         //actionBar.setChatAvatarContainer(avatarContainer);
         //avatarContainer.setActionBar(actionBar);
 

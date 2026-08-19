@@ -100,6 +100,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     }
 
     private BlurredBackgroundDrawable glassDrawable;
+    private boolean drawGlassMiddlePill = true;
     private Drawable glassDrawableBack;
     private Drawable glassDrawableMenu;
     private INavigationLayout.BackButtonState backButtonState = INavigationLayout.BackButtonState.BACK;
@@ -1887,6 +1888,19 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         castShadows = value;
     }
 
+    public void setDrawGlassMiddlePill(boolean value) {
+        if (drawGlassMiddlePill == value) return;
+        drawGlassMiddlePill = value;
+        invalidate();
+    }
+
+    public void setGlassShadowAlpha(float alpha) {
+        if (glassDrawable != null) glassDrawable.setShadowAlpha(alpha);
+        if (glassDrawableBack instanceof BlurredBackgroundDrawable) ((BlurredBackgroundDrawable) glassDrawableBack).setShadowAlpha(alpha);
+        if (glassDrawableMenu instanceof BlurredBackgroundDrawable) ((BlurredBackgroundDrawable) glassDrawableMenu).setShadowAlpha(alpha);
+        invalidate();
+    }
+
     public void setShadowAlpha(int alpha) {
         if (this.shadowAlpha == alpha) return;
         if (getParent() instanceof View) {
@@ -2264,7 +2278,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int t = getHeight() - (getCurrentActionBarHeight() + s) / 2 - p;
         final int b = t + s + p * 2;
 
-        if (glassDrawable != null && !glassOnlyBack) {
+        if (glassDrawable != null && drawGlassMiddlePill && !glassOnlyBack) {
             final int menuWidthWithPadding = menuWidth + (hasForcedMenuWidth ? (menuWidth > 0 ? p : 0) : (int) (p * animatorHasMenuItems.getFloatValue()));
             final int rightOffset = lerp(menuWidthWithPadding, Math.max(menuWidthWithPadding, p + s), chatAvatarContainer == null ? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
 
