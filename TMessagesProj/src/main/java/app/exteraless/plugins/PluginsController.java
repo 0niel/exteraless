@@ -715,7 +715,15 @@ public class PluginsController {
                 if (!isSafeMode()) {
                     loadPluginInternal(p);
                 }
-                deliver(callback, p.loadError == null, p.loadError, p);
+                if (p.loadError != null) {
+                    // Иначе упавший плагин остаётся в списке установленных: запись о нём
+                    // появляется до загрузки, а загрузка только проставляет loadError.
+                    final String error = p.loadError;
+                    uninstallPlugin(id);
+                    deliver(callback, false, error, null);
+                    return;
+                }
+                deliver(callback, true, null, p);
             } catch (Exception e) {
                 FileLog.e("PluginsController: install failed", e);
                 deliver(callback, false, e.getMessage(), null);
