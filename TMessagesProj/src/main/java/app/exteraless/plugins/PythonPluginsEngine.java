@@ -9,6 +9,7 @@ import com.chaquo.python.android.AndroidPlatform;
 
 import org.telegram.messenger.FileLog;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,9 +26,20 @@ import java.util.concurrent.Executors;
  * хуки зовутся синхронно из потока вызывающего (как у exteraGram), GIL их
  * сериализует. Если движок ещё не поднялся, хук возвращает DEFAULT.
  */
-public class PythonPluginsEngine {
+public class PythonPluginsEngine extends com.exteragram.messenger.plugins.PythonPluginsEngine {
 
     private static volatile PythonPluginsEngine instance;
+
+    /**
+     * Загруженные экземпляры BasePlugin по id — в форме exteraGram.
+     * У нас они живут словарём на Python-стороне, но плагины каталога читают
+     * именно это поле: {@code engine.pluginInstances.get(plugin_id)}.
+     */
+    public final ConcurrentHashMap<String, PyObject> pluginInstances = new ConcurrentHashMap<>();
+
+    public ConcurrentHashMap<String, PyObject> getPluginInstances() {
+        return pluginInstances;
+    }
 
     public static PythonPluginsEngine getInstance() {
         if (instance == null) {
@@ -210,10 +222,24 @@ public class PythonPluginsEngine {
         try {
             String result = loader.callAttr("load_plugin", plugin.path, plugin.id).toJava(String.class);
             watchdog.notePluginExit(plugin.id);
+            rememberInstance(plugin.id);
             return result;
         } catch (Throwable t) {
             watchdog.handlePluginError(plugin.id, t);
             return "{\"ok\":false,\"error\":" + quote(t.getMessage()) + "}";
+        }
+    }
+
+    private void rememberInstance(String pluginId) {
+        try {
+            PyObject value = loader.callAttr("get_plugin_instance", pluginId);
+            if (value == null || "None".equals(value.toString())) {
+                pluginInstances.remove(pluginId);
+            } else {
+                pluginInstances.put(pluginId, value);
+            }
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: cannot cache instance of " + pluginId, t);
         }
     }
 
@@ -252,6 +278,7 @@ public class PythonPluginsEngine {
             watchdog.notePluginExit(plugin.id);
         }
         plugin.loaded = false;
+        pluginInstances.remove(plugin.id);
         // Пункты меню плагина сняты вместе с ним — подменю надо пересобрать.
         PluginsController.getInstance().notifyMenuItemsUpdated();
     }

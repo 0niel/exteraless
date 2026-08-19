@@ -1279,6 +1279,29 @@ public class MediaDataController extends BaseController {
         return item;
     }
 
+    public void setPlaceholderImageByIndex(BackupImageView imageView, String setName, int index, String filter) {
+        final TLRPC.InputStickerSet inputStickerSet = new TLRPC.TL_inputStickerSetShortName();
+        inputStickerSet.short_name = setName;
+        final String tag = "sticker_" + setName + "_" + index;
+        imageView.setTag(tag);
+        imageView.setImageDrawable(null);
+        MediaDataController.getInstance(currentAccount).getStickerSet(inputStickerSet, 0, false, set -> {
+            if (!tag.equals(imageView.getTag())) return;
+            if (set == null || set.documents == null || set.documents.isEmpty() || index < 0 || index >= set.documents.size()) {
+                imageView.setImageDrawable(null);
+                return;
+            }
+            final TLRPC.Document document = set.documents.get(index);
+            if (document == null) {
+                imageView.setImageDrawable(null);
+                return;
+            }
+            Drawable thumbDrawable = DocumentObject.getSvgThumb(document, Theme.key_windowBackgroundWhiteGrayIcon, 0.2f, 1f, null);
+            imageView.setImage(ImageLocation.getForDocument(document), filter, thumbDrawable, 0, document);
+            imageView.invalidate();
+        });
+    }
+
     public void setPlaceholderImage(BackupImageView imageView, String setName, String emoji, String filter) {
         final TLRPC.InputStickerSet inputStickerSet = new TLRPC.TL_inputStickerSetShortName();
         inputStickerSet.short_name = setName;

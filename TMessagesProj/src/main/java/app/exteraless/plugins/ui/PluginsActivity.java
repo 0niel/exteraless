@@ -253,7 +253,7 @@ public class PluginsActivity extends BaseFragment {
 
         @Override
         public void onSettings(Plugin plugin) {
-            presentFragment(PluginSettingsActivity.newInstance(plugin.id));
+            PythonPluginsEngine.getInstance().openPluginSettings(plugin, PluginsActivity.this);
         }
 
         @Override
@@ -456,7 +456,7 @@ public class PluginsActivity extends BaseFragment {
         builder.setItems(labels.toArray(new CharSequence[0]), (dialog, which) -> {
             int action = actions.get(which);
             if (action == 0) {
-                presentFragment(PluginSettingsActivity.newInstance(plugin.id));
+                PythonPluginsEngine.getInstance().openPluginSettings(plugin, this);
             } else if (action == 1) {
                 controller.reloadPlugin(plugin.id);
                 refreshPlugins(false);

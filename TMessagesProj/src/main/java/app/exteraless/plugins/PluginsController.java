@@ -38,7 +38,7 @@ import java.util.concurrent.Executors;
  *  - диспетчер событий приложения и хуков в PythonPluginsEngine;
  *  - watchdog + safe mode.
  */
-public class PluginsController {
+public class PluginsController extends com.exteragram.messenger.plugins.PluginsController {
 
     private static volatile PluginsController instance;
 
@@ -64,7 +64,7 @@ public class PluginsController {
      * Порядок вставки здесь не нужен — список плагинов сортируется по имени в UI.
      * У exteraGram это поле тоже ConcurrentHashMap.
      */
-    private final Map<String, Plugin> plugins = new ConcurrentHashMap<>();
+    public final Map<String, Plugin> plugins = new ConcurrentHashMap<>();
     /** pluginId -> приоритет. */
     private final Map<String, Integer> sendMessageHooks = new ConcurrentHashMap<>();
     /** requestName -> список pluginId (точное совпадение). */

@@ -389,6 +389,8 @@ public class NotificationCenter {
     public static final int pluginIsNotResponding = totalEvents++;
     /** Реестр пунктов меню плагинов изменился: пересобрать подменю. */
     public static final int pluginMenuItemsUpdated = totalEvents++;
+    /** Состав плагинов изменился; имя из exteraGram — на него ссылаются dex-модули. */
+    public static final int pluginsUpdated = totalEvents++;
 
     public static final int feedNeedReload = totalEvents++;
     public static final int feedTabVisibleToggled = totalEvents++;

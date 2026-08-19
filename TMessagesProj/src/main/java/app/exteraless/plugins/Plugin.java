@@ -9,7 +9,13 @@ import java.util.List;
  *
  * Аналог com.exteragram.messenger.plugins.Plugin.
  */
-public class Plugin {
+public class Plugin extends com.exteragram.messenger.plugins.Plugin {
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
 
     public String id;
     public String name;
@@ -55,6 +61,103 @@ public class Plugin {
     public String loadError;
     /** Полный отчёт о той же ошибке: traceback и окружение, для кнопки «копировать». */
     public transient String loadDebug;
+    /** Отметка сторожа: плагин завис в текущем вызове. */
+    public transient boolean notResponding;
+
+    /**
+     * Геттеры в форме exteraGram. У эталона Plugin — Kotlin-класс с приватными
+     * полями, и плагины каталога зовут именно методы; наши публичные поля
+     * Chaquopy отдаёт как атрибуты, но {@code plugin.getEngine()} без этого
+     * блока падает с AttributeError.
+     */
+    public String getEngine() {
+        return PluginsConstants.PYTHON;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public String getIcon() {
+        return icon;
+    }
+
+    public String getAppVersion() {
+        return appVersion;
+    }
+
+    public String getSdkVersion() {
+        return sdkVersion;
+    }
+
+    public List<String> getRequirements() {
+        return requirements;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean value) {
+        enabled = value;
+    }
+
+    public String getError() {
+        return loadError;
+    }
+
+    public void setError(String value) {
+        loadError = value;
+    }
+
+    public boolean hasError() {
+        return loadError != null;
+    }
+
+    public boolean isNotResponding() {
+        return notResponding;
+    }
+
+    public void setNotResponding(boolean value) {
+        notResponding = value;
+    }
+
+    /** Стикерпак иконки: часть {@link #icon} до слэша. */
+    public String getPack() {
+        if (icon == null) {
+            return null;
+        }
+        int slash = icon.indexOf('/');
+        return slash < 0 ? icon : icon.substring(0, slash);
+    }
+
+    /** Номер стикера в паке: часть {@link #icon} после слэша. */
+    public int getIndex() {
+        if (icon == null) {
+            return 0;
+        }
+        int slash = icon.indexOf('/');
+        if (slash < 0 || slash + 1 >= icon.length()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(icon.substring(slash + 1));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
 
     public String getDisplayName() {
         return name != null ? name : id;

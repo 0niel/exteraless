@@ -84,6 +84,11 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         this.pluginId = pluginId;
     }
 
+    /** Плагины каталога передают сюда сам объект плагина, а не его id. */
+    public PluginSettingsActivity(app.exteraless.plugins.Plugin plugin) {
+        this.pluginId = plugin == null ? null : plugin.id;
+    }
+
     public static PluginSettingsActivity newInstance(String pluginId) {
         PluginSettingsActivity fragment = new PluginSettingsActivity();
         fragment.pluginId = pluginId;

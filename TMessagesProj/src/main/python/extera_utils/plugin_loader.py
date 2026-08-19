@@ -1168,6 +1168,11 @@ def is_loaded(plugin_id: str) -> bool:
     return plugin_id in plugins
 
 
+def get_plugin_instance(plugin_id: str):
+    record = plugins.get(plugin_id)
+    return None if record is None else record.instance
+
+
 # Event dispatch
 
 def call_app_event(plugin_id: str, event: str) -> None:
