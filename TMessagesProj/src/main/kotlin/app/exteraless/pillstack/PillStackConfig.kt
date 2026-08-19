@@ -133,13 +133,19 @@ object PillStackConfig {
     private val activePills = ArrayList<Int>()
     private val hiddenPills = ArrayList<Int>()
 
-    /** Копия списка активных пилюль в порядке отображения. */
+    /**
+     * Живой список активных пилюль в порядке отображения.
+     *
+     * Возвращается сам список, а не копия: плагины каталога дописывают в него свой id
+     * и следом зовут [savePillsLayout] — так устроен эталон
+     * (`PillStackConfig.getActivePills()` в exteraGram 12.9.0 отдаёт поле).
+     */
     @JvmStatic
-    fun getActivePills(): ArrayList<Int> = synchronized(sync) { ArrayList(activePills) }
+    fun getActivePills(): ArrayList<Int> = activePills
 
-    /** Копия списка скрытых пилюль. */
+    /** Живой список скрытых пилюль, см. [getActivePills]. */
     @JvmStatic
-    fun getHiddenPills(): ArrayList<Int> = synchronized(sync) { ArrayList(hiddenPills) }
+    fun getHiddenPills(): ArrayList<Int> = hiddenPills
 
     @JvmStatic
     fun hasActivePills(): Boolean = synchronized(sync) { activePills.isNotEmpty() }
@@ -179,9 +185,24 @@ object PillStackConfig {
         persistLayout()
     }
 
+    /** Сохраняет текущую раскладку и пересобирает полосу. Точка входа для плагинов. */
+    @JvmStatic
+    fun savePillsLayout() {
+        persistLayout()
+        PillStackEvents.notifyLayoutChanged()
+    }
+
+    /** Помечает пилюли изменившимися; пустой список — все. Точка входа для плагинов. */
+    @JvmStatic
+    fun notifySettingsChanged(vararg pillIds: Int) {
+        PillStackEvents.notifySettingsChanged(*pillIds)
+    }
+
     private fun persistLayout() {
-        activePillsRaw.setConfigString(serializeList(getActivePills()))
-        hiddenPillsRaw.setConfigString(serializeList(getHiddenPills()))
+        synchronized(sync) {
+            activePillsRaw.setConfigString(serializeList(activePills))
+            hiddenPillsRaw.setConfigString(serializeList(hiddenPills))
+        }
     }
 
     /**

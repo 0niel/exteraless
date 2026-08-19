@@ -25,7 +25,9 @@ public enum MainMenuItem {
     SETTINGS(8),
     BROWSER(101),
     QR(17),
-    FEED(106);
+    FEED(106),
+    /** Пункт наш, а не из exteraGram, поэтому id взят выше их диапазона. */
+    GHOST_MODE(107);
 
     private final int id;
 

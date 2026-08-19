@@ -10,7 +10,9 @@ public enum PillType {
     BTC(3),
     USD(4),
     CACHE(5),
-    PROXY(6);
+    PROXY(6),
+    /** Идентификатора в exteraGram нет — пилюля наша, поэтому номер после последнего чужого. */
+    GHOST(7);
 
     public final int id;
 

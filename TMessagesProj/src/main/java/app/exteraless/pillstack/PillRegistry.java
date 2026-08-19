@@ -19,6 +19,7 @@ import java.util.Map;
 import app.exteraless.pillstack.pills.BasePill;
 import app.exteraless.pillstack.pills.BtcPill;
 import app.exteraless.pillstack.pills.CachePill;
+import app.exteraless.pillstack.pills.GhostPill;
 import app.exteraless.pillstack.pills.GramPill;
 import app.exteraless.pillstack.pills.ProxyPill;
 import app.exteraless.pillstack.pills.UsdPill;
@@ -115,6 +116,10 @@ public class PillRegistry {
                 R.drawable.drawer_proxy_on,
                 IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom,
                 ProxyPill::new));
+        register(new PillInfo(PillType.GHOST.id, LocaleController.getString(R.string.GhostMode),
+                R.drawable.ayu_ghost,
+                IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom,
+                GhostPill::new));
     }
 
     // ---- Пакетная регистрация ----

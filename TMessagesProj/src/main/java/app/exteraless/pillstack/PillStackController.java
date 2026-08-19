@@ -13,6 +13,7 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import app.exteraless.pillstack.pills.BasePill;
@@ -88,7 +89,7 @@ public class PillStackController implements PillStackEvents.Listener {
 
     /** Пересобирает полосу по текущей раскладке. */
     public void rebuild() {
-        List<Integer> active = PillStackConfig.getActivePills();
+        List<Integer> active = new ArrayList<>(PillStackConfig.getActivePills());
         if (active.isEmpty()) {
             if (stackView != null) {
                 stackView.clearPills();
