@@ -14,6 +14,10 @@ on:
         description: 'Skip Upload: Set to "y" to skip uploading the build.'
         required: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -27,7 +31,7 @@ jobs:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_HARDLINK: "true"
       CCACHE_NOHASHDIR: "true"
-      CCACHE_MAXSIZE: "10G"
+      CCACHE_MAXSIZE: "2G"
       NATIVE_TARGET: "universal"
     steps:
       - name: Checkout
@@ -43,16 +47,9 @@ jobs:
       - name: Set up Ccache
         uses: hendrikmuhs/ccache-action@v1.2.23
         with:
-          append-timestamp: false
+          key: android-ndk
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-disabled: true
-      - name: Set up Gradle cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.gradle
-          key: gradle-${{ hashFiles('**/*.gradle') }}
       - name: Set up Android SDK Tools
         uses: android-actions/setup-android@v4
         with:
