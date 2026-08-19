@@ -244,6 +244,25 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
      * из-за чего каждый заход на экран «Плагины» (updateRows зовёт rescan)
      * гасил кнопку настроек у работающего плагина, будто он упал.
      */
+    /**
+     * Установленный плагин обязан лежать как {@code <id>.py}: под этим именем
+     * его ищут плагины каталога (zwylib читает исходник соседа по такому пути).
+     * {@code .plugin} — расширение для передачи файла, а не для хранения.
+     */
+    private File normalizeInstalledName(File file) {
+        String name = file.getName();
+        if (!name.endsWith(PluginsConstants.PLUGIN_EXT)) {
+            return file;
+        }
+        File renamed = new File(file.getParentFile(),
+                name.substring(0, name.length() - PluginsConstants.PLUGIN_EXT.length())
+                        + PluginsConstants.PLUGIN_EXT_PY);
+        if (renamed.exists() || !file.renameTo(renamed)) {
+            return file;
+        }
+        return renamed;
+    }
+
     public synchronized void rescanPlugins() {
         if (!PythonPluginsEngine.getInstance().isStarted()) {
             return;
@@ -257,6 +276,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
             if (!f.isFile()) {
                 continue;
             }
+            f = normalizeInstalledName(f);
             String name = f.getName();
             if (!name.endsWith(PluginsConstants.PLUGIN_EXT_PY) && !name.endsWith(PluginsConstants.PLUGIN_EXT)
                     && !name.endsWith(PluginsConstants.PLUGIN_EXT_ELYX) && !name.endsWith(PluginsConstants.PLUGIN_EXT_EAF)) {
@@ -683,8 +703,6 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
                     ext = PluginsConstants.PLUGIN_EXT_ELYX;
                 } else if (srcName.endsWith(PluginsConstants.PLUGIN_EXT_EAF)) {
                     ext = PluginsConstants.PLUGIN_EXT_EAF;
-                } else if (srcName.endsWith(PluginsConstants.PLUGIN_EXT)) {
-                    ext = PluginsConstants.PLUGIN_EXT;
                 }
                 File dest = new File(getPluginsDir(), id + ext);
                 copyFile(source, dest);
