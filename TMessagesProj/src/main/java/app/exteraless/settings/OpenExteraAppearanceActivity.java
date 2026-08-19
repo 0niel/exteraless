@@ -79,7 +79,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int blurHeaderRow;
     private int glassOutlineRow;
     private int glassMessageMenuRow;
-    private int glassChatHeaderRow;
     private int forceBlurRow;
     private int disableAvatarBlurRow;
     private int blurDividerRow;
@@ -103,6 +102,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     private int md3ChatHeaderRow;
     private int md3NavBarRow;
     private boolean md3Expanded;
+    // Скрытие апстримных AI-функций: своя сворачиваемая группа.
+    private int hideAiGroupRow;
+    private int hideAiEditorRow;
+    private int hideAiSummaryRow;
+    private int hideAiIvRow;
+    private boolean hideAiExpanded;
     private int hideStoriesRow;
     private int hideFloatingButtonRow;
     private int hideSearchBarRow;
@@ -196,6 +201,14 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         } else {
             md3LoadingRow = md3SliderRow = md3SwitchRow = md3ChatHeaderRow = md3NavBarRow = -1;
         }
+        hideAiGroupRow = addRow("hideAi");
+        if (hideAiExpanded) {
+            hideAiEditorRow = addRow("hideAiEditor");
+            hideAiSummaryRow = addRow("hideAiSummary");
+            hideAiIvRow = addRow("hideAiIv");
+        } else {
+            hideAiEditorRow = hideAiSummaryRow = hideAiIvRow = -1;
+        }
         gooeyAvatarRow = addRow("gooeyAvatar");
         customThemesRow = addRow("customThemes");
         appearanceDividerRow = addRow();
@@ -209,7 +222,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         blurHeaderRow = addRow("blurHeader");
         glassOutlineRow = addRow("glassOutline");
         glassMessageMenuRow = addRow("glassMessageMenu");
-        glassChatHeaderRow = addRow("glassChatHeader");
         forceBlurRow = addRow("forceBlur");
         disableAvatarBlurRow = addRow("disableAvatarBlur");
         blurDividerRow = addRow();
@@ -426,6 +438,19 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             AppearanceConfig.newNavigationBarStyle.setConfigBool(!AppearanceConfig.newNavigationBarStyle.Bool());
             rebuildAllAndSelf(view, AppearanceConfig.newNavigationBarStyle.Bool());
             return;
+        } else if (position == hideAiGroupRow) {
+            hideAiExpanded = !hideAiExpanded;
+            rebuildRowsAndNotify();
+            return;
+        } else if (position == hideAiEditorRow) {
+            toggleHideAi(view, AppearanceConfig.hideAiEditor);
+            return;
+        } else if (position == hideAiSummaryRow) {
+            toggleHideAi(view, AppearanceConfig.hideMessageSummary);
+            return;
+        } else if (position == hideAiIvRow) {
+            toggleHideAi(view, AppearanceConfig.hideIvSummary);
+            return;
         } else if (position == dividerStyleRow) {
             showSelector(position, getString(R.string.OEAppearanceDividerStyle), new CharSequence[]{
                     getString(R.string.OEAppearanceDividerHidden),
@@ -529,12 +554,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(SharedConfig.chatBlurEnabled());
             }
             rebuildAll();
-            return;
-        } else if (position == glassChatHeaderRow) {
-            boolean enabled = AppearanceConfig.glassChatHeader.toggleConfigBool();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
-            }
             return;
         } else if (position == glassMessageMenuRow) {
             boolean enabled = AppearanceConfig.glassMessageMenu.toggleConfigBool();
@@ -734,8 +753,6 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceCustomThemes), AppearanceConfig.customThemes.Bool(), false);
                     } else if (position == separateHeadersRow) {
                         cell.setTextAndCheck(getString(R.string.OEAppearanceSeparateHeaders), AppearanceConfig.separateHeaders.Bool(), true);
-                    } else if (position == glassChatHeaderRow) {
-                        cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassChatHeader), getString(R.string.OEAppearanceGlassChatHeaderInfo), AppearanceConfig.glassChatHeader.Bool(), true, true);
                     } else if (position == glassMessageMenuRow) {
                         cell.setTextAndValueAndCheck(getString(R.string.OEAppearanceGlassMessageMenu), getString(R.string.OEAppearanceGlassMessageMenuInfo), AppearanceConfig.glassMessageMenu.Bool(), true, true);
                     } else if (position == forceBlurRow) {
@@ -767,6 +784,13 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     // Иначе выключенная группа горит красным: Switch по умолчанию
                     // идёт в «разрешительных» цветах экрана прав участника.
                     cell.useStandardSwitchColors();
+                    if (position == hideAiGroupRow) {
+                        cell.setTextAndCheck(getString(R.string.OEAppearanceHideAi),
+                                hideAiSelectedCount() > 0, true);
+                        cell.setCollapseArrow(hideAiSelectedCount() + "/" + HIDE_AI_COUNT, !hideAiExpanded,
+                                OpenExteraAppearanceActivity.this::toggleAllHideAiFromCell);
+                        break;
+                    }
                     cell.setTextAndCheck(getString(R.string.OEAppearanceMaterialDesign3),
                             md3SelectedCount() > 0, true);
                     // Правая зона (76 dp за разделителем) — сам переключатель, как у exteraGram:
@@ -793,6 +817,15 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                     } else if (position == md3NavBarRow) {
                         cell.setText(getString(R.string.OEAppearanceNewNavigationBarStyle), "",
                                 AppearanceConfig.newNavigationBarStyle.Bool(), false, true);
+                    } else if (position == hideAiEditorRow) {
+                        cell.setText(getString(R.string.OEAppearanceHideAiEditor), "",
+                                AppearanceConfig.hideAiEditor.Bool(), true, true);
+                    } else if (position == hideAiSummaryRow) {
+                        cell.setText(getString(R.string.OEAppearanceHideAiSummary), "",
+                                AppearanceConfig.hideMessageSummary.Bool(), true, true);
+                    } else if (position == hideAiIvRow) {
+                        cell.setText(getString(R.string.OEAppearanceHideAiIv), "",
+                                AppearanceConfig.hideIvSummary.Bool(), false, true);
                     }
                     cell.setPad(1);
                     // По умолчанию ячейка этого типа красит текст серым; у exteraGram
@@ -899,11 +932,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             } else if (position == appNavigationRow || position == iconPacksRow
                     || position == pillStackRow) {
                 return TYPE_DETAIL_SETTINGS;
-            } else if (position == md3GroupRow) {
+            } else if (position == md3GroupRow || position == hideAiGroupRow) {
                 return TYPE_EXPANDABLE_SWITCH;
             } else if (position == md3LoadingRow || position == md3SliderRow
                     || position == md3SwitchRow || position == md3ChatHeaderRow
-                    || position == md3NavBarRow) {
+                    || position == md3NavBarRow || position == hideAiEditorRow
+                    || position == hideAiSummaryRow || position == hideAiIvRow) {
                 return TYPE_ROUND_CHECK;
             } else if (position == dividerStyleRow || position == glassOutlineRow
                     || position == tabTitleStyleRow
@@ -912,6 +946,35 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             }
             return TYPE_CHECK;
         }
+    }
+
+    /** Сколько AI-функций спрятано. Счётчик «N/3» рядом с шевроном. */
+    private static final int HIDE_AI_COUNT = 3;
+
+    private int hideAiSelectedCount() {
+        int n = 0;
+        if (AppearanceConfig.hideAiEditor.Bool()) n++;
+        if (AppearanceConfig.hideMessageSummary.Bool()) n++;
+        if (AppearanceConfig.hideIvSummary.Bool()) n++;
+        return n;
+    }
+
+    private void toggleHideAi(View clicked, tw.nekomimi.nekogram.config.ConfigItem item) {
+        item.setConfigBool(!item.Bool());
+        if (clicked instanceof org.telegram.ui.Cells.CheckBoxCell) {
+            ((org.telegram.ui.Cells.CheckBoxCell) clicked).setChecked(item.Bool(), true);
+        }
+        if (listAdapter != null && hideAiGroupRow >= 0) {
+            listAdapter.notifyItemChanged(hideAiGroupRow);
+        }
+    }
+
+    private void toggleAllHideAiFromCell() {
+        final boolean enable = hideAiSelectedCount() == 0;
+        AppearanceConfig.hideAiEditor.setConfigBool(enable);
+        AppearanceConfig.hideMessageSummary.setConfigBool(enable);
+        AppearanceConfig.hideIvSummary.setConfigBool(enable);
+        rebuildRowsAndNotify();
     }
 
     /** Сколько стилей MD3 включено. Счётчик «N/5» рядом с шевроном. */

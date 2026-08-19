@@ -104,4 +104,8 @@
     <string name="OEAppearanceNewChatHeaderStyle">Шапка чата</string>
     <string name="OEAppearanceNewNavigationBarStyle">Нижняя панель навигации</string>
     <string name="OEAppearanceHideActionBarStatus">Скрыть статус</string>
+    <string name="OEAppearanceHideAi">Скрыть AI</string>
+    <string name="OEAppearanceHideAiEditor">Кнопка AI-редактора</string>
+    <string name="OEAppearanceHideAiSummary">Кнопка саммари сообщения</string>
+    <string name="OEAppearanceHideAiIv">Саммари в Instant View</string>
 </resources>

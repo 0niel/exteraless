@@ -191,6 +191,9 @@ public class RichEditorToolbar extends FrameLayout {
         bottomPanel.addView(aiButton, LayoutHelper.createLinear(44, 44, 0, Gravity.LEFT | Gravity.CENTER_VERTICAL, 0, 0, 8, 0));
         ScaleStateListAnimator.apply(aiButton);
         aiButton.setContentDescription("AI");
+        if (app.exteraless.appearance.AiFeaturesHelper.isAiEditorHidden()) {
+            aiButton.setVisibility(View.GONE);
+        }
         aiButton.setOnClickListener(v -> delegate.onAi());
 
         final FrameLayout blocksContainer2 = new FrameLayout(context);
@@ -394,6 +397,9 @@ public class RichEditorToolbar extends FrameLayout {
         aiStyleButton.setBackgroundColorKey(Theme.key_glass_targetMainTabs);
         aiStyleButton.setContentDescription(getString(R.string.AIEditor));
         aiStyleButton.setOnClickListener(v -> delegate.onAiStyle());
+        if (app.exteraless.appearance.AiFeaturesHelper.isAiEditorHidden()) {
+            aiStyleButton.setVisibility(View.GONE);
+        }
         formattingLayout1.addView(aiStyleButton, LayoutHelper.createLinear(38, 38, Gravity.CENTER_VERTICAL));
 
         sendButton = new ChatActivityEnterView.SendButton(context, R.drawable.send_plane_24, resourcesProvider, true) {

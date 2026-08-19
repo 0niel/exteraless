@@ -156,18 +156,6 @@ object AppearanceConfig {
             }
         })
 
-    /** Стеклянные плашки в шапке чата — фича NagramX. У exteraGram шапка обычная,
-     *  поэтому дефолт false: ChatActivity просто не зовёт setupGlass. */
-    @JvmField
-    val glassChatHeader =
-        addConfig("OEAppearanceGlassChatHeader", ConfigItem.configTypeBool, false)
-
-    @JvmStatic
-    fun glassChatHeader(): Boolean {
-        ensureLoaded()
-        return glassChatHeader.Bool()
-    }
-
     /** Стеклянное меню сообщения. Дефолт true, как в exteraGram (BooleanPref(1)). */
     @JvmField
     val glassMessageMenu =
@@ -221,6 +209,41 @@ object AppearanceConfig {
         return newNavigationBarStyle.Bool()
     }
 
+    // ---- AI-функции Telegram ----
+
+    /** Прячет кнопку AI-редактора в поле ввода, вложениях и подписи к медиа. */
+    @JvmField
+    val hideAiEditor =
+        addConfig("OEAppearanceHideAiEditor", ConfigItem.configTypeBool, false)
+
+    /** Прячет кнопку «саммари» на сообщении. */
+    @JvmField
+    val hideMessageSummary =
+        addConfig("OEAppearanceHideMessageSummary", ConfigItem.configTypeBool, false)
+
+    /** Прячет блок «Cocoon AI Summary» в Instant View. */
+    @JvmField
+    val hideIvSummary =
+        addConfig("OEAppearanceHideIvSummary", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun hideAiEditor(): Boolean {
+        ensureLoaded()
+        return hideAiEditor.Bool()
+    }
+
+    @JvmStatic
+    fun hideMessageSummary(): Boolean {
+        ensureLoaded()
+        return hideMessageSummary.Bool()
+    }
+
+    @JvmStatic
+    fun hideIvSummary(): Boolean {
+        ensureLoaded()
+        return hideIvSummary.Bool()
+    }
+
     // ---- Боковое меню ----
 
     /** Своя шторка бокового меню вместо стоковой. Дефолт false, как в exteraGram. */
@@ -251,6 +274,17 @@ object AppearanceConfig {
     fun showFeedTab(): Boolean {
         ensureLoaded()
         return showFeedTab.Bool()
+    }
+
+    /** Счётчик непрочитанных постов на вкладке ленты. */
+    @JvmField
+    val showFeedUnreadCounter =
+        addConfig("OEAppearanceFeedUnreadCounter", ConfigItem.configTypeBool, true)
+
+    @JvmStatic
+    fun showFeedUnreadCounter(): Boolean {
+        ensureLoaded()
+        return showFeedUnreadCounter.Bool()
     }
 
     @JvmStatic

@@ -1989,6 +1989,9 @@ public class ArticleViewer extends IArticleViewer implements NotificationCenter.
             int count = webPage.cached_page.blocks.size();
             for (int a = 0; a < count; a++) {
                 TL_iv.PageBlock block = webPage.cached_page.blocks.get(a);
+                if (app.exteraless.appearance.AiFeaturesHelper.shouldHideIvBlock(block)) {
+                    continue;
+                }
                 if (a == 0) {
                     block.first = true;
                     if (block instanceof TL_iv.pageBlockCover) {

@@ -113,4 +113,8 @@
     <string name="OEAppearanceNewLoadingStyle">Loading Style</string>
     <string name="OEAppearanceNewChatHeaderStyle">Chat Header</string>
     <string name="OEAppearanceNewNavigationBarStyle">Bottom Navigation Bar</string>
+    <string name="OEAppearanceHideAi">Hide AI</string>
+    <string name="OEAppearanceHideAiEditor">AI editor button</string>
+    <string name="OEAppearanceHideAiSummary">Message summary button</string>
+    <string name="OEAppearanceHideAiIv">Instant View summary</string>
 </resources>
