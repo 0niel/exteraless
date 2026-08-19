@@ -945,7 +945,11 @@ def _import_module(path: str, plugin_id: str):
     # exec_module — после него регистрировать было бы поздно.
     _register_owner(path, plugin_id)
     try:
-        spec.loader.exec_module(module)
+        # Контекст нужен и на верхнем уровне модуля: плагины каталога создают там
+        # джавовые подклассы и трогают SDK, а проверки разрешений отказывают,
+        # когда текущий плагин не установлен (pluginId == null).
+        with plugin_context(plugin_id):
+            spec.loader.exec_module(module)
     except Exception:
         sys.modules.pop(module_name, None)
         _forget_owner(path)
