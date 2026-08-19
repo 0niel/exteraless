@@ -110,6 +110,11 @@ def _dynamic_proxy_base(java_class):
         raise RuntimeError(
             "Java callback proxies require the Android/Chaquopy runtime"
         )
+    if java_class is None:
+        raise TypeError(
+            "gen(): interface not found — find_class returned None. "
+            "Check the class name (and that the plugin has the permission for it)."
+        )
     return dynamic_proxy(java_class)
 
 
