@@ -22,6 +22,8 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.graphics.createBitmap
+import app.exteraless.OpenExteraConfig
+import app.exteraless.proxy.ProxyDisableCondition
 import androidx.core.view.setPadding
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
@@ -51,6 +53,23 @@ object ProxyUtil {
 
     private var networkCallbackRegistered = false
 
+    /**
+     * Подходит ли текущая сеть под условия автоотключения прокси.
+     *
+     * У NagramX условие было одно — VPN; exteraGram 12.9.2 держит маску из VPN,
+     * мобильного интернета и Wi-Fi, см. [OpenExteraConfig.proxyDisableConditions].
+     */
+    private fun shouldDisableProxyOn(capabilities: NetworkCapabilities): Boolean {
+        if (OpenExteraConfig.isProxyDisabledOn(ProxyDisableCondition.VPN) &&
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        ) return true
+        if (OpenExteraConfig.isProxyDisabledOn(ProxyDisableCondition.MOBILE_DATA) &&
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+        ) return true
+        return OpenExteraConfig.isProxyDisabledOn(ProxyDisableCondition.WIFI) &&
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
     @JvmStatic
     fun registerNetworkCallback() {
         if (networkCallbackRegistered) return
@@ -62,8 +81,8 @@ object ProxyUtil {
                 override fun onAvailable(network: Network) {
                     val networkCapabilities =
                         connectivityManager.getNetworkCapabilities(network) ?: return
-                    val vpn = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                    if (!vpn) {
+                    val disable = shouldDisableProxyOn(networkCapabilities)
+                    if (!disable) {
                         if (SharedConfig.currentProxy == null) {
                             if (!SharedConfig.proxyList.isEmpty()) {
                                 SharedConfig.setCurrentProxy(SharedConfig.proxyList[0])
@@ -72,8 +91,8 @@ object ProxyUtil {
                             }
                         }
                     }
-                    if ((SharedConfig.isProxyEnabled() && vpn) || (!SharedConfig.isProxyEnabled() && !vpn)) {
-                        SharedConfig.setProxyEnable(!vpn)
+                    if ((SharedConfig.isProxyEnabled() && disable) || (!SharedConfig.isProxyEnabled() && !disable)) {
+                        SharedConfig.setProxyEnable(!disable)
                         AndroidUtilities.runOnUIThread {
                             NotificationCenter.getGlobalInstance()
                                 .postNotificationName(NotificationCenter.proxySettingsChanged)

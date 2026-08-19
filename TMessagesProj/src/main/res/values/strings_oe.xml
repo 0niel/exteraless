@@ -44,4 +44,10 @@
     <string name="OESubtitlesRemoved">Subtitles disabled.</string>
     <string name="OESubtitlesLoadError">Couldn\'t load subtitles.</string>
     <string name="OESubtitlesUnsupportedFormat">Unsupported subtitle format.</string>
+    <string name="ProxyDisableOn">Disable proxy</string>
+    <string name="ProxyDisableNever">Never</string>
+    <string name="ProxyDisableAlways">Always</string>
+    <string name="ProxyDisableOnVpn" translatable="false">VPN</string>
+    <string name="ProxyDisableOnMobileData">Mobile data</string>
+    <string name="ProxyDisableOnWiFi" translatable="false">Wi-Fi</string>
 </resources>

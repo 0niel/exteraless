@@ -41,4 +41,8 @@
     <string name="OESubtitlesLoadError">Не удалось загрузить субтитры.</string>
     <string name="OESubtitlesRemoved">Субтитры выключены.</string>
     <string name="OESubtitlesUnsupportedFormat">Неподдерживаемый формат субтитров.</string>
+    <string name="ProxyDisableOn">Отключать прокси</string>
+    <string name="ProxyDisableNever">Никогда</string>
+    <string name="ProxyDisableAlways">Всегда</string>
+    <string name="ProxyDisableOnMobileData">Мобильный интернет</string>
 </resources>

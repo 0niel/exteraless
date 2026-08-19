@@ -93,6 +93,7 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     private int rowCount;
     @Keep
     private int useProxyRow;
+    private int disableConditionsRow;
     private int useProxyShadowRow;
     private int connectionsHeaderRow;
     private int proxyStartRow;
@@ -696,6 +697,9 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
     private void updateRows(boolean notify) {
         rowCount = 0;
         useProxyRow = rowCount++;
+        // Условия отключения показываем всегда: в exteraGram они на виду, а у нас
+        // раньше лежали в настройках NagramX, спрятанных по умолчанию.
+        disableConditionsRow = rowCount++;
         if (useProxySettings && SharedConfig.currentProxy != null && SharedConfig.proxyList.size() > 1 && IS_PROXY_ROTATION_AVAILABLE) {
             rotationRow = rowCount++;
             if (SharedConfig.proxyRotationEnabled) {
@@ -898,7 +902,8 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 VIEW_TYPE_TEXT_CHECK = 3,
                 VIEW_TYPE_INFO = 4,
                 VIEW_TYPE_PROXY_DETAIL = 5,
-                VIEW_TYPE_SLIDE_CHOOSER = 6;
+                VIEW_TYPE_SLIDE_CHOOSER = 6,
+                VIEW_TYPE_DISABLE_CONDITIONS = 7;
 
         public static final int PAYLOAD_CHECKED_CHANGED = 0;
         public static final int PAYLOAD_SELECTION_CHANGED = 1;
@@ -1097,6 +1102,20 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                     view = new SlideChooseView(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
+                case VIEW_TYPE_DISABLE_CONDITIONS: {
+                    app.exteraless.proxy.ProxyDisableChipsView chips =
+                            new app.exteraless.proxy.ProxyDisableChipsView(mContext, getResourceProvider());
+                    // Колбэк сети поднимает LaunchActivity по hasProxyDisableConditions(),
+                    // поэтому первое включённое здесь условие надо зарегистрировать самим.
+                    chips.setOnChanged(() -> {
+                        if (app.exteraless.OpenExteraConfig.hasProxyDisableConditions()) {
+                            tw.nekomimi.nekogram.utils.ProxyUtil.registerNetworkCallback();
+                        }
+                    });
+                    chips.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                    view = chips;
+                    break;
+                }
                 case VIEW_TYPE_PROXY_DETAIL:
                 default:
                     view = new TextDetailProxyCell(mContext);
@@ -1149,6 +1168,8 @@ public class ProxyListActivity extends BaseFragment implements NotificationCente
                 return VIEW_TYPE_HEADER;
             } else if (position == rotationTimeoutRow) {
                 return VIEW_TYPE_SLIDE_CHOOSER;
+            } else if (position == disableConditionsRow) {
+                return VIEW_TYPE_DISABLE_CONDITIONS;
             } else if (position >= proxyStartRow && position < proxyEndRow) {
                 return VIEW_TYPE_PROXY_DETAIL;
             } else {

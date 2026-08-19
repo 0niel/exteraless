@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.FileLog
 import tw.nekomimi.nekogram.NekoConfig
+import app.exteraless.proxy.ProxyDisableCondition
 import tw.nekomimi.nekogram.config.ConfigItem
 
 /**
@@ -14,6 +15,8 @@ import tw.nekomimi.nekogram.config.ConfigItem
  * Ключи с префиксом OE, чтобы не столкнуться с существующими.
  */
 object OpenExteraConfig {
+
+    private const val LEGACY_PROXY_VPN_KEY = "DisableProxyWhenVpnEnabled"
 
     private val sync = Any()
     private val configs = ArrayList<ConfigItem>()
@@ -58,6 +61,43 @@ object OpenExteraConfig {
     @JvmStatic
     fun addCommaAfterMention(): Boolean = addCommaAfterMention.Bool()
 
+    // ---- Прокси ----
+
+    /**
+     * Маска условий, при которых прокси выключается сам: [ProxyDisableCondition.flag].
+     *
+     * У NagramX на этом месте был булев `DisableProxyWhenVpnEnabled`; его значение
+     * переносится в бит VPN в [migrateProxyConditions].
+     */
+    @JvmField
+    val proxyDisableConditions = addConfig("OEProxyDisableConditions", ConfigItem.configTypeInt, 0)
+
+    @JvmStatic
+    fun isProxyDisabledOn(condition: ProxyDisableCondition): Boolean =
+        (proxyDisableConditions.Int() and condition.flag) != 0
+
+    @JvmStatic
+    fun setProxyDisabledOn(condition: ProxyDisableCondition, disabled: Boolean) {
+        val current = proxyDisableConditions.Int()
+        val updated = if (disabled) current or condition.flag else current and condition.flag.inv()
+        if (updated != current) {
+            proxyDisableConditions.setConfigInt(updated)
+        }
+    }
+
+    @JvmStatic
+    fun hasProxyDisableConditions(): Boolean = proxyDisableConditions.Int() != 0
+
+    private fun migrateProxyConditions(preferences: SharedPreferences) {
+        if (!preferences.contains(LEGACY_PROXY_VPN_KEY)) return
+        if (preferences.getBoolean(LEGACY_PROXY_VPN_KEY, false)) {
+            val migrated = proxyDisableConditions.Int() or ProxyDisableCondition.VPN.flag
+            proxyDisableConditions.value = migrated
+            preferences.edit().putInt(proxyDisableConditions.key, migrated).apply()
+        }
+        preferences.edit().remove(LEGACY_PROXY_VPN_KEY).apply()
+    }
+
     private fun addConfig(key: String, type: Int, defaultValue: Any?): ConfigItem {
         val item = ConfigItem(key, type, defaultValue)
         configs.add(item)
@@ -97,6 +137,7 @@ object OpenExteraConfig {
                     FileLog.e(e)
                 }
             }
+            migrateProxyConditions(preferences)
             configLoaded = true
         }
     }

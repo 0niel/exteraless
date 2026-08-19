@@ -319,7 +319,7 @@ public final class EtgBackup {
         bool(list, "hideArchiveFolder", NaConfig.INSTANCE.getHideArchive());
         bool(list, "archiveOnPull", NekoConfig.openArchiveOnPull);
         bool(list, "disableUnarchiveSwipe", NaConfig.INSTANCE.getDoNotUnarchiveBySwipe());
-        bool(list, "doNotUseProxyWithVpn", NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled());
+        integer(list, "doNotUseProxy", OpenExteraConfig.proxyDisableConditions, 0, 7);
         bool(list, "singleCornerRadius", AppearanceConfig.singleCornerRadius);
         bool(list, "hideActionBarStatus", AppearanceConfig.hideActionBarStatus);
         bool(list, "centerTitle", AppearanceConfig.centerTitle);

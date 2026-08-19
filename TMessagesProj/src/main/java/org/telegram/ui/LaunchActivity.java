@@ -7234,7 +7234,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             }
         }
 
-        if (NaConfig.INSTANCE.getDisableProxyWhenVpnEnabled().Bool()) {
+        if (app.exteraless.OpenExteraConfig.hasProxyDisableConditions()) {
             ProxyUtil.registerNetworkCallback();
         }
 
