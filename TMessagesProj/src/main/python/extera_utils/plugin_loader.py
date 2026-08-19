@@ -21,7 +21,7 @@ import re
 import sys
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 # Make sibling top-level modules (base_plugin, ui, ...) importable regardless
 # of how the interpreter was started.
@@ -686,7 +686,17 @@ def _sandboxed_import(name, globals=None, locals=None, fromlist=(), level=0):
             _guard_import(name, fromlist)
         except Exception:
             pass
-    return _original_import(name, globals, locals, fromlist, level)
+    if level != 0 or type(name) is not str \
+            or name.partition(".")[0] not in _JAVA_ROOTS:
+        return _original_import(name, globals, locals, fromlist, level)
+    try:
+        return _original_import(name, globals, locals, fromlist, level)
+    except ModuleNotFoundError as exc:
+        # Chaquopy отдаёт «No module named 'org'» — корень пакета, а не то, что
+        # действительно не нашлось. Настоящий запрос знает только этот кадр.
+        if getattr(exc, "_exteraless_java_import", None) is None:
+            exc._exteraless_java_import = (name, tuple(fromlist or ()))
+        raise
 
 
 _sandboxed_import._exteraless_sandbox = True
@@ -861,13 +871,43 @@ def _failing_line(exc: BaseException) -> Optional[str]:
     frame = frames[-1]
     for candidate in reversed(frames):
         if candidate.filename and not candidate.filename.startswith("<") \
+                and not candidate.filename.endswith(".pxi") \
                 and "extera_utils" not in candidate.filename \
+                and "chaquopy" not in candidate.filename \
                 and "importlib" not in candidate.filename:
             frame = candidate
             break
     name = os.path.basename(frame.filename or "?")
     line = (frame.line or "").strip()
     return f"{name}:{frame.lineno}" + (f": {line}" if line else "")
+
+
+def _missing_java_classes(exc: BaseException) -> List[str]:
+    """Какие именно классы не достались из запрошенного пакета.
+
+    Имя запроса приходит из `_sandboxed_import`: сам ModuleNotFoundError знает
+    только корень («org»), а плагину нужно увидеть полное имя класса —
+    в форке половина классов эталона называется иначе или отсутствует.
+    """
+    requested = getattr(exc, "_exteraless_java_import", None)
+    if not requested:
+        return []
+    module, fromlist = requested
+    try:
+        import java
+    except Exception:
+        return []
+    candidates = [f"{module}.{item}" for item in fromlist if item and item != "*"]
+    if not candidates:
+        candidates = [module]
+    missing = []
+    for candidate in candidates:
+        try:
+            if java.jclass(candidate) is None:
+                missing.append(candidate)
+        except Exception:
+            missing.append(candidate)
+    return missing
 
 
 def _java_import_hint(exc: BaseException) -> Optional[str]:
@@ -895,6 +935,9 @@ def _java_import_hint(exc: BaseException) -> Optional[str]:
         return f"Java classes are unreachable ({probe} -> {type(e).__name__}: {e})"
     if resolved is None:
         return f"Java classes are gated for this plugin ({probe} -> None)"
+    missing = _missing_java_classes(exc)
+    if missing:
+        return "no such Java class: " + ", ".join(missing)
     import builtins
     hook = getattr(builtins.__import__, "__qualname__", "?")
     return (f"Java resolves ({probe} ok), so {root!r} lacks a specific class; "
@@ -930,6 +973,9 @@ def _error_json(exc: BaseException) -> str:
     if hint:
         parts.append(hint)
     summary = "\n".join(parts)
+    # Иначе провал загрузки виден только в диалоге у пользователя, а по чужому
+    # скриншоту не понять, какой класс не нашёлся.
+    _log("plugin load failed: " + summary.replace("\n", " | "))
     try:
         debug = _error_report(exc, summary)
     except Exception:
