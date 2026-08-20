@@ -6,6 +6,7 @@ import android.content.Context;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
@@ -86,7 +87,7 @@ public class PluginActivityLogActivity extends BaseFragment {
         FrameLayout contentView = new FrameLayout(context);
         contentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
 
-        listView = new UniversalRecyclerView(this, this::fillItems, this::onItemClick, null);
+        listView = new UniversalRecyclerView(this, this::fillItems, this::onItemClick, this::onItemLongClick);
         listView.setSections();
         listView.adapter.setApplyBackground(false);
         contentView.addView(listView,
@@ -226,6 +227,9 @@ public class PluginActivityLogActivity extends BaseFragment {
         }
         sb.append('\n').append(LocaleController.getInstance().getFormatterDayWithSeconds()
                 .format(new Date(entry.ts)));
+        if (entry.stack != null && !entry.stack.isEmpty()) {
+            sb.append('\n').append('\n').append(entry.stack);
+        }
         return sb.toString();
     }
 
@@ -271,6 +275,22 @@ public class PluginActivityLogActivity extends BaseFragment {
             case "code": return getString(R.string.PluginActivityCode);
             default: return getString(R.string.PluginActivityOther);
         }
+    }
+
+    private boolean onItemLongClick(UItem item, View view, int position, float x, float y) {
+        if (item.id < ID_ENTRY_BASE) {
+            return false;
+        }
+        List<PluginAuditJournal.Entry> entries = PluginAuditJournal.merged(pluginId);
+        int index = item.id - ID_ENTRY_BASE;
+        if (index < 0 || index >= entries.size()) {
+            return false;
+        }
+        AndroidUtilities.addToClipboard(fullDetail(entries.get(index)).toString());
+        BulletinFactory.of(this)
+                .createSimpleBulletin(R.raw.copy, getString(R.string.TextCopied))
+                .show();
+        return true;
     }
 
     private void onItemClick(UItem item, View view, int position, float x, float y) {

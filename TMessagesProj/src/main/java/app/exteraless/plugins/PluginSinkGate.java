@@ -211,6 +211,12 @@ public final class PluginSinkGate {
                 String event = param.method == null ? "loadClass" : param.method.getName();
                 for (String denied : DENIED_CLASSES) {
                     if (name.equals(denied)) {
+                        StringBuilder trace = new StringBuilder();
+                        trace.append("DENY ").append(pluginId).append(' ').append(name).append('\n');
+                        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+                            trace.append("    ").append(element).append('\n');
+                        }
+                        android.util.Log.w("exteraless-gate", trace.toString());
                         deny(pluginId, event, "reflection", name,
                                 "class " + name + " is never available to plugins", param);
                         return;
@@ -733,7 +739,7 @@ public final class PluginSinkGate {
 
     private static void deny(String pluginId, String event, String category, String detail,
                              String reason, XC_MethodHook.MethodHookParam param) {
-        PluginAuditJournal.record(pluginId, event, category, detail, false);
+        PluginAuditJournal.record(pluginId, event, category, detail, false, callerStack());
         FileLog.w("PluginSinkGate: denied " + event + " to plugin " + pluginId + " — " + reason);
         param.setThrowable(denialFor(event, category, pluginId, reason));
     }
@@ -748,6 +754,24 @@ public final class PluginSinkGate {
      * ClassNotFoundException (он и объявлен у forName/loadClass), и только
      * запуск процессов остаётся SecurityException: там нечего изображать.
      */
+    private static String callerStack() {
+        StringBuilder sb = new StringBuilder();
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        int printed = 0;
+        for (StackTraceElement element : stack) {
+            String cls = element.getClassName();
+            if (cls.startsWith("java.lang.Thread") || cls.startsWith("app.exteraless.plugins.PluginSinkGate")
+                    || cls.startsWith("app.exteraless.plugins.PluginAuditJournal")) {
+                continue;
+            }
+            sb.append(element).append('\n');
+            if (++printed >= 24) {
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
     private static Throwable denialFor(String event, String category, String pluginId, String reason) {
         String message = "plugin '" + pluginId + "' cannot " + event + ": " + reason;
         if ("reflection".equals(category) || "loadClass".equals(event) || "forName".equals(event)) {

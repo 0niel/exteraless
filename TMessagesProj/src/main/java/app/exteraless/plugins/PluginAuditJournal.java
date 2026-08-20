@@ -42,32 +42,45 @@ public final class PluginAuditJournal {
         public final String category;
         public final String detail;
         public final boolean allowed;
+        public final String stack;
         /** Сколько раз подряд повторилось одно и то же обращение. */
         public int count = 1;
 
         Entry(String pluginId, String event, String category, String detail, boolean allowed) {
-            this(System.currentTimeMillis(), pluginId, event, category, detail, allowed);
+            this(System.currentTimeMillis(), pluginId, event, category, detail, allowed, null);
         }
 
         Entry(long ts, String pluginId, String event, String category, String detail,
               boolean allowed) {
+            this(ts, pluginId, event, category, detail, allowed, null);
+        }
+
+        Entry(long ts, String pluginId, String event, String category, String detail,
+              boolean allowed, String stack) {
             this.ts = ts;
             this.pluginId = pluginId;
             this.event = event;
             this.category = category;
             this.detail = detail;
             this.allowed = allowed;
+            this.stack = stack;
         }
     }
 
     public static void record(String pluginId, String event, String category,
                               String detail, boolean allowed) {
+        record(pluginId, event, category, detail, allowed, null);
+    }
+
+    public static void record(String pluginId, String event, String category,
+                              String detail, boolean allowed, String stack) {
         if (pluginId == null) {
             return;
         }
         String trimmed = detail == null ? "" : (detail.length() > 200
                 ? detail.substring(0, 200) : detail);
-        Entry entry = new Entry(pluginId, event, category, trimmed, allowed);
+        Entry entry = new Entry(System.currentTimeMillis(), pluginId, event, category,
+                trimmed, allowed, stack);
         synchronized (ENTRIES) {
             Entry last = ENTRIES.peekLast();
             if (last != null && last.pluginId.equals(pluginId) && last.event.equals(event)
