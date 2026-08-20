@@ -361,6 +361,7 @@ public class MonetHelper {
         synchronized (tokenCache) {
             tokenCache.clear();
         }
+        invalidateRoleTrust();
     }
 
     private static Integer resolveToken(String token) {
@@ -472,7 +473,70 @@ public class MonetHelper {
         return resolveRoleTone(tone);
     }
 
+    private static Boolean frameworkRolesTrusted;
+
+    private static final String[][] ROLE_PROBES = {
+            {"primary", "dark"},
+            {"surface", "dark"},
+            {"primary", "light"},
+            {"surface", "light"},
+    };
+
+    private static final int ROLE_PROBE_TOLERANCE = 24;
+
+    private static boolean frameworkRolesMatchPalettes() {
+        Boolean cached = frameworkRolesTrusted;
+        if (cached != null) {
+            return cached;
+        }
+        boolean trusted = true;
+        int checked = 0;
+        for (String[] probe : ROLE_PROBES) {
+            String descriptor = "light".equals(probe[1])
+                    ? lightRoles.get(probe[0]) : darkRoles.get(probe[0]);
+            if (descriptor == null) {
+                continue;
+            }
+            Integer framework = readFrameworkRole(probe[0], probe[1]);
+            Integer computed = resolveRoleTone(descriptor);
+            if (framework == null || computed == null) {
+                continue;
+            }
+            checked++;
+            if (channelDistance(framework, computed) > ROLE_PROBE_TOLERANCE) {
+                trusted = false;
+                break;
+            }
+        }
+        if (checked == 0) {
+            trusted = false;
+        }
+        frameworkRolesTrusted = trusted;
+        return trusted;
+    }
+
+    private static int channelDistance(int a, int b) {
+        return Math.max(Math.max(
+                Math.abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)),
+                Math.abs(android.graphics.Color.green(a) - android.graphics.Color.green(b))),
+                Math.abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(b)));
+    }
+
+    private static void invalidateRoleTrust() {
+        frameworkRolesTrusted = null;
+    }
+
     private static Integer resolveFrameworkRole(String role, String mode) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return null;
+        }
+        if (!frameworkRolesMatchPalettes()) {
+            return null;
+        }
+        return readFrameworkRole(role, mode);
+    }
+
+    private static Integer readFrameworkRole(String role, String mode) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             return null;
         }
