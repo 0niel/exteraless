@@ -767,6 +767,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         }
 
         private void bindSaveMediaGroup(TextCheckCell2 cell) {
+            cell.useStandardSwitchColors();
             int selected = saveMediaSelectedCount();
             cell.setTextAndCheck(getString(NaConfig.INSTANCE.getMessageSavingSaveMedia().getKey()),
                     NaConfig.INSTANCE.getMessageSavingSaveMedia().Bool(), saveMediaExpanded);
