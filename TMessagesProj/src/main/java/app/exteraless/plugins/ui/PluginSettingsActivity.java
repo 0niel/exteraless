@@ -8,15 +8,13 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.util.TypedValue;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONArray;
@@ -26,17 +24,19 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.RadioColorCell;
 import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Cells.TextInfoPrivacyCell;
-import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,37 +44,48 @@ import java.util.List;
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginPermissions;
 import app.exteraless.plugins.PluginsController;
-import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
-import tw.nekomimi.nekogram.ui.cells.HeaderCell;
+import com.exteragram.messenger.preferences.BasePreferencesActivity;
 
 /**
  * Экран настроек плагина, строящийся из JSON-описания (ui.settings Python SDK).
  * Поддерживает вложенные подстраницы (sub_page) — тогда JSON приходит готовым,
  * без обращения к движку.
+ *
+ * Список собирается через {@link #fillItems(ArrayList, UniversalAdapter)} —
+ * ровно как у exteraGram. Плагины каталога хукают этот метод, чтобы дорисовать
+ * себе шапку, и ищут у фрагмента приватное поле {@code plugin}; и то и другое
+ * здесь есть намеренно.
+ *
+ * Строка «Разрешения» добавляется НЕ внутри {@code fillItems}, а после него, в
+ * {@link #fillItemsWithPermissions}: иначе плагин, заменивший или очистивший
+ * список в своём хуке, убрал бы у пользователя вход в разрешения.
  */
-public class PluginSettingsActivity extends BaseNekoSettingsActivity {
+public class PluginSettingsActivity extends BasePreferencesActivity {
 
-    /** Строка, которую рисует сам плагин ({@code ui.settings.Custom}). */
-    private static final int TYPE_CUSTOM = 100;
+    private static final int ID_PERMISSIONS = -1;
+    private static final int ID_NOT_LOADED = -2;
+    private static final int ID_PERMISSIONS_SHADOW = -3;
+
+    static {
+        UItem.UItemFactory.setup(new PluginCustomRowFactory());
+    }
 
     private String pluginId;
+
+    /**
+     * Плагин этого экрана. Держим объектом, а не только id: плагины каталога
+     * достают поле с этим именем рефлексией и зовут у него {@code getId()},
+     * чтобы понять, свой ли экран они украшают.
+     */
+    private Plugin plugin;
+
     private String subPageJson;
     private String subPageTitle;
     private int[] subPageIndex;
     private String[] subPageOwners;
 
-    /**
-     * Строки экрана. Имя нарочно не {@code items}: плагины, написанные под
-     * exteraGram, ищут у фрагмента приватное поле с этим именем, чистят его
-     * рефлексией и заполняют своим {@code fillItems} — у нас такого метода нет,
-     * и экран после этого оставался пустым.
-     */
+    /** Строки экрана в исходном виде — как их отдал Python-SDK. */
     private final ArrayList<JSONObject> rows = new ArrayList<>();
-
-    private int itemsStartRow;
-    private int notLoadedRow;
-    private int permissionsShadowRow;
-    private int permissionsRow;
 
     public PluginSettingsActivity() {
     }
@@ -85,8 +96,9 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     /** Плагины каталога передают сюда сам объект плагина, а не его id. */
-    public PluginSettingsActivity(app.exteraless.plugins.Plugin plugin) {
+    public PluginSettingsActivity(Plugin plugin) {
         this.pluginId = plugin == null ? null : plugin.id;
+        this.plugin = plugin;
     }
 
     public static PluginSettingsActivity newInstance(String pluginId) {
@@ -111,7 +123,32 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     @Override
     public View createView(Context context) {
-        View view = super.createView(context);
+        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        actionBar.setAllowOverlayTitle(true);
+        actionBar.setTitle(getTitle());
+        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+            @Override
+            public void onItemClick(int id) {
+                if (id == -1) {
+                    finishFragment();
+                }
+            }
+        });
+
+        final FrameLayout contentView = new FrameLayout(context);
+        contentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+
+        // Список наполняет обёртка, а не сам fillItems: строка разрешений должна
+        // пережить хук плагина, а хук срабатывает на возврате из fillItems.
+        listView = new UniversalRecyclerView(this, this::fillItemsWithPermissions,
+                this::onClick, this::onLongClick);
+        listView.setSections();
+        listView.adapter.setApplyBackground(false);
+        layoutManager = (LinearLayoutManager) listView.getLayoutManager();
+        contentView.addView(listView,
+                LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        actionBar.setAdaptiveBackground(listView);
+
         // Кнопка сброса — как у exteraGram: только на корневом экране плагина и
         // только когда есть что сбрасывать.
         if (subPageIndex == null) {
@@ -120,7 +157,9 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             resetItem.setOnClickListener(v -> showResetDialog());
             updateResetVisibility(false);
         }
-        return view;
+
+        fragmentView = contentView;
+        return fragmentView;
     }
 
     private void updateResetVisibility(boolean animated) {
@@ -134,15 +173,15 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     private void showResetDialog() {
         Activity activity = getParentActivity();
-        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
-        if (activity == null || plugin == null) {
+        Plugin target = resolvePlugin();
+        if (activity == null || target == null) {
             return;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setTitle(getString(R.string.PluginsResetSettings));
         builder.setMessage(AndroidUtilities.replaceTags(
                 LocaleController.formatString(R.string.PluginsResetSettingsInfo,
-                        plugin.getDisplayName())));
+                        target.getDisplayName())));
         builder.setPositiveButton(getString(R.string.Reset), (dialog, which) -> {
             PluginsController.getInstance().clearPluginSettingsPreferences(pluginId);
             rebuildFromEngine();
@@ -187,7 +226,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     /** Движок просит перестроить экран (плагин изменил настройки из кода). Зовётся на UI-потоке. */
     private void rebuildFromEngine() {
-        if (listAdapter == null) {
+        if (listView == null || listView.adapter == null) {
             return;
         }
         // Плагин удалили или выгрузили — экран его настроек больше ни о чём.
@@ -195,10 +234,14 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             finishFragment();
             return;
         }
-        updateRows();
+        listView.adapter.update(true);
         updateResetVisibility(true);
-        listAdapter.notifyDataSetChanged();
         ensureListVisible();
+    }
+
+    /** Анимации плагинов короткие (десятые доли секунды) — проверяем после них. */
+    private void scheduleVisibilityCheck() {
+        AndroidUtilities.runOnUIThread(this::ensureListVisible, 600);
     }
 
     /**
@@ -209,11 +252,6 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
      * этими шагами бросит исключение (а ловят они молча), список навсегда
      * остаётся прозрачным — экран выглядит пустым, хотя строки на месте.
      */
-    /** Анимации плагинов короткие (десятые доли секунды) — проверяем после них. */
-    private void scheduleVisibilityCheck() {
-        AndroidUtilities.runOnUIThread(this::ensureListVisible, 600);
-    }
-
     private void ensureListVisible() {
         if (listView == null) {
             return;
@@ -225,10 +263,79 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    @Override
-    protected void updateRows() {
-        super.updateRows();
+    private Plugin resolvePlugin() {
+        Plugin current = PluginsController.getInstance().getPlugin(pluginId);
+        if (current != null) {
+            plugin = current;
+        }
+        return plugin;
+    }
 
+    /**
+     * Итоговый список: сначала строки плагина (их правит его же хук на
+     * {@code fillItems}), потом наши — вход в разрешения.
+     */
+    private void fillItemsWithPermissions(ArrayList<UItem> items, UniversalAdapter adapter) {
+        resolvePlugin();
+        try {
+            fillItems(items, adapter);
+        } catch (Throwable t) {
+            // Упасть здесь — значит показать пустой экран: fillItems исполняет и
+            // чужой код, приделанный хуком.
+            FileLog.e("PluginSettingsActivity: fillItems failed for " + pluginId, t);
+        }
+        appendPermissionsRow(items);
+    }
+
+    /**
+     * Строки самого плагина. Точка расширения: плагины каталога хукают именно
+     * этот метод и вставляют в {@code items} свою шапку.
+     */
+    @Override
+    public void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        reloadRows();
+        if (rows.isEmpty()) {
+            items.add(UItem.asShadow(ID_NOT_LOADED, getString(R.string.PluginsNotLoaded)));
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            UItem item = toUItem(rows.get(i), i);
+            if (item != null) {
+                items.add(item);
+            }
+        }
+    }
+
+    /**
+     * Вход в разрешения — только на корневом экране плагина: подстраница
+     * (sub_page) принадлежит самому плагину, разрешениям там не место.
+     */
+    private void appendPermissionsRow(ArrayList<UItem> items) {
+        if (subPageIndex != null) {
+            return;
+        }
+        // Разделитель нужен, только когда выше стоит карточка настроек плагина:
+        // строка «плагин не загружен» уже рисует тень под собой сама.
+        if (!endsWithShadow(items)) {
+            items.add(UItem.asShadow(ID_PERMISSIONS_SHADOW, null));
+        }
+        items.add(UItem.asButton(ID_PERMISSIONS, getString(R.string.PluginPermissions),
+                permissionsValue()).onBind(view -> {
+            if (view instanceof TextCell) {
+                applyTextCellGeometry((TextCell) view, null);
+            }
+        }));
+    }
+
+    private static boolean endsWithShadow(ArrayList<UItem> items) {
+        if (items.isEmpty()) {
+            return false;
+        }
+        return UniversalAdapter.isShadow(items.get(items.size() - 1).viewType);
+    }
+
+    /** Свежий JSON экрана в {@link #rows}. */
+    private void reloadRows() {
         ArrayList<JSONObject> previous = new ArrayList<>(rows);
         rows.clear();
         String json;
@@ -261,27 +368,6 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             FileLog.e("PluginSettingsActivity: empty rebuild for " + pluginId
                     + ", keeping " + previous.size() + " previous rows");
             rows.addAll(previous);
-        }
-
-        if (rows.isEmpty()) {
-            itemsStartRow = -1;
-            notLoadedRow = addRow();
-        } else {
-            notLoadedRow = -1;
-            itemsStartRow = rowCount;
-            rowCount += rows.size();
-        }
-
-        // Вход в разрешения — только на корневом экране плагина: подстраница
-        // (sub_page) принадлежит самому плагину, разрешениям там не место.
-        if (subPageIndex == null) {
-            // Разделитель нужен, только когда выше стоит карточка настроек плагина:
-            // строка «плагин не загружен» уже рисует тень под собой сама.
-            permissionsShadowRow = notLoadedRow == -1 ? addRow() : -1;
-            permissionsRow = addRow();
-        } else {
-            permissionsShadowRow = -1;
-            permissionsRow = -1;
         }
     }
 
@@ -334,9 +420,14 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 && (text == null || text.equals(obj.optString("text")));
     }
 
-    /** Путь до строки на этом экране, считая от корневого списка плагина. */
-    private int[] pathTo(int position) {
-        int index = position - itemsStartRow;
+    /**
+     * Путь до строки на этом экране, считая от корневого списка плагина.
+     *
+     * Считаем по самому объекту, а не по позиции в списке: плагин мог вставить
+     * туда свои строки, и позиция уже не равна индексу в JSON.
+     */
+    private int[] pathTo(JSONObject row) {
+        int index = rows.indexOf(row);
         int[] parent = subPageIndex == null ? new int[0] : subPageIndex;
         int[] out = java.util.Arrays.copyOf(parent, parent.length + 1);
         out[parent.length] = index;
@@ -351,17 +442,12 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
-    protected String getActionBarTitle() {
+    public String getTitle() {
         if (subPageTitle != null) {
             return subPageTitle;
         }
-        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
-        return plugin != null ? plugin.getDisplayName() : getString(R.string.PluginSettingsTitle);
-    }
-
-    @Override
-    protected BaseListAdapter createAdapter(Context context) {
-        return new ListAdapter(context);
+        Plugin target = resolvePlugin();
+        return target != null ? target.getDisplayName() : getString(R.string.PluginSettingsTitle);
     }
 
     /**
@@ -369,8 +455,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
      * Цифрами, а не словами, — строка справа узкая, а перевода не требует.
      */
     private String permissionsValue() {
-        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
-        List<String> requested = PluginPermissionsActivity.requestedFor(plugin);
+        List<String> requested = PluginPermissionsActivity.requestedFor(resolvePlugin());
         if (requested.isEmpty()) {
             return "";
         }
@@ -383,23 +468,144 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         return granted + "/" + requested.size();
     }
 
-    private JSONObject itemAt(int position) {
-        int index = position - itemsStartRow;
-        if (itemsStartRow == -1 || index < 0 || index >= rows.size()) {
-            return null;
+    // ---------- строка JSON -> UItem ----------
+
+    /**
+     * Идентификатор строки для diff-а адаптера. По ключу настройки, а не по
+     * позиции: она уезжает, как только плагин вставит в список своё.
+     */
+    private static int rowId(JSONObject item, int index) {
+        String base = optNonEmpty(item, "key");
+        if (base == null) {
+            base = optNonEmpty(item, "text");
         }
-        return rows.get(index);
+        if (base == null) {
+            base = item.optString("type") + '#' + index;
+        }
+        return base.hashCode() & 0x7FFFFFFF;
     }
 
-    /** Разделитель под строкой рисуем, только если следующая строка — тоже контентная. */
-    private boolean needDivider(int position) {
-        JSONObject next = itemAt(position + 1);
-        if (next == null) {
-            return false;
+    private UItem toUItem(JSONObject row, int index) {
+        final int id = rowId(row, index);
+        final String type = row.optString("type");
+        final UItem item;
+        switch (type) {
+            case "header":
+                item = UItem.asHeader(row.optString("text"));
+                break;
+            case "divider":
+                item = UItem.asShadow(id, optNonEmpty(row, "text"));
+                break;
+            case "switch": {
+                final String subtext = optNonEmpty(row, "subtext");
+                item = subtext != null
+                        ? UItem.asCheck(id, row.optString("text"), subtext, true)
+                        : UItem.asCheck(id, row.optString("text"));
+                item.checked = row.optBoolean("value");
+                item.iconResId = resolveIcon(row);
+                break;
+            }
+            case "custom":
+                return customRow(row, id);
+            default:
+                item = textRow(row, id, type);
+                break;
         }
-        String nextType = next.optString("type");
-        return !"header".equals(nextType) && !"divider".equals(nextType)
-                && !"custom".equals(nextType);
+        item.object = row;
+        return item;
+    }
+
+    /** Строка-текст: selector, input, edittext и просто text. */
+    private UItem textRow(JSONObject row, int id, String type) {
+        final boolean isText = "text".equals(type);
+        final String subtext = isText ? optNonEmpty(row, "subtext") : null;
+        final String value = isText ? null : rowValue(row);
+        UItem item = UItem.asButton(id, resolveIcon(row), rowTitle(row), value);
+        item.red = row.optBoolean("red");
+        item.accent = row.optBoolean("accent");
+        return item.onBind(view -> {
+            if (view instanceof TextCell) {
+                applyTextCellGeometry((TextCell) view, subtext);
+            }
+        });
+    }
+
+    /**
+     * Подпись живёт под заголовком, а не справа: у плагинов это предложение
+     * целиком, справа от него остаётся многоточие. Геометрия иконки — как у
+     * TextSettingsCell и TextCheckCell: на одном экране строки разных типов
+     * идут вперемешку, и штатные 58dp у TextCell дают рваный левый край.
+     */
+    private static void applyTextCellGeometry(TextCell cell, String subtext) {
+        cell.setImageLeft(21);
+        cell.setOffsetFromImage(71);
+        cell.setSubtitle(subtext);
+        cell.heightDp = subtext != null ? 60 : 50;
+    }
+
+    private UItem customRow(JSONObject row, int id) {
+        UItem item = UItem.ofFactory(PluginCustomRowFactory.class);
+        item.id = id;
+        item.object = row;
+        String viewId = optNonEmpty(row, "view_id");
+        if (viewId != null) {
+            item.view = PluginsController.getInstance()
+                    .getPluginSettingsCustomView(pluginId, viewId, getContext());
+        }
+        item.enabled = optNonEmpty(row, "callback_id") != null
+                || row.optJSONArray("sub_page") != null;
+        return item;
+    }
+
+    /**
+     * Строка с вьюхой самого плагина.
+     *
+     * Своя фабрика, а не {@code UItem.asCustom}: у штатного VIEW_TYPE_CUSTOM
+     * нажатие не ловится вовсе, а строке {@code ui.settings.Custom(on_click=...)}
+     * оно нужно. Тождество строки считаем по id, а не по вьюхе: плагин отдаёт
+     * её заново на каждой пересборке, и по вьюхе diff перекладывал бы строку
+     * целиком при каждом обновлении.
+     */
+    public static class PluginCustomRowFactory extends UItem.UItemFactory<FrameLayout> {
+
+        @Override
+        public FrameLayout createView(Context context, RecyclerListView listView, int currentAccount,
+                                      int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            FrameLayout container = new FrameLayout(context);
+            container.setLayoutParams(new RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT,
+                    RecyclerView.LayoutParams.WRAP_CONTENT));
+            return container;
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter,
+                             UniversalRecyclerView listView) {
+            FrameLayout container = (FrameLayout) view;
+            if (container.getChildCount() == 1 && container.getChildAt(0) == item.view) {
+                return;
+            }
+            container.removeAllViews();
+            if (item.view == null) {
+                return;
+            }
+            // Вьюха живёт в объекте плагина и переживает переработку строки:
+            // тот же экземпляр может ещё висеть в прошлом контейнере, и addView
+            // без этого бросит IllegalState.
+            AndroidUtilities.removeFromParent(item.view);
+            container.addView(item.view, LayoutHelper.createFrame(
+                    LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+
+        @Override
+        public boolean equals(UItem a, UItem b) {
+            return a.id == b.id;
+        }
+
+        @Override
+        public boolean contentsEquals(UItem a, UItem b) {
+            return a.id == b.id && a.view == b.view && a.enabled == b.enabled;
+        }
     }
 
     /** Иконки приезжают именем drawable («msg_settings»); неизвестные молча пропускаем. */
@@ -441,10 +647,17 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         return TextUtils.isEmpty(value) ? null : value;
     }
 
+    // ---------- нажатия ----------
+
+    /** JSON-строка, стоящая за элементом списка, или null, если элемент чужой. */
+    private static JSONObject rowOf(UItem item) {
+        return item != null && item.object instanceof JSONObject ? (JSONObject) item.object : null;
+    }
+
     @Override
-    protected boolean onItemLongClick(View view, int position, float x, float y) {
-        JSONObject item = itemAt(position);
-        String callbackId = item == null ? null : optNonEmpty(item, "long_callback_id");
+    public boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        JSONObject row = rowOf(item);
+        String callbackId = row == null ? null : optNonEmpty(row, "long_callback_id");
         if (callbackId == null) {
             return false;
         }
@@ -453,26 +666,27 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
-    protected void onItemClick(View view, int position, float x, float y) {
-        if (position == permissionsRow) {
+    public void onClick(UItem item, View view, int position, float x, float y) {
+        if (item != null && item.id == ID_PERMISSIONS && rowOf(item) == null) {
             presentFragment(new PluginPermissionsActivity(pluginId));
             return;
         }
-        JSONObject item = itemAt(position);
-        if (item == null) {
+        JSONObject row = rowOf(item);
+        if (row == null) {
             return;
         }
-        String type = item.optString("type");
-        String key = optNonEmpty(item, "key");
-        String callbackId = optNonEmpty(item, "callback_id");
+        String type = row.optString("type");
+        String key = optNonEmpty(row, "key");
+        String callbackId = optNonEmpty(row, "callback_id");
         PluginsController controller = PluginsController.getInstance();
         switch (type) {
             case "switch": {
-                boolean newValue = !item.optBoolean("value");
+                boolean newValue = !row.optBoolean("value");
                 try {
-                    item.put("value", newValue);
+                    row.put("value", newValue);
                 } catch (JSONException ignore) {
                 }
+                item.checked = newValue;
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(newValue);
                 }
@@ -483,29 +697,29 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 break;
             }
             case "selector":
-                showSelectorDialog(position, item, key);
+                showSelectorDialog(row, key);
                 break;
             case "input":
-                showInputDialog(position, item, key, false);
+                showInputDialog(row, key, false);
                 break;
             case "edittext":
-                showInputDialog(position, item, key, true);
+                showInputDialog(row, key, true);
                 break;
             case "custom": {
-                JSONArray customSubPage = item.optJSONArray("sub_page");
+                JSONArray customSubPage = row.optJSONArray("sub_page");
                 if (customSubPage != null) {
-                    presentFragment(newSubPage(pluginId, customSubPage.toString(), getActionBarTitle(),
-                            pathTo(position), ownersTo(null)));
+                    presentFragment(newSubPage(pluginId, customSubPage.toString(), getTitle(),
+                            pathTo(row), ownersTo(null)));
                 } else if (callbackId != null) {
                     controller.dispatchSettingClick(pluginId, callbackId, view);
                 }
                 break;
             }
             case "text": {
-                JSONArray subPage = item.optJSONArray("sub_page");
+                JSONArray subPage = row.optJSONArray("sub_page");
                 if (subPage != null) {
-                    presentFragment(newSubPage(pluginId, subPage.toString(), item.optString("text"),
-                            pathTo(position), ownersTo(item.optString("text"))));
+                    presentFragment(newSubPage(pluginId, subPage.toString(), row.optString("text"),
+                            pathTo(row), ownersTo(row.optString("text"))));
                 } else if (callbackId != null) {
                     controller.dispatchSettingClick(pluginId, callbackId, view);
                 }
@@ -514,12 +728,18 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         }
     }
 
+    private void refreshItems() {
+        if (listView != null && listView.adapter != null) {
+            listView.adapter.update(true);
+        }
+    }
+
     /**
      * Выбор из списка — как у exteraGram
      * ({@code plugins/ui/PluginSettingsActivity.showSelectorDialog}): строки с
      * радиокнопками и отмеченным текущим значением, а не голый список.
      */
-    private void showSelectorDialog(int position, JSONObject item, String key) {
+    private void showSelectorDialog(JSONObject item, String key) {
         Activity activity = getParentActivity();
         JSONArray options = item.optJSONArray("items");
         if (activity == null || options == null) {
@@ -550,9 +770,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                             String.valueOf(index));
                     scheduleVisibilityCheck();
                 }
-                if (listAdapter != null) {
-                    listAdapter.notifyItemChanged(position);
-                }
+                refreshItems();
             });
             content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                     LayoutHelper.WRAP_CONTENT));
@@ -571,7 +789,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
      * подпись строки над полем, поле EditTextBoldCursor с подчёркиванием и
      * курсором темы, ширина 292dp, кнопка «Готово» и клавиатура сразу.
      */
-    private void showInputDialog(int position, JSONObject item, String key, boolean multiline) {
+    private void showInputDialog(JSONObject item, String key, boolean multiline) {
         Activity activity = getParentActivity();
         if (activity == null) {
             return;
@@ -633,9 +851,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 PluginsController.getInstance().notifySettingChanged(pluginId, key, JSONObject.quote(value));
                 scheduleVisibilityCheck();
             }
-            if (listAdapter != null) {
-                listAdapter.notifyItemChanged(position);
-            }
+            refreshItems();
             dialog.dismiss();
         });
         builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
@@ -647,200 +863,5 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             AndroidUtilities.showKeyboard(input);
         });
         showDialog(dialog);
-    }
-
-    private class ListAdapter extends BaseListAdapter {
-
-        public ListAdapter(Context context) {
-            super(context);
-        }
-
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position, boolean partial) {
-            switch (holder.getItemViewType()) {
-                case TYPE_HEADER: {
-                    JSONObject item = itemAt(position);
-                    if (item == null) {
-                        break;
-                    }
-                    HeaderCell cell = (HeaderCell) holder.itemView;
-                    cell.setText(item.optString("text"));
-                    break;
-                }
-                case TYPE_CHECK: {
-                    JSONObject item = itemAt(position);
-                    if (item == null) {
-                        break;
-                    }
-                    TextCheckCell cell = (TextCheckCell) holder.itemView;
-                    String subtext = optNonEmpty(item, "subtext");
-                    boolean checked = item.optBoolean("value");
-                    if (subtext != null) {
-                        cell.setTextAndValueAndCheck(item.optString("text"), subtext,
-                                checked, true, needDivider(position));
-                    } else {
-                        cell.setTextAndCheck(item.optString("text"), checked, needDivider(position));
-                    }
-                    cell.setIcon(resolveIcon(item));
-                    break;
-                }
-                // TYPE_SHADOW не биндим: ShadowSectionCell рисует свой фон сам
-                // (updateBackground в конструкторе), а перекрашивание его здесь
-                // только сломало бы тень.
-                case TYPE_SETTINGS: {
-                    if (position == permissionsRow) {
-                        ((TextSettingsCell) holder.itemView).setTextAndValue(
-                                getString(R.string.PluginPermissions), permissionsValue(), false);
-                        ((TextSettingsCell) holder.itemView).setIcon(0);
-                        break;
-                    }
-                    JSONObject item = itemAt(position);
-                    if (item == null) {
-                        break;
-                    }
-                    TextSettingsCell cell = (TextSettingsCell) holder.itemView;
-                    cell.setTextAndValue(rowTitle(item), rowValue(item), needDivider(position));
-                    cell.setIcon(resolveIcon(item));
-                    break;
-                }
-                case TYPE_TEXT: {
-                    JSONObject item = itemAt(position);
-                    if (item == null) {
-                        break;
-                    }
-                    TextCell cell = (TextCell) holder.itemView;
-                    String text = rowTitle(item);
-                    boolean isText = "text".equals(item.optString("type"));
-                    String subtext = isText ? optNonEmpty(item, "subtext") : null;
-                    String value = isText ? null : rowValue(item);
-                    int icon = resolveIcon(item);
-                    boolean divider = needDivider(position);
-                    if (value != null && icon != 0) {
-                        cell.setTextAndValueAndIcon(text, value, icon, divider);
-                    } else if (value != null) {
-                        cell.setTextAndValue(text, value, divider);
-                    } else if (icon != 0) {
-                        cell.setTextAndIcon(text, icon, divider);
-                    } else {
-                        cell.setText(text, divider);
-                    }
-                    // Подпись живёт под заголовком, а не справа: у плагинов это
-                    // предложение целиком, справа от него остаётся многоточие.
-                    // Геометрия иконки — как у TextSettingsCell и TextCheckCell:
-                    // на одном экране строки разных типов идут вперемешку, и
-                    // штатные 58dp у TextCell дают рваный левый край.
-                    cell.setImageLeft(21);
-                    cell.setOffsetFromImage(71);
-                    cell.setSubtitle(subtext);
-                    cell.heightDp = subtext != null ? 60 : 50;
-                    if (item.optBoolean("red")) {
-                        cell.setColors(Theme.key_text_RedRegular, Theme.key_text_RedRegular);
-                    } else if (item.optBoolean("accent")) {
-                        cell.setColors(Theme.key_windowBackgroundWhiteBlueIcon,
-                                Theme.key_windowBackgroundWhiteBlueText4);
-                    } else {
-                        cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon,
-                                Theme.key_windowBackgroundWhiteBlackText);
-                    }
-                    break;
-                }
-                case TYPE_CUSTOM: {
-                    FrameLayout container = (FrameLayout) holder.itemView;
-                    container.removeAllViews();
-                    JSONObject item = itemAt(position);
-                    String viewId = item == null ? null : optNonEmpty(item, "view_id");
-                    if (viewId == null) {
-                        break;
-                    }
-                    View custom = PluginsController.getInstance()
-                            .getPluginSettingsCustomView(pluginId, viewId, mContext);
-                    if (custom == null) {
-                        break;
-                    }
-                    // Вьюха живёт в объекте плагина и переживает переработку
-                    // строки: тот же экземпляр может ещё висеть в прошлом
-                    // контейнере, и addView без этого бросит IllegalState.
-                    AndroidUtilities.removeFromParent(custom);
-                    container.addView(custom, LayoutHelper.createFrame(
-                            LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-                    break;
-                }
-                case TYPE_INFO_PRIVACY: {
-                    TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    if (position == notLoadedRow) {
-                        cell.setText(getString(R.string.PluginsNotLoaded));
-                        cell.setBackground(Theme.getThemedDrawable(mContext,
-                                R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
-                        break;
-                    }
-                    JSONObject item = itemAt(position);
-                    if (item == null) {
-                        break;
-                    }
-                    String text = optNonEmpty(item, "text");
-                    cell.setText(text);
-                    cell.setBackground(Theme.getThemedDrawable(mContext,
-                            position == rowCount - 1 ? R.drawable.greydivider_bottom : R.drawable.greydivider,
-                            Theme.key_windowBackgroundGrayShadow));
-                    break;
-                }
-            }
-        }
-
-        @NonNull
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            if (viewType == TYPE_CUSTOM) {
-                FrameLayout container = new FrameLayout(mContext);
-                container.setLayoutParams(new RecyclerView.LayoutParams(
-                        RecyclerView.LayoutParams.MATCH_PARENT,
-                        RecyclerView.LayoutParams.WRAP_CONTENT));
-                return new RecyclerListView.Holder(container);
-            }
-            return super.onCreateViewHolder(parent, viewType);
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            if (holder.getItemViewType() == TYPE_CUSTOM) {
-                JSONObject item = itemAt(holder.getAdapterPosition());
-                return item != null && (optNonEmpty(item, "callback_id") != null
-                        || item.optJSONArray("sub_page") != null);
-            }
-            return super.isEnabled(holder);
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            if (position == notLoadedRow) {
-                return TYPE_INFO_PRIVACY;
-            }
-            if (position == permissionsShadowRow) {
-                return TYPE_SHADOW;
-            }
-            if (position == permissionsRow) {
-                return TYPE_SETTINGS;
-            }
-            JSONObject item = itemAt(position);
-            if (item == null) {
-                return TYPE_INFO_PRIVACY;
-            }
-            switch (item.optString("type")) {
-                case "header":
-                    return TYPE_HEADER;
-                case "divider":
-                    return TYPE_INFO_PRIVACY;
-                case "switch":
-                    return TYPE_CHECK;
-                case "selector":
-                case "input":
-                case "edittext":
-                    return TYPE_TEXT;
-                case "custom":
-                    return TYPE_CUSTOM;
-                default:
-                    return TYPE_TEXT;
-            }
-        }
     }
 }
