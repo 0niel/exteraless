@@ -9,7 +9,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -29,9 +31,11 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.ui.ActionBar.AlertDialog;
+import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.CheckBoxCell;
 import org.telegram.ui.Cells.TextCell;
+import org.telegram.ui.Cells.TextCheckBoxCell;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
@@ -240,7 +244,14 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         } else if (position == ayuSaveEditsRow) {
             toggleAyuConfig(view, NaConfig.INSTANCE.getEnableSaveEditsHistory(), false);
         } else if (position == ayuSaveMediaRow) {
-            toggleAyuConfig(view, NaConfig.INSTANCE.getMessageSavingSaveMedia(), false);
+            boolean onSwitch = LocaleController.isRTL
+                    ? x <= AndroidUtilities.dp(76)
+                    : x >= view.getMeasuredWidth() - AndroidUtilities.dp(76);
+            if (onSwitch) {
+                toggleAyuConfig(view, NaConfig.INSTANCE.getMessageSavingSaveMedia(), false);
+            } else {
+                showSaveMediaDialog();
+            }
         } else if (position == ayuBotUserRow) {
             toggleAyuConfig(view, NaConfig.INSTANCE.getSaveDeletedMessageForBotUser(), true);
         } else if (position == ayuBotChatRow) {
@@ -388,6 +399,81 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         if (affectsRows) {
             rebuildRowsAndNotify();
         }
+    }
+
+    private void showSaveMediaDialog() {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        BottomSheet.Builder builder = new BottomSheet.Builder(context);
+        builder.setApplyTopPadding(false);
+        builder.setApplyBottomPadding(false);
+        LinearLayout linearLayout = new LinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        builder.setCustomView(linearLayout);
+
+        HeaderCell headerCell = new HeaderCell(context, Theme.key_dialogTextBlue2, 21, 15, false);
+        headerCell.setText(getString(R.string.MessageSavingSaveMedia).toUpperCase());
+        linearLayout.addView(headerCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        ConfigItem[] configs = {
+                NaConfig.INSTANCE.getSaveMediaInPrivateChats(),
+                NaConfig.INSTANCE.getSaveMediaInPublicChannels(),
+                NaConfig.INSTANCE.getSaveMediaInPrivateChannels(),
+                NaConfig.INSTANCE.getSaveMediaInPublicGroups(),
+                NaConfig.INSTANCE.getSaveMediaInPrivateGroups(),
+        };
+        int[] titles = {
+                R.string.MessageSavingSaveMediaInPrivateChats,
+                R.string.MessageSavingSaveMediaInPublicChannels,
+                R.string.MessageSavingSaveMediaInPrivateChannels,
+                R.string.MessageSavingSaveMediaInPublicGroups,
+                R.string.MessageSavingSaveMediaInPrivateGroups,
+        };
+        TextCheckBoxCell[] cells = new TextCheckBoxCell[configs.length];
+        for (int a = 0; a < cells.length; a++) {
+            TextCheckBoxCell checkBoxCell = cells[a] = new TextCheckBoxCell(context, true, false);
+            checkBoxCell.setTextAndCheck(getString(titles[a]), configs[a].Bool(), a < cells.length - 1);
+            checkBoxCell.setBackground(Theme.getSelectorDrawable(false));
+            checkBoxCell.setOnClickListener(v -> {
+                if (!v.isEnabled()) {
+                    return;
+                }
+                checkBoxCell.setChecked(!checkBoxCell.isChecked());
+            });
+            linearLayout.addView(checkBoxCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 50));
+        }
+
+        FrameLayout buttonsLayout = new FrameLayout(context);
+        buttonsLayout.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
+        linearLayout.addView(buttonsLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 52));
+
+        TextView cancelView = new TextView(context);
+        cancelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        cancelView.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2));
+        cancelView.setGravity(Gravity.CENTER);
+        cancelView.setTypeface(AndroidUtilities.bold());
+        cancelView.setText(getString(R.string.Cancel).toUpperCase());
+        cancelView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
+        buttonsLayout.addView(cancelView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.TOP | Gravity.LEFT));
+        cancelView.setOnClickListener(v -> builder.getDismissRunnable().run());
+
+        TextView saveView = new TextView(context);
+        saveView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        saveView.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2));
+        saveView.setGravity(Gravity.CENTER);
+        saveView.setTypeface(AndroidUtilities.bold());
+        saveView.setText(getString(R.string.Save).toUpperCase());
+        saveView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
+        buttonsLayout.addView(saveView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.TOP | Gravity.RIGHT));
+        saveView.setOnClickListener(v -> {
+            for (int a = 0; a < cells.length; a++) {
+                configs[a].setConfigBool(cells[a].isChecked());
+            }
+            builder.getDismissRunnable().run();
+        });
+        showDialog(builder.create());
     }
 
     private void refreshAyuDataSize() {
