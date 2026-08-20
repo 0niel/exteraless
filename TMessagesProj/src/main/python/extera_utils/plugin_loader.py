@@ -811,7 +811,12 @@ def _install_jclass_guard() -> None:
                 raise
             except Exception:
                 pass  # сломанная проверка не должна ломать доступ к Java
-            return original(name, *args, **kwargs)
+            found = original(name, *args, **kwargs)
+            try:
+                from .class_aliases import adapt
+                return adapt(name, found)
+            except Exception:
+                return found
 
         jclass._exteraless_guard = True
         java.jclass = jclass

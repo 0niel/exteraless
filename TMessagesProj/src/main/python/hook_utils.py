@@ -28,9 +28,14 @@ def find_class(name: str):
         pass  # сломанная проверка не должна закрывать доступ к Java
     try:
         from java import jclass
-        return jclass(name)
+        found = jclass(name)
     except Exception:
         return None
+    try:
+        from extera_utils.class_aliases import adapt
+        return adapt(name, found)
+    except Exception:
+        return found
 
 
 def _as_class(obj):
@@ -40,6 +45,11 @@ def _as_class(obj):
     already-reflected java.lang.Class.
     """
     from java import jclass
+    try:
+        from extera_utils.class_aliases import unwrap
+        obj = unwrap(obj)
+    except Exception:
+        pass
     class_type = jclass("java.lang.Class")
     if isinstance(obj, class_type):
         return obj

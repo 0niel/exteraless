@@ -19,6 +19,12 @@ import types as _types
 ROOT = "com.exteragram.messenger"
 
 _EXACT = {
+    "com.exteragram.messenger.utils.chats.ChatUtils":
+        "com.exteragram.messenger.utils.chats.ChatUtils",
+    "com.exteragram.messenger.utils.text.LocaleUtils":
+        "com.exteragram.messenger.utils.text.LocaleUtils",
+    "com.exteragram.messenger.utils.system.VibratorUtils":
+        "com.exteragram.messenger.utils.system.VibratorUtils",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill":
         "app.exteraless.pillstack.pills.WeatherPill",
     "com.exteragram.messenger.pillstack.ui.PillStackPreferencesActivity":
@@ -60,6 +66,56 @@ def resolve(name):
         if outer.startswith(old):
             return new + outer[len(old):] + sep + nested
     return name
+
+
+_FIELD_SHAPED = {
+    "com.exteragram.messenger.ExteraConfig": ("pluginsSafeMode", "iconPack", "inAppVibration"),
+}
+
+
+class _FieldShapedClass:
+    """Java-класс, у которого часть статических методов читается как поля.
+
+    У exteraGram это поля (Kotlin-делегаты), у нас — методы: поле не умеет
+    отдавать живое значение настройки. Chaquopy различает вызов и чтение
+    атрибута, поэтому плагин, написанный под поле, получал объект метода —
+    всегда истинный. Так zwylib считал, что включён safe mode, и молча
+    отключал свои хуки.
+    """
+
+    def __init__(self, java_class, fields):
+        object.__setattr__(self, "_exteraless_java", java_class)
+        object.__setattr__(self, "_exteraless_fields", frozenset(fields))
+
+    def __getattr__(self, attr):
+        target = object.__getattribute__(self, "_exteraless_java")
+        value = getattr(target, attr)
+        if attr in object.__getattribute__(self, "_exteraless_fields"):
+            return value()
+        return value
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, "_exteraless_java"))
+
+
+def unwrap(obj):
+    """Настоящий Java-класс из обёртки; чужие объекты возвращаются как есть."""
+    if isinstance(obj, _FieldShapedClass):
+        return object.__getattribute__(obj, "_exteraless_java")
+    return obj
+
+
+def adapt(name, obj):
+    """Обёртка над классом, форма которого у нас разошлась с эталоном."""
+    if obj is None:
+        return obj
+    fields = _FIELD_SHAPED.get(name)
+    if fields is None:
+        return obj
+    try:
+        return _FieldShapedClass(obj, fields)
+    except Exception:
+        return obj
 
 
 def is_alias(name):
