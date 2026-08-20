@@ -228,14 +228,27 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         if (tabsHeight == 0) {
             return windowInsets;
         }
-        final Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-        final Insets navigationBars = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+        final Insets systemBars = extendBottom(
+                windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()), tabsHeight);
+        final Insets navigationBars = extendBottom(
+                windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()), tabsHeight);
+        // setInsets мало: WindowInsetsStateHolder — а через него и нижний отступ
+        // списка сообщений — читает getInsetsIgnoringVisibility(), и там на API 30+
+        // лежит отдельный массив. Builder копирует его из исходных инсетов, поэтому
+        // без второй пары вызовов чат считал, что снизу только системная полоса,
+        // и последнее сообщение уезжало под панель вкладок.
         return new WindowInsetsCompat.Builder(windowInsets)
-                .setInsets(WindowInsetsCompat.Type.systemBars(),
-                        Insets.of(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom + tabsHeight))
-                .setInsets(WindowInsetsCompat.Type.navigationBars(),
-                        Insets.of(navigationBars.left, navigationBars.top, navigationBars.right, navigationBars.bottom + tabsHeight))
+                .setInsets(WindowInsetsCompat.Type.systemBars(), systemBars)
+                .setInsets(WindowInsetsCompat.Type.navigationBars(), navigationBars)
+                .setInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars(), extendBottom(
+                        windowInsets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars()), tabsHeight))
+                .setInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars(), extendBottom(
+                        windowInsets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars()), tabsHeight))
                 .build();
+    }
+
+    private static Insets extendBottom(Insets insets, int extra) {
+        return Insets.of(insets.left, insets.top, insets.right, insets.bottom + extra);
     }
 
     private void applyFloatingWindowLayout() {
