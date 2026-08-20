@@ -27,6 +27,7 @@ import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.browser.Browser;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
@@ -229,8 +230,12 @@ public class ProfileMusicCard extends FrameLayout {
         TLRPC.PhotoSize thumb = savedDocument != null
                 ? FileLoader.getClosestPhotoSizeWithSize(savedDocument.thumbs, 1000) : null;
         ImageLocation location = thumb != null ? ImageLocation.getForDocument(thumb, savedDocument) : null;
+        String artworkUrl = location == null && savedDocument != null
+                ? MessageObject.getArtworkUrl(savedDocument, false) : null;
         if (location != null) {
             imageView.setImage(location, null, (Drawable) null, 0, savedDocument);
+        } else if (!TextUtils.isEmpty(artworkUrl)) {
+            imageView.setImage(ImageLocation.getForPath(artworkUrl), "300_300", (Drawable) null, 0, null);
         } else {
             imageView.setImageResource(R.drawable.nocover_big, getThemedColor(Theme.key_player_button));
         }
