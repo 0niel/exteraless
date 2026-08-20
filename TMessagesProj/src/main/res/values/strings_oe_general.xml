@@ -81,4 +81,13 @@
     <string name="OEGeneralAyuMomentsHideMessage">The settings will disappear from this screen. The features themselves keep running until you turn them off.</string>
     <string name="OEGeneralAyuMomentsDisableAll">Turn off all AyuMoments features</string>
     <string name="OEGeneralAyuMomentsWipe">Delete the saved messages database</string>
+    <string name="OEGeneralLastFm">Last.fm</string>
+    <string name="OEGeneralLastFmHint">username</string>
+    <string name="OEGeneralLastFmNotSet">Not set</string>
+    <string name="OEGeneralLastFmApplied">Profile music updated</string>
+    <string name="OEGeneralLastFmNoMusic">Set profile music first</string>
+    <string name="OEGeneralLastFmFailed">Could not update profile music</string>
+    <string name="OEGeneralLastFmNoFile">Could not download the track</string>
+    <string name="OEGeneralLastFmNoUpload">Upload timed out</string>
+    <string name="OEGeneralLastFmAbout">This feature is built on top of profile music: it writes hidden bytes with your Last.fm username into your latest profile track. Once you set a username, that track is re-uploaded with the change.\n\nWhen you turn the feature off, the track is restored to its original state.</string>
 </resources>

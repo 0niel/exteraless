@@ -27,6 +27,7 @@ import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.browser.Browser;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.Utilities;
@@ -40,15 +41,10 @@ import org.telegram.ui.Components.ProfileMusicView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 
 import app.exteraless.appearance.AppearanceConfig;
+import app.exteraless.nowplaying.LastFmNowPlaying;
+import app.exteraless.nowplaying.ProfileMusicMark;
+import app.exteraless.nowplaying.ZeroWidthCodec;
 
-/**
- * Карточка «сохранённая музыка» в профиле — плашка exteraGram поверх нативного
- * {@code userFull.saved_music}.
- *
- * <p>Фон — радиальный градиент по цвету, вынутому из обложки палитрой Material;
- * поверх него узор из пользовательского эмодзи. Когда обложки нет, карточка
- * рисуется цветами темы, а узор гасится до 40% прозрачности.
- */
 public class ProfileMusicCard extends FrameLayout {
 
     private static final long MUSIC_EMOJI_ID = 5271627010681108586L;
@@ -73,15 +69,23 @@ public class ProfileMusicCard extends FrameLayout {
     private final BackupImageView imageView;
     private final TextView nameView;
     private final TextView artistView;
+    private final TextView statusView;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emoji;
     private final GradientDrawable background;
 
     private boolean hasCover;
+    private boolean lastfmCover;
+    private TLRPC.Document savedDocument;
     private int backgroundColor;
     private int accentColor;
     private long currentEmojiId = -1;
     private long currentDocumentId = -1;
-    private long paletteDocumentId = -1;
+    private long imageToken;
+    private long paletteToken = -1;
+    private CharSequence savedTitle;
+    private CharSequence savedAuthor;
+    private String lastfmNick;
+    private String lastfmUrl;
     private Runnable onCardClick;
 
     public ProfileMusicCard(Context context, Theme.ResourcesProvider resourcesProvider) {
@@ -114,7 +118,9 @@ public class ProfileMusicCard extends FrameLayout {
         cardLayout.setOutlineProvider(ViewOutlineProviderImpl.fromDrawable(background));
         cardLayout.setClickable(true);
         cardLayout.setOnClickListener(v -> {
-            if (onCardClick != null) {
+            if (lastfmUrl != null) {
+                Browser.openUrl(getContext(), lastfmUrl);
+            } else if (onCardClick != null) {
                 onCardClick.run();
             }
         });
@@ -160,6 +166,14 @@ public class ProfileMusicCard extends FrameLayout {
         NotificationCenter.listenEmojiLoading(artistView);
         texts.addView(artistView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
+        statusView = new TextView(context);
+        statusView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        statusView.setSingleLine(true);
+        statusView.setEllipsize(TextUtils.TruncateAt.END);
+        statusView.setAlpha(1f);
+        statusView.setVisibility(GONE);
+        texts.addView(statusView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
+
         applyThemeColors();
     }
 
@@ -167,20 +181,21 @@ public class ProfileMusicCard extends FrameLayout {
         onCardClick = listener;
     }
 
-    public void set(TLRPC.Document document, long emojiDocumentId) {
+    public void set(TLRPC.Document document, long emojiDocumentId, long ownerId) {
         if (document == null) {
             return;
         }
-        CharSequence title = ProfileMusicView.getTitle(document);
-        CharSequence author = ProfileMusicView.getAuthor(document);
-        if (TextUtils.isEmpty(title)) {
-            title = LocaleController.getString(R.string.AudioUnknownTitle);
+        CharSequence rawAuthor = ProfileMusicView.getAuthor(document);
+        String nick = ProfileMusicMark.nickFrom(FileLoader.getDocumentFileName(document), ownerId);
+        savedTitle = ZeroWidthCodec.strip(ProfileMusicView.getTitle(document));
+        savedAuthor = ZeroWidthCodec.strip(rawAuthor);
+        if (TextUtils.isEmpty(savedTitle)) {
+            savedTitle = LocaleController.getString(R.string.AudioUnknownTitle);
         }
-        if (TextUtils.isEmpty(author)) {
-            author = LocaleController.getString(R.string.AudioUnknownArtist);
+        if (TextUtils.isEmpty(savedAuthor)) {
+            savedAuthor = LocaleController.getString(R.string.AudioUnknownArtist);
         }
-        nameView.setText(Emoji.replaceEmoji(title, nameView.getPaint().getFontMetricsInt(), false));
-        artistView.setText(Emoji.replaceEmoji(author, artistView.getPaint().getFontMetricsInt(), false));
+        showSaved();
 
         long emojiId = emojiDocumentId != 0 ? emojiDocumentId : MUSIC_EMOJI_ID;
         if (emojiId != currentEmojiId) {
@@ -188,29 +203,75 @@ public class ProfileMusicCard extends FrameLayout {
             emoji.set(emojiId, true);
         }
 
-        if (document.id != currentDocumentId) {
+        savedDocument = document;
+        if (document.id != currentDocumentId || lastfmCover) {
             currentDocumentId = document.id;
-            paletteDocumentId = -1;
+            applySavedCover();
+        }
+
+        lastfmNick = nick;
+        if (nick != null) {
+            LastFmNowPlaying.Track cached = LastFmNowPlaying.cached(nick);
+            if (cached != null) {
+                onLastFm(nick, cached);
+            } else {
+                LastFmNowPlaying.request(nick, this::onLastFm);
+            }
+        }
+    }
+
+    private void applySavedCover() {
+        lastfmCover = false;
+        imageToken++;
+        hasCover = false;
+        backgroundColor = 0;
+        accentColor = 0;
+        TLRPC.PhotoSize thumb = savedDocument != null
+                ? FileLoader.getClosestPhotoSizeWithSize(savedDocument.thumbs, 1000) : null;
+        ImageLocation location = thumb != null ? ImageLocation.getForDocument(thumb, savedDocument) : null;
+        if (location != null) {
+            imageView.setImage(location, null, (Drawable) null, 0, savedDocument);
+        } else {
+            imageView.setImageResource(R.drawable.nocover_big, getThemedColor(Theme.key_player_button));
+        }
+        applyThemeColors();
+    }
+
+    private void showSaved() {
+        nameView.setText(Emoji.replaceEmoji(savedTitle, nameView.getPaint().getFontMetricsInt(), false));
+        artistView.setText(Emoji.replaceEmoji(savedAuthor, artistView.getPaint().getFontMetricsInt(), false));
+        statusView.setVisibility(GONE);
+        lastfmUrl = null;
+    }
+
+    private void onLastFm(String nick, LastFmNowPlaying.Track track) {
+        if (!TextUtils.equals(nick, lastfmNick) || track == null || !track.live) {
+            return;
+        }
+        nameView.setText(Emoji.replaceEmoji(track.name, nameView.getPaint().getFontMetricsInt(), false));
+        artistView.setText(Emoji.replaceEmoji(track.artist, artistView.getPaint().getFontMetricsInt(), false));
+        statusView.setText(LocaleController.getString(R.string.OENowPlayingScrobbling));
+        statusView.setVisibility(VISIBLE);
+        lastfmUrl = track.trackUrl != null ? "https://www.last.fm" + track.trackUrl : "https://www.last.fm/user/" + nick;
+        lastfmCover = true;
+        imageToken++;
+        if (!TextUtils.isEmpty(track.coverUrl)) {
+            imageView.setImage(ImageLocation.getForPath(track.coverUrl), "300_300", (Drawable) null, 0, null);
+        } else {
             hasCover = false;
             backgroundColor = 0;
             accentColor = 0;
-            TLRPC.PhotoSize thumb = FileLoader.getClosestPhotoSizeWithSize(document.thumbs, 1000);
-            ImageLocation location = thumb != null ? ImageLocation.getForDocument(thumb, document) : null;
-            if (location != null) {
-                imageView.setImage(location, null, (Drawable) null, 0, document);
-            } else {
-                imageView.setImageResource(R.drawable.nocover_big, getThemedColor(Theme.key_player_button));
-            }
+            imageView.setImageResource(R.drawable.nocover_big, getThemedColor(Theme.key_player_button));
             applyThemeColors();
         }
     }
 
     private void extractColors(Bitmap bitmap) {
-        if (bitmap == null || bitmap.isRecycled() || paletteDocumentId == currentDocumentId) {
+        if (bitmap == null || bitmap.isRecycled() || paletteToken == imageToken) {
             return;
         }
-        final long documentId = currentDocumentId;
-        paletteDocumentId = documentId;
+        final long token = imageToken;
+        paletteToken = token;
         final Bitmap copy;
         try {
             copy = bitmap.copy(Bitmap.Config.ARGB_8888, false);
@@ -256,7 +317,7 @@ public class ProfileMusicCard extends FrameLayout {
             final int resolved = base;
             final int accent = adjustHsl(base, luminance);
             AndroidUtilities.runOnUIThread(() -> {
-                if (documentId != currentDocumentId) {
+                if (token != imageToken) {
                     return;
                 }
                 hasCover = true;
@@ -279,6 +340,7 @@ public class ProfileMusicCard extends FrameLayout {
         int textColor = hasCover ? Color.WHITE : getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
         nameView.setTextColor(textColor);
         artistView.setTextColor(textColor);
+        statusView.setTextColor(textColor);
         cardLayout.invalidate();
     }
 

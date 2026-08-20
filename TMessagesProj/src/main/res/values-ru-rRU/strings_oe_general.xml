@@ -79,4 +79,13 @@
     <string name="OEGeneralAyuMomentsDisableAll">Отключить все функции AyuMoments</string>
     <string name="OEGeneralAyuMomentsWipe">Удалить базу сохранённых сообщений</string>
     <string name="OEBottomNavigationModeFloating">Плавающая</string>
+    <string name="OEGeneralLastFm">Last.fm</string>
+    <string name="OEGeneralLastFmHint">имя пользователя</string>
+    <string name="OEGeneralLastFmNotSet">Не задано</string>
+    <string name="OEGeneralLastFmApplied">Музыка профиля обновлена</string>
+    <string name="OEGeneralLastFmNoMusic">Сначала выберите музыку профиля</string>
+    <string name="OEGeneralLastFmFailed">Не удалось обновить музыку профиля</string>
+    <string name="OEGeneralLastFmNoFile">Не удалось скачать трек</string>
+    <string name="OEGeneralLastFmNoUpload">Не дождались загрузки</string>
+    <string name="OEGeneralLastFmAbout">Эта функция работает на основе треков в профиле, добавляя в последний трек скрытые байты содержащие ваш ник на Last.fm. После добавления юзернейма последний трек в профиле будет перезалит с этим изменением.\n\nПосле отключения этой функции трек будет возвращен до изначального состояния.</string>
 </resources>

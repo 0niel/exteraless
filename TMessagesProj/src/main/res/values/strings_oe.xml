@@ -50,4 +50,5 @@
     <string name="ProxyDisableOnVpn" translatable="false">VPN</string>
     <string name="ProxyDisableOnMobileData">Mobile data</string>
     <string name="ProxyDisableOnWiFi" translatable="false">Wi-Fi</string>
+    <string name="OENowPlayingScrobbling">Scrobbling now</string>
 </resources>

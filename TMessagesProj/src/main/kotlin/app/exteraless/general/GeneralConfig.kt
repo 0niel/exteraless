@@ -32,6 +32,15 @@ object GeneralConfig {
      * совпадает со штатным enhancedFileLoader.
      */
     @JvmField
+    val lastfmNick = addConfig("OEGeneralLastFmNick", ConfigItem.configTypeString, "")
+
+    @JvmField
+    val lastfmExplained = addConfig("OEGeneralLastFmExplained", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun lastfmNick(): String = lastfmNick.String() ?: ""
+
+    @JvmField
     val downloadSpeedBoost = addConfig("OEGeneralDownloadSpeedBoost", ConfigItem.configTypeInt, 0)
 
     @JvmStatic

@@ -10922,6 +10922,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             TLRPC.User user = getMessagesController().getUser(userId);
             if (userInfo != null && userInfo.saved_music != null && (imageUpdater == null || myProfile)) {
                 hasMusicCard = true;
+                app.exteraless.nowplaying.LastFmNowPlaying.prefetch(
+                        app.exteraless.nowplaying.ProfileMusicMark.nickFrom(
+                                FileLoader.getDocumentFileName(userInfo.saved_music), userId));
             }
 
             if (emptyRow < 0 && emptyRow2 < 0) {
@@ -14735,7 +14738,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     if (userInfo != null && userInfo.saved_music != null) {
                         TLRPC.User musicUser = getMessagesController().getUser(userId);
                         long emojiId = musicUser != null && musicUser.profile_color != null ? musicUser.profile_color.background_emoji_id : 0;
-                        ((ProfileMusicCard) holder.itemView).set(userInfo.saved_music, emojiId);
+                        ((ProfileMusicCard) holder.itemView).set(userInfo.saved_music, emojiId, userId);
                     }
                     break;
                 case VIEW_TYPE_VERSION:

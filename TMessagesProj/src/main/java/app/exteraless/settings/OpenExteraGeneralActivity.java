@@ -21,6 +21,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.SlideChooseView;
@@ -33,6 +34,7 @@ import java.util.regex.Pattern;
 
 import app.exteraless.OpenExteraConfig;
 import app.exteraless.general.GeneralConfig;
+import app.exteraless.nowplaying.ProfileMusicStamp;
 import kotlin.Unit;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.NekoXConfig;
@@ -54,6 +56,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private static final int TYPE_SLIDE = 100;
 
     /** Проверяется имя папки, а не путь. */
+    private static final Pattern LASTFM_PATTERN = Pattern.compile("[a-z0-9_-]{1,32}");
     private static final Pattern SAVE_PATH_PATTERN = Pattern.compile("^(?!\\.{1,2}$)[A-Za-z0-9._ -]{1,255}$");
 
     /**
@@ -93,6 +96,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int relativeLastSeenRow;
     private int hidePhoneRow;
     private int showIdAndDcRow;
+    private int lastfmRow;
     private int profileDividerRow;
 
     private int archiveHeaderRow;
@@ -147,6 +151,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         relativeLastSeenRow = addRow("relativeLastSeen");
         hidePhoneRow = addRow("hidePhone");
         showIdAndDcRow = addRow("showIdAndDc");
+        lastfmRow = addRow("lastfm");
         profileDividerRow = addRow();
 
         archiveHeaderRow = addRow("archiveHeader");
@@ -213,6 +218,15 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         if (position == showIdAndDcRow) {
             showIdAndDcSelector();
+            return;
+        }
+
+        if (position == lastfmRow) {
+            if (GeneralConfig.lastfmExplained.Bool()) {
+                showLastFmDialog();
+            } else {
+                showLastFmAbout();
+            }
             return;
         }
 
@@ -389,6 +403,112 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         showDialog(dialog, d -> AndroidUtilities.hideKeyboard(editText));
     }
 
+    private void showLastFmAbout() {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle(getString(R.string.OEGeneralLastFm));
+        builder.setMessage(getString(R.string.OEGeneralLastFmAbout));
+        builder.setPositiveButton(getString(R.string.Continue), (dialog, which) -> {
+            GeneralConfig.lastfmExplained.setConfigBool(true);
+            dialog.dismiss();
+            showLastFmDialog();
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
+        showDialog(builder.create());
+    }
+
+    private void showLastFmDialog() {
+        Context context = getParentActivity();
+        if (context == null) {
+            return;
+        }
+
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.lineYFix = true;
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        editText.setText(GeneralConfig.lastfmNick());
+        editText.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        editText.setHintColor(getThemedColor(Theme.key_groupcreate_hintText));
+        editText.setHintText(getString(R.string.OEGeneralLastFmHint));
+        editText.setFocusable(true);
+        editText.setSingleLine(true);
+        editText.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        editText.setBackground(null);
+        editText.setLineColors(getThemedColor(Theme.key_windowBackgroundWhiteInputField),
+                getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated),
+                getThemedColor(Theme.key_text_RedRegular));
+        editText.setCursorColor(getThemedColor(Theme.key_windowBackgroundWhiteInputFieldActivated));
+        editText.setPadding(0, dp(6), 0, dp(6));
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT, 24f, 0f, 24f, 10f));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle(getString(R.string.OEGeneralLastFm));
+        builder.makeCustomMaxHeight();
+        builder.setView(container);
+        builder.setWidth(dp(292));
+        builder.setPositiveButton(getString(R.string.Done), (dialog, which) -> {
+            String value = editText.getText() == null ? "" : editText.getText().toString().trim();
+            if (value.startsWith("@")) {
+                value = value.substring(1);
+            }
+            value = value.toLowerCase();
+            if (!TextUtils.isEmpty(value) && !LASTFM_PATTERN.matcher(value).matches()) {
+                AndroidUtilities.shakeView(editText);
+                return;
+            }
+            GeneralConfig.lastfmNick.setConfigString(value);
+            if (listAdapter != null) {
+                listAdapter.notifyItemChanged(lastfmRow);
+            }
+            dialog.dismiss();
+            applyLastFmToProfileMusic(value);
+        });
+        builder.setNegativeButton(getString(R.string.Cancel), (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(d -> {
+            editText.requestFocus();
+            editText.setSelection(editText.length());
+            AndroidUtilities.showKeyboard(editText);
+        });
+        dialog.setDismissDialogByButtons(false);
+        showDialog(dialog, d -> AndroidUtilities.hideKeyboard(editText));
+    }
+
+    private void applyLastFmToProfileMusic(String nick) {
+        ProfileMusicStamp.apply(currentAccount, nick, (ok, reason) -> {
+            if (getParentActivity() == null) {
+                return;
+            }
+            int resId;
+            int icon;
+            if (ok) {
+                resId = R.string.OEGeneralLastFmApplied;
+                icon = R.raw.done;
+            } else if (reason == ProfileMusicStamp.REASON_NO_MUSIC) {
+                resId = R.string.OEGeneralLastFmNoMusic;
+                icon = R.raw.info;
+            } else if (reason == ProfileMusicStamp.REASON_DOWNLOAD) {
+                resId = R.string.OEGeneralLastFmNoFile;
+                icon = R.raw.error;
+            } else if (reason == ProfileMusicStamp.REASON_UPLOAD) {
+                resId = R.string.OEGeneralLastFmNoUpload;
+                icon = R.raw.error;
+            } else {
+                resId = R.string.OEGeneralLastFmFailed;
+                icon = R.raw.error;
+            }
+            BulletinFactory.of(this).createSimpleBulletin(icon, getString(resId)).show();
+        });
+    }
+
     private String getProviderName(int providerConstant) {
         int resId;
         if (providerConstant == Translator.providerGoogle) {
@@ -553,7 +673,12 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                         int type = NaConfig.INSTANCE.getIdDcType().Int();
                         CharSequence[] options = idOptions();
                         cell.setTextAndValue(getString(R.string.OEGeneralShowIdAndDc),
-                                options[type < 0 || type >= options.length ? 0 : type], false);
+                                options[type < 0 || type >= options.length ? 0 : type], true);
+                    } else if (position == lastfmRow) {
+                        String nick = GeneralConfig.lastfmNick();
+                        cell.setTextAndValue(getString(R.string.OEGeneralLastFm),
+                                TextUtils.isEmpty(nick) ? getString(R.string.OEGeneralLastFmNotSet) : nick,
+                                false);
                     }
                     break;
                 }
@@ -598,7 +723,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 return TYPE_SLIDE;
             } else if (position == translationProviderRow || position == translateToLangRow
                     || position == doNotTranslateRow || position == savePathRow
-                    || position == showIdAndDcRow) {
+                    || position == showIdAndDcRow || position == lastfmRow) {
                 return TYPE_SETTINGS;
             }
             return TYPE_CHECK;
