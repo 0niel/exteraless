@@ -7180,6 +7180,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         super.onResume();
         isResumed = true;
         app.exteraless.plugins.PluginsController.getInstance().executeOnAppEvent(app.exteraless.plugins.PluginsConstants.EVENT_APP_RESUME);
+        app.exteraless.plugins.PluginDenialNotice.flush();
         pipActivityHandler.onResume();
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();

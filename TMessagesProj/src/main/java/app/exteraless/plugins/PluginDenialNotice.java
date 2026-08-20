@@ -9,8 +9,10 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.LaunchActivity;
 
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import app.exteraless.plugins.ui.PluginPermissionsActivity;
 
@@ -29,6 +31,8 @@ import app.exteraless.plugins.ui.PluginPermissionsActivity;
 public final class PluginDenialNotice {
 
     private static final Set<String> SHOWN = ConcurrentHashMap.newKeySet();
+    private static final Queue<String> PENDING = new ConcurrentLinkedQueue<>();
+    private static final int FLUSH_DELAY = 700;
 
     private PluginDenialNotice() {
     }
@@ -42,18 +46,41 @@ public final class PluginDenialNotice {
         if (PluginPermissions.UI.equals(permission)) {
             return;
         }
-        if (!SHOWN.add(pluginId + "|" + permission)) {
+        final String mark = pluginId + "|" + permission;
+        if (!SHOWN.add(mark)) {
             return;
         }
-        AndroidUtilities.runOnUIThread(() -> show(pluginId, permission));
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!show(pluginId, permission)) {
+                PENDING.add(mark);
+            }
+        });
     }
 
-    private static void show(String pluginId, String permission) {
+    public static void flush() {
+        if (PENDING.isEmpty()) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            String mark = PENDING.peek();
+            if (mark == null) {
+                return;
+            }
+            int sep = mark.indexOf('|');
+            if (sep <= 0 || sep == mark.length() - 1) {
+                PENDING.poll();
+                return;
+            }
+            if (show(mark.substring(0, sep), mark.substring(sep + 1))) {
+                PENDING.poll();
+            }
+        }, FLUSH_DELAY);
+    }
+
+    private static boolean show(String pluginId, String permission) {
         BaseFragment fragment = LaunchActivity.getSafeLastFragment();
         if (fragment == null || fragment.getParentActivity() == null) {
-            // Приложение не на экране — сообщение всё равно некому прочитать,
-            // а показывать его при следующем открытии уже поздно и непонятно.
-            return;
+            return false;
         }
         Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
         String name = plugin != null ? plugin.getDisplayName() : pluginId;
@@ -64,6 +91,7 @@ public final class PluginDenialNotice {
                         LocaleController.getString(R.string.PluginDeniedOpen),
                         () -> fragment.presentFragment(new PluginPermissionsActivity(pluginId)))
                 .show();
+        return true;
     }
 
     /** Забыть показанное (удаление плагина, смена разрешений). */
@@ -72,5 +100,6 @@ public final class PluginDenialNotice {
             return;
         }
         SHOWN.removeIf(mark -> mark.startsWith(pluginId + "|"));
+        PENDING.removeIf(mark -> mark.startsWith(pluginId + "|"));
     }
 }
