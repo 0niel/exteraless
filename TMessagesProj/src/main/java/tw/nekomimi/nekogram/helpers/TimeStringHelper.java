@@ -200,7 +200,7 @@ public class TimeStringHelper {
 
     private static void createSpan() {
         if (editedDrawable == null) {
-            editedDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_edit_solar)).mutate();
+            editedDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_edit_solar_12)).mutate();
         }
         if (editedSpan == null) {
             editedSpan = new SpannableStringBuilder("\u200B");
@@ -208,7 +208,7 @@ public class TimeStringHelper {
         }
 
         if (deletedDrawable == null) {
-            deletedDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_delete_solar)).mutate();
+            deletedDrawable = Objects.requireNonNull(ContextCompat.getDrawable(ApplicationLoader.applicationContext, R.drawable.msg_delete_solar_12)).mutate();
         }
         if (deletedSpan == null) {
             deletedSpan = new SpannableStringBuilder("\u200B");
