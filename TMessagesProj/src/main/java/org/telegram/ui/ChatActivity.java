@@ -11070,10 +11070,28 @@ public class ChatActivity extends BaseFragment implements
         actionMode.setItemVisibility(share, View.GONE);
 
         actionModeOtherItem.setSubItemVisibility(star, selectedMessagesCanStarIds[0].size() + selectedMessagesCanStarIds[1].size() != 0);
+        updateActionModeMenuItems();
         boolean doShrinkActionBarItems = isActionBarTooNarrow && actionMode.getItem(edit).getVisibility() == View.VISIBLE && actionMode.getItem(copy).getVisibility() == View.VISIBLE && actionMode.getItem(delete).getVisibility() == View.VISIBLE;
         if (doShrinkActionBarItems) {
             actionMode.getItem(nkactionbarbtn_reply).setVisibility(View.GONE);
         }
+    }
+
+    private void updateActionModeMenuItems() {
+        if (actionModeOtherItem == null) {
+            return;
+        }
+        boolean translate = NekoConfig.showTranslate.Bool()
+                || NaConfig.INSTANCE.getShowTranslateMessageLLM().Bool() && LlmConfig.llmIsDefaultProvider();
+        actionModeOtherItem.setSubItemVisibility(nkbtn_forward_noquote,
+                chatMode != MODE_SCHEDULED && NaConfig.INSTANCE.getShowNoQuoteForward().Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_translate, translate);
+        actionModeOtherItem.setSubItemVisibility(nkbtn_savemessage, NekoConfig.showAddToSavedMessages.Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_repeat, NekoConfig.showRepeat.Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_repeatascopy, NaConfig.INSTANCE.getShowRepeatAsCopy().Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_hide, NekoConfig.showMessageHide.Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_report, NekoConfig.showReport.Bool());
+        actionModeOtherItem.setSubItemVisibility(nkbtn_detail, NekoConfig.showMessageDetails.Bool());
     }
 
     private void hideTagSelector() {
@@ -20371,7 +20389,8 @@ public class ChatActivity extends BaseFragment implements
                 }
 
                 if (actionModeOtherItem != null) {
-                    actionModeOtherItem.setSubItemVisibility(nkbtn_sharemessage, selectedMessagesCanCopyIds[0].size() + selectedMessagesCanCopyIds[1].size() > 0);
+                    actionModeOtherItem.setSubItemVisibility(nkbtn_sharemessage, NekoConfig.showShareMessages.Bool()
+                            && selectedMessagesCanCopyIds[0].size() + selectedMessagesCanCopyIds[1].size() > 0);
                 }
 
                 boolean allowPin = false;
@@ -20392,6 +20411,7 @@ public class ChatActivity extends BaseFragment implements
                 }
                 if (actionModeOtherItem != null) {
                     actionModeOtherItem.setSubItemVisibility(nkbtn_unpin, allowPin);
+                    updateActionModeMenuItems();
                 }
 
                 if (shareItem != null) {
@@ -34089,9 +34109,7 @@ public class ChatActivity extends BaseFragment implements
         if (item != null) {
             item.setVisibility(View.VISIBLE);
         }
-        if (chatMode != MODE_SCHEDULED && actionModeOtherItem != null && NaConfig.INSTANCE.getShowNoQuoteForward().Bool()) {
-            actionModeOtherItem.showSubItem(nkbtn_forward_noquote);
-        }
+        updateActionModeMenuItems();
         actionMode.setItemVisibility(delete, View.VISIBLE);
         actionsButtonsLayout.bringToFront();
         bottomViewsVisibilityController.setViewVisible(MESSAGE_ACTION_CONTAINER, true, true);
