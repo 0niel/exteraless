@@ -107,7 +107,7 @@ def unwrap(obj):
 
 def adapt(name, obj):
     """Обёртка над классом, форма которого у нас разошлась с эталоном."""
-    if obj is None:
+    if obj is None or isinstance(obj, _FieldShapedClass):
         return obj
     fields = _FIELD_SHAPED.get(name)
     if fields is None:
