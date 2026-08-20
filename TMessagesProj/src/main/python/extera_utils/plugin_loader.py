@@ -78,6 +78,7 @@ class PluginRecord:
     module: Any
     instance: BasePlugin
     path: str
+    module_name: Optional[str] = None
     # Settings callback registry, rebuilt on every get_settings_json() call:
     click_callbacks: Dict[str, Callable] = field(default_factory=dict)  # callback_id -> on_click
     change_callbacks: Dict[str, Callable] = field(default_factory=dict)  # setting key -> on_change
@@ -188,18 +189,84 @@ def current_plugin_id() -> Optional[str]:
 def _ensure_plugins_dir_on_path() -> None:
     """Каталог плагинов — в конец sys.path.
 
-    Плагины кладут туда вспомогательные пакеты и импортируют их по имени
-    (zwylib пишет `zwylib_companion/__init__.py`). Сами плагины лежат там
-    файлами `.plugin` и по имени не импортируются, поэтому видимыми становятся
-    только такие пакеты. Путь идёт в конец: модули SDK не должны перекрываться.
+    Оттуда импортируются и вспомогательные пакеты плагинов (zwylib пишет
+    `zwylib_companion/__init__.py`), и сами плагины: установленный лежит как
+    `<id>.py`, и соседи берут его по этому имени (`import zwylib`).
+    Путь идёт в конец: модули SDK не должны перекрываться.
     """
-    try:
-        import file_utils
-        plugins_dir = file_utils.get_plugins_dir()
-    except Exception:
-        return
+    plugins_dir = _plugins_dir_path()
     if plugins_dir and plugins_dir not in sys.path:
         sys.path.append(plugins_dir)
+
+
+def _plugins_dir_path() -> Optional[str]:
+    try:
+        import file_utils
+        return file_utils.get_plugins_dir() or None
+    except Exception:
+        return None
+
+
+def _sdk_module_names() -> frozenset:
+    """Верхнеуровневые имена модулей SDK — их плагин перекрывать не вправе."""
+    global _sdk_names_cache
+    if _sdk_names_cache is not None:
+        return _sdk_names_cache
+    names = set()
+    try:
+        for entry in os.listdir(_SRC_DIR):
+            if entry.endswith(".py"):
+                names.add(entry[:-3])
+            elif os.path.isdir(os.path.join(_SRC_DIR, entry)):
+                names.add(entry)
+    except Exception:
+        pass
+    _sdk_names_cache = frozenset(names)
+    return _sdk_names_cache
+
+
+_sdk_names_cache: Optional[frozenset] = None
+
+_JAVA_ROOT_PACKAGES = frozenset({
+    "java", "javax", "android", "androidx", "org", "com", "dalvik",
+    "kotlin", "kotlinx",
+})
+
+
+def _module_name_for(plugin_id: str) -> str:
+    """Имя плагина в sys.modules — его собственный id.
+
+    Плагины каталога зависят друг от друга по id: material_settings_list
+    начинается с `import zwylib`. Под искусственным именем такой импорт не
+    находил бы уже загруженный модуль и поднимал бы из файла вторую копию —
+    со своими глобалами, повторной регистрацией Java-фабрик, хуков и задач
+    автообновления. Занятые имена (SDK, stdlib, пакеты Chaquopy, поставленные
+    через requirements) не трогаем: id плагина не вправе подменить чужой модуль.
+    """
+    name = str(plugin_id)
+    if not name.isidentifier():
+        return "extera_plugin_" + re.sub(r"[^0-9A-Za-z_]", "_", name)
+    if name in _JAVA_ROOT_PACKAGES or name in sys.stdlib_module_names \
+            or name in _sdk_module_names():
+        return "extera_plugin_" + name
+    occupied = sys.modules.get(name)
+    if occupied is not None and not _in_plugins_dir(getattr(occupied, "__file__", None)):
+        return "extera_plugin_" + name
+    return name
+
+
+def _in_plugins_dir(path: Optional[str]) -> bool:
+    root = _plugins_dir_path()
+    if not path or not root:
+        return False
+    head = os.path.normcase(os.path.dirname(os.path.abspath(path)))
+    return head == os.path.normcase(os.path.abspath(root))
+
+
+def _same_file(a: Optional[str], b: Optional[str]) -> bool:
+    if not a or not b:
+        return False
+    return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
 
 
 # Песочница: разрешения плагинов
@@ -482,9 +549,32 @@ def _forget_owner(path: str) -> None:
     _path_owner_cache.clear()
 
 
+def _installed_plugin_owner(full: str) -> Optional[str]:
+    """`<plugins_dir>/<id>.py` — файл установленного плагина, владелец — <id>.
+
+    Нужно, когда плагина подняли как зависимость раньше, чем движок дошёл до
+    него сам: записи в _owner_files ещё нет, а его код уже исполняется. Без
+    этого разрешения считались бы по импортёру — соседу, который про чужие
+    хуки и файлы ничего не объявлял.
+    """
+    root = _plugins_dir_path()
+    if not root:
+        return None
+    head, tail = os.path.split(full)
+    if os.path.normcase(head) != os.path.normcase(os.path.abspath(root)):
+        return None
+    if not tail.endswith(".py"):
+        return None
+    name = tail[:-3]
+    return name if name.isidentifier() else None
+
+
 def _resolve_owner(path: str) -> Optional[str]:
     full = os.path.normcase(os.path.abspath(path))
     owner = _owner_files.get(full)
+    if owner is not None:
+        return owner
+    owner = _installed_plugin_owner(full)
     if owner is not None:
         return owner
     parts = full.split(os.sep)
@@ -1139,7 +1229,12 @@ def _overrides(cls, name: str) -> bool:
 
 
 def _import_module(path: str, plugin_id: str):
-    module_name = "extera_plugin_" + re.sub(r"[^0-9A-Za-z_]", "_", str(plugin_id))
+    _ensure_plugins_dir_on_path()
+    module_name = _module_name_for(plugin_id)
+    existing = sys.modules.get(module_name)
+    if existing is not None and _same_file(getattr(existing, "__file__", None), path):
+        _register_owner(path, plugin_id)
+        return existing, module_name
     sys.modules.pop(module_name, None)
     # The loader must be explicit. spec_from_file_location() picks one by file
     # extension, and ".plugin" — the canonical extension for published plugins —
@@ -1147,7 +1242,6 @@ def _import_module(path: str, plugin_id: str):
     # with "cannot create a module spec". The file is plain Python source
     # whatever it is called, so name the loader instead of guessing.
     loader = importlib.machinery.SourceFileLoader(module_name, path)
-    _ensure_plugins_dir_on_path()
     spec = importlib.util.spec_from_file_location(module_name, path, loader=loader)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot create a module spec for {path!r}")
@@ -1167,7 +1261,7 @@ def _import_module(path: str, plugin_id: str):
         sys.modules.pop(module_name, None)
         _forget_owner(path)
         raise
-    return module
+    return module, module_name
 
 
 def _find_plugin_class(module, path: str):
@@ -1240,11 +1334,12 @@ def load_plugin(path: str, plugin_id: str) -> str:
         if meta.get("requirements"):
             _ensure_requirements(plugin_id, meta["requirements"])
 
-        module = _import_module(path, plugin_id)
+        module, module_name = _import_module(path, plugin_id)
         plugin_class = _find_plugin_class(module, path)
         instance = plugin_class()
         instance._attach(plugin_id)
-        plugins[plugin_id] = PluginRecord(module=module, instance=instance, path=path)
+        plugins[plugin_id] = PluginRecord(module=module, instance=instance, path=path,
+                                          module_name=module_name)
 
         try:
             if _overrides(plugin_class, "on_plugin_load"):
@@ -1323,9 +1418,12 @@ def _unload_record(plugin_id: str, quiet: bool):
             except Exception:
                 pass
         else:
-            module = getattr(record, "module", None)
-            if module is not None:
-                sys.modules.pop(module.__name__, None)
+            # Не по module.__name__: плагины переписывают его себе в шапке
+            # (zwylib ставит "ZwyLib"), и запись в sys.modules пережила бы
+            # выгрузку — следующая загрузка досталась бы старому модулю.
+            name = getattr(record, "module_name", None)
+            if name:
+                sys.modules.pop(name, None)
         if getattr(record, "path", None):
             _forget_owner(record.path)
 
