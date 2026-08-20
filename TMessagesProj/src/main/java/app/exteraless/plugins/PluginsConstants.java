@@ -63,12 +63,12 @@ public final class PluginsConstants {
      * ограничение стоит у 72 — при прежнем значении "1.0.0" ни один из них не
      * ставился вообще.
      *
-     * 1.4.5.0 — версия SDK exteraGram 12.9.0 (assets/plugins_pysdk/v.txt), по
+     * 1.4.5.3 — версия SDK exteraGram 12.9.2 (assets/plugins_pysdk/v.txt), по
      * документации которой и написан наш Python-SDK. Заявлять её честно:
      * поверхность имён и семантика соответствуют, отсутствующее покрыто
      * явными исключениями, а не молчаливыми заглушками.
      */
-    public static final String SDK_VERSION = "1.4.5.0";
+    public static final String SDK_VERSION = "1.4.5.3";
 
     /** Имя движка в карте getEngines(); плагины каталога берут его отсюда. */
     public static final String PYTHON = "python";
