@@ -32,6 +32,12 @@ object AppearanceConfig {
     /** Максимум слайдера закругления аватарок: радиус = половина стороны, то есть круг. */
     const val AVATAR_CORNERS_MAX = 28
 
+    /** Темы Monet на ролях Telemone — то, чем набор стал 19.08.2026. */
+    const val MONET_STYLE_TELEMONE = 0
+
+    /** Прежний набор Monet, пришедший вместе с базой форка (токены вида `a1_100`). */
+    const val MONET_STYLE_CLASSIC = 1
+
     @JvmStatic
     fun getPreferences(): SharedPreferences = NekoConfig.getPreferences()
 
@@ -66,6 +72,22 @@ object AppearanceConfig {
     @JvmField
     val titleText =
         addConfig("OEAppearanceTitleText", ConfigItem.configTypeInt, 0)
+
+    /**
+     * Какой набор темы Monet берут «Monet Light/Dark/AMOLED».
+     *
+     * Наборы отличаются словарём токенов, а не механикой: [MONET_STYLE_TELEMONE] собран
+     * из ролей Material 3, [MONET_STYLE_CLASSIC] — из тональных палитр базы форка. На части
+     * прошивок роли M3 система отдаёт со своими поправками, и второй набор выглядит ровнее.
+     */
+    @JvmField
+    val monetStyle =
+        addConfig("OEAppearanceMonetStyle", ConfigItem.configTypeInt, MONET_STYLE_TELEMONE)
+
+    /** Суффикс файла темы для выбранного набора: пустой для Telemone. */
+    @JvmStatic
+    fun monetAssetSuffix(): String =
+        if (monetStyle.Int() == MONET_STYLE_CLASSIC) "_gram" else ""
 
     // ---- Только UI: аналогов в NagramX нет, визуальный эффект пока не подключён ----
 

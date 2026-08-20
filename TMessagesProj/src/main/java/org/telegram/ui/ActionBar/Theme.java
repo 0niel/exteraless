@@ -4829,7 +4829,7 @@ public class Theme {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             themeInfo = new ThemeInfo();
             themeInfo.name = "Monet Light";
-            themeInfo.assetName = "monet_light.attheme";
+            themeInfo.assetName = monetAssetName("monet_light");
             themeInfo.previewBackgroundColor = MonetHelper.getColor("surface_light");
             themeInfo.previewInColor = MonetHelper.getColor("neutral_95");
             themeInfo.previewOutColor = MonetHelper.getColor("primary_container_light");
@@ -4839,7 +4839,7 @@ public class Theme {
 
             themeInfo = new ThemeInfo();
             themeInfo.name = "Monet Dark";
-            themeInfo.assetName = "monet_dark.attheme";
+            themeInfo.assetName = monetAssetName("monet_dark");
             themeInfo.previewBackgroundColor = MonetHelper.getColor("surface_dark");
             themeInfo.previewInColor = MonetHelper.getColor("neutral_20");
             themeInfo.previewOutColor = MonetHelper.getColor("primary_dark");
@@ -4849,7 +4849,7 @@ public class Theme {
 
             themeInfo = new ThemeInfo();
             themeInfo.name = "Monet AMOLED";
-            themeInfo.assetName = "monet_amoled.attheme";
+            themeInfo.assetName = monetAssetName("monet_amoled");
             themeInfo.previewBackgroundColor = MonetHelper.getColor("black");
             themeInfo.previewInColor = MonetHelper.getColor("neutral_10");
             themeInfo.previewOutColor = MonetHelper.getColor("primary_dark");
@@ -6468,6 +6468,35 @@ public class Theme {
 
     public static ThemeInfo getTheme(String key) {
         return themesDict.get(key);
+    }
+
+    private static String monetAssetName(String base) {
+        return base + app.exteraless.appearance.AppearanceConfig.monetAssetSuffix() + ".attheme";
+    }
+
+    public static void reloadMonetThemes() {
+        String[][] pairs = {
+                {"Monet Light", "monet_light"},
+                {"Monet Dark", "monet_dark"},
+                {"Monet AMOLED", "monet_amoled"},
+        };
+        boolean current = false;
+        for (String[] pair : pairs) {
+            ThemeInfo info = themesDict.get(pair[0]);
+            if (info == null) {
+                continue;
+            }
+            info.assetName = monetAssetName(pair[1]);
+            if (info == currentTheme) {
+                current = true;
+            }
+        }
+        if (current) {
+            applyTheme(currentTheme, true, false);
+            NotificationCenter.getGlobalInstance().postNotificationName(
+                    NotificationCenter.needSetDayNightTheme, currentTheme, false, null,
+                    DEFALT_THEME_ACCENT_ID);
+        }
     }
 
     public static void applyTheme(ThemeInfo themeInfo) {

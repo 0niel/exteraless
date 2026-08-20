@@ -115,4 +115,7 @@
     <string name="OEAppearanceHideAiEditor">AI editor button</string>
     <string name="OEAppearanceHideAiSummary">Message summary button</string>
     <string name="OEAppearanceHideAiIv">Instant View summary</string>
+    <string name="MonetStyleHeader">Monet palette</string>
+    <string name="MonetStyleTelemone">Telemone</string>
+    <string name="MonetStyleClassic">Classic</string>
 </resources>

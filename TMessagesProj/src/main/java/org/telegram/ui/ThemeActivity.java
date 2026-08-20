@@ -84,6 +84,8 @@ import org.telegram.ui.Cells.BrightnessControlCell;
 import org.telegram.ui.Cells.ChatListCell;
 import org.telegram.ui.Cells.ChatMessageCell;
 import org.telegram.ui.Cells.HeaderCell;
+import org.telegram.ui.Components.ItemOptions;
+import app.exteraless.appearance.AppearanceConfig;
 import org.telegram.ui.Cells.NotificationsCheckCell;
 import org.telegram.ui.Cells.RadioButtonCell;
 import org.telegram.ui.Cells.RadioColorCell;
@@ -201,6 +203,38 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int bubbleRadiusHeaderRow;
     @Keep
     private int bubbleRadiusRow;
+    private int monetStyleRow;
+
+    private void showMonetStyleOptions(View anchor) {
+        int current = AppearanceConfig.monetStyle.Int();
+        ItemOptions.makeOptions(this, anchor)
+                .add(current == AppearanceConfig.MONET_STYLE_TELEMONE
+                                ? R.drawable.msg_select : 0,
+                        getString(R.string.MonetStyleTelemone),
+                        () -> applyMonetStyle(AppearanceConfig.MONET_STYLE_TELEMONE))
+                .add(current == AppearanceConfig.MONET_STYLE_CLASSIC
+                                ? R.drawable.msg_select : 0,
+                        getString(R.string.MonetStyleClassic),
+                        () -> applyMonetStyle(AppearanceConfig.MONET_STYLE_CLASSIC))
+                .setGravity(Gravity.RIGHT)
+                .show();
+    }
+
+    private void applyMonetStyle(int style) {
+        if (AppearanceConfig.monetStyle.Int() == style) {
+            return;
+        }
+        AppearanceConfig.monetStyle.setConfigInt(style);
+        Theme.reloadMonetThemes();
+        if (listAdapter != null) {
+            listAdapter.notifyItemChanged(monetStyleRow);
+        }
+    }
+
+    private static int monetStyleName() {
+        return AppearanceConfig.monetStyle.Int() == AppearanceConfig.MONET_STYLE_CLASSIC
+                ? R.string.MonetStyleClassic : R.string.MonetStyleTelemone;
+    }
     private int bubbleRadiusInfoRow;
     private int chatListHeaderRow;
     private int chatListRow;
@@ -568,6 +602,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         themeHeaderRow = -1;
         bubbleRadiusHeaderRow = -1;
         bubbleRadiusRow = -1;
+        monetStyleRow = -1;
         bubbleRadiusInfoRow = -1;
         chatListHeaderRow = -1;
         chatListRow = -1;
@@ -649,6 +684,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             }
             if (hasThemeAccents) {
                 themeAccentListRow = rowCount++;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                monetStyleRow = rowCount++;
             }
             bubbleRadiusInfoRow = rowCount++;
 
@@ -1115,7 +1153,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         actionBar.setAdaptiveBackground(listView);
         listView.setOnItemClickListener((view, position, x, y) -> {
-            if (position == enableAnimationsRow) {
+            if (position == monetStyleRow) {
+                showMonetStyleOptions(view);
+            } else if (position == enableAnimationsRow) {
                 SharedPreferences preferences = MessagesController.getGlobalMainSettings();
                 boolean animations = preferences.getBoolean("view_animations", true);
                 SharedPreferences.Editor editor = preferences.edit();
@@ -2680,7 +2720,13 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 case TYPE_TEXT_PREFERENCE: {
                     TextCell cell = (TextCell) holder.itemView;
                     cell.heightDp = 48;
-                    if (position == backgroundRow) {
+                    if (position == monetStyleRow) {
+                        cell.setSubtitle(null);
+                        cell.setColors(Theme.key_windowBackgroundWhiteGrayIcon,
+                                Theme.key_windowBackgroundWhiteBlackText);
+                        cell.setTextAndValue(getString(R.string.MonetStyleHeader),
+                                getString(monetStyleName()), false);
+                    } else if (position == backgroundRow) {
                         cell.setSubtitle(null);
                         cell.setColors(Theme.key_windowBackgroundWhiteBlueText4, Theme.key_windowBackgroundWhiteBlueText4);
                         cell.setTextAndIcon(getString(R.string.ChangeChatBackground), R.drawable.msg_background, changeUserColor >= 0);
@@ -2780,7 +2826,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             } else if (position == bubbleRadiusRow) {
                 return TYPE_BUBBLE_RADIUS;
             } else if (position == backgroundRow || position == editThemeRow || position == createNewThemeRow ||
-                        position == liteModeRow || position == stickersRow) {
+                        position == liteModeRow || position == stickersRow || position == monetStyleRow) {
                 return TYPE_TEXT_PREFERENCE;
             } else if (position == swipeGestureRow) {
                 return TYPE_SWIPE_GESTURE;
