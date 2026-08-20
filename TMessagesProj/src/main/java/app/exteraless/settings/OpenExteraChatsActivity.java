@@ -93,6 +93,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private boolean hideReactionsExpanded;
     private boolean quickTransitionExpanded;
     private boolean messageMenuExpanded;
+    private boolean mediaViewerMenuExpanded;
+    private boolean actionBarButtonsExpanded;
     private boolean extendedSettingsExpanded;
     private boolean pauseExpanded;
 
@@ -160,6 +162,36 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int menuHistoryRow;
     private int menuReportRow;
     private int menuDetailsRow;
+    private int menuReactionsRow;
+    private int menuReplyInPrivateRow;
+    private int menuCopyLinkRow;
+    private int menuCopyFrameRow;
+    private int menuCopyAsStickerRow;
+    private int menuAddToStickersRow;
+    private int menuAddToFavoritesRow;
+    private int menuNoQuoteForwardRow;
+    private int menuSetReminderRow;
+    private int menuBookmarkRow;
+    private int menuRepeatAsCopyRow;
+    private int menuTranslateRow;
+    private int menuTranslateLlmRow;
+    private int menuShareRow;
+    private int menuHideRow;
+    private int menuAdminActionsRow;
+    private int menuPermissionsRow;
+    private int mediaViewerMenuGroupRow;
+    private int mediaMenuForwardRow;
+    private int mediaMenuNoQuoteForwardRow;
+    private int mediaMenuCopyFrameRow;
+    private int mediaMenuCopyPhotoRow;
+    private int mediaMenuProfilePhotoRow;
+    private int mediaMenuQrRow;
+    private int actionBarButtonsGroupRow;
+    private int actionBarReplyRow;
+    private int actionBarEditRow;
+    private int actionBarSelectBetweenRow;
+    private int actionBarCopyRow;
+    private int actionBarForwardRow;
     private int groupedMessageMenuRow;
     private int messagesDividerRow;
 
@@ -273,15 +305,60 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         showResultsBeforeVotingRow = addRow("showResultsBeforeVoting");
         messageMenuGroupRow = addRow("messageMenu");
         if (messageMenuExpanded) {
+            menuReactionsRow = addRow();
+            menuReplyInPrivateRow = addRow();
+            menuCopyLinkRow = addRow();
+            menuCopyFrameRow = addRow();
             menuCopyPhotoRow = addRow();
+            menuCopyAsStickerRow = addRow();
+            menuAddToStickersRow = addRow();
+            menuAddToFavoritesRow = addRow();
+            menuNoQuoteForwardRow = addRow();
+            menuSetReminderRow = addRow();
             menuSaveRow = addRow();
+            menuBookmarkRow = addRow();
             menuRepeatRow = addRow();
+            menuRepeatAsCopyRow = addRow();
             menuClearRow = addRow();
             menuHistoryRow = addRow();
+            menuTranslateRow = addRow();
+            menuTranslateLlmRow = addRow();
+            menuShareRow = addRow();
+            menuHideRow = addRow();
             menuReportRow = addRow();
+            menuAdminActionsRow = addRow();
+            menuPermissionsRow = addRow();
             menuDetailsRow = addRow();
         } else {
-            menuCopyPhotoRow = menuSaveRow = menuRepeatRow = menuClearRow = menuHistoryRow = menuReportRow = menuDetailsRow = -1;
+            menuReactionsRow = menuReplyInPrivateRow = menuCopyLinkRow = menuCopyFrameRow = -1;
+            menuCopyPhotoRow = menuCopyAsStickerRow = menuAddToStickersRow = menuAddToFavoritesRow = -1;
+            menuNoQuoteForwardRow = menuSetReminderRow = menuSaveRow = menuBookmarkRow = -1;
+            menuRepeatRow = menuRepeatAsCopyRow = menuClearRow = menuHistoryRow = -1;
+            menuTranslateRow = menuTranslateLlmRow = menuShareRow = menuHideRow = -1;
+            menuReportRow = menuAdminActionsRow = menuPermissionsRow = menuDetailsRow = -1;
+        }
+        mediaViewerMenuGroupRow = addRow("mediaViewerMenu");
+        if (mediaViewerMenuExpanded) {
+            mediaMenuForwardRow = addRow();
+            mediaMenuNoQuoteForwardRow = addRow();
+            mediaMenuCopyFrameRow = addRow();
+            mediaMenuCopyPhotoRow = addRow();
+            mediaMenuProfilePhotoRow = addRow();
+            mediaMenuQrRow = addRow();
+        } else {
+            mediaMenuForwardRow = mediaMenuNoQuoteForwardRow = mediaMenuCopyFrameRow = -1;
+            mediaMenuCopyPhotoRow = mediaMenuProfilePhotoRow = mediaMenuQrRow = -1;
+        }
+        actionBarButtonsGroupRow = addRow("actionBarButtons");
+        if (actionBarButtonsExpanded) {
+            actionBarReplyRow = addRow();
+            actionBarEditRow = addRow();
+            actionBarSelectBetweenRow = addRow();
+            actionBarCopyRow = addRow();
+            actionBarForwardRow = addRow();
+        } else {
+            actionBarReplyRow = actionBarEditRow = actionBarSelectBetweenRow = -1;
+            actionBarCopyRow = actionBarForwardRow = -1;
         }
         groupedMessageMenuRow = addRow("groupedMessageMenu");
         messagesDividerRow = addRow();
@@ -423,7 +500,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private static final int REPLIES_TOTAL = 3;
     private static final int HIDE_REACTIONS_TOTAL = 3;
     private static final int QUICK_TRANSITIONS_TOTAL = 2;
-    private static final int MESSAGE_MENU_TOTAL = 7;
+    private static final int MESSAGE_MENU_TOTAL = 24;
+    private static final int MEDIA_VIEWER_MENU_TOTAL = 6;
+    private static final int ACTION_BAR_BUTTONS_TOTAL = 5;
     private static final int PAUSE_TOTAL = 3;
 
     private static int repliesSelectedCount() {
@@ -440,9 +519,35 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     private static int messageMenuSelectedCount() {
-        return count(NaConfig.INSTANCE.getShowCopyPhoto().Bool(), NekoConfig.showAddToSavedMessages.Bool(),
-                NekoConfig.showRepeat.Bool(), NekoConfig.showDeleteDownloadedFile.Bool(),
-                NekoConfig.showViewHistory.Bool(), NekoConfig.showReport.Bool(), NekoConfig.showMessageDetails.Bool());
+        return count(NaConfig.INSTANCE.getShowReactions().Bool(), NaConfig.INSTANCE.getShowReplyInPrivate().Bool(),
+                NaConfig.INSTANCE.getShowCopyLink().Bool(), NaConfig.INSTANCE.getShowCopyFrame().Bool(),
+                NaConfig.INSTANCE.getShowCopyPhoto().Bool(), NaConfig.INSTANCE.getShowCopyAsSticker().Bool(),
+                NaConfig.INSTANCE.getShowAddToStickers().Bool(), NaConfig.INSTANCE.getShowAddToFavorites().Bool(),
+                NaConfig.INSTANCE.getShowNoQuoteForward().Bool(), NaConfig.INSTANCE.getShowSetReminder().Bool(),
+                NekoConfig.showAddToSavedMessages.Bool(), NaConfig.INSTANCE.getShowAddToBookmark().Bool(),
+                NekoConfig.showRepeat.Bool(), NaConfig.INSTANCE.getShowRepeatAsCopy().Bool(),
+                NekoConfig.showDeleteDownloadedFile.Bool(), NekoConfig.showViewHistory.Bool(),
+                NekoConfig.showTranslate.Bool(), NaConfig.INSTANCE.getShowTranslateMessageLLM().Bool(),
+                NekoConfig.showShareMessages.Bool(), NekoConfig.showMessageHide.Bool(),
+                NekoConfig.showReport.Bool(), NekoConfig.showAdminActions.Bool(),
+                NekoConfig.showChangePermissions.Bool(), NekoConfig.showMessageDetails.Bool());
+    }
+
+    private static int mediaViewerMenuSelectedCount() {
+        return count(NaConfig.INSTANCE.getMediaViewerMenuItemForward().Bool(),
+                NaConfig.INSTANCE.getMediaViewerMenuItemNoQuoteForward().Bool(),
+                NaConfig.INSTANCE.getMediaViewerMenuItemCopyFrame().Bool(),
+                NaConfig.INSTANCE.getMediaViewerMenuItemCopyPhoto().Bool(),
+                NaConfig.INSTANCE.getMediaViewerMenuItemSetProfilePhoto().Bool(),
+                NaConfig.INSTANCE.getMediaViewerMenuItemScanQRCode().Bool());
+    }
+
+    private static int actionBarButtonsSelectedCount() {
+        return count(NaConfig.INSTANCE.getActionBarButtonReply().Bool(),
+                NaConfig.INSTANCE.getActionBarButtonEdit().Bool(),
+                NaConfig.INSTANCE.getActionBarButtonSelectBetween().Bool(),
+                NaConfig.INSTANCE.getActionBarButtonCopy().Bool(),
+                NaConfig.INSTANCE.getActionBarButtonForward().Bool());
     }
 
     private static int pauseSelectedCount() {
@@ -504,13 +609,52 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
     private void toggleAllMessageMenu() {
         boolean enable = messageMenuSelectedCount() == 0;
+        NaConfig.INSTANCE.getShowReactions().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowReplyInPrivate().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowCopyLink().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowCopyFrame().setConfigBool(enable);
         NaConfig.INSTANCE.getShowCopyPhoto().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowCopyAsSticker().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowAddToStickers().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowAddToFavorites().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowNoQuoteForward().setConfigBool(enable);
+        NaConfig.INSTANCE.getShowSetReminder().setConfigBool(enable);
         NekoConfig.showAddToSavedMessages.setConfigBool(enable);
+        NaConfig.INSTANCE.getShowAddToBookmark().setConfigBool(enable);
         NekoConfig.showRepeat.setConfigBool(enable);
+        NaConfig.INSTANCE.getShowRepeatAsCopy().setConfigBool(enable);
         NekoConfig.showDeleteDownloadedFile.setConfigBool(enable);
         NekoConfig.showViewHistory.setConfigBool(enable);
+        NekoConfig.showTranslate.setConfigBool(enable);
+        NaConfig.INSTANCE.getShowTranslateMessageLLM().setConfigBool(enable);
+        NekoConfig.showShareMessages.setConfigBool(enable);
+        NekoConfig.showMessageHide.setConfigBool(enable);
         NekoConfig.showReport.setConfigBool(enable);
+        NekoConfig.showAdminActions.setConfigBool(enable);
+        NekoConfig.showChangePermissions.setConfigBool(enable);
         NekoConfig.showMessageDetails.setConfigBool(enable);
+        rebuildChats();
+        reloadList();
+    }
+
+    private void toggleAllMediaViewerMenu() {
+        boolean enable = mediaViewerMenuSelectedCount() == 0;
+        NaConfig.INSTANCE.getMediaViewerMenuItemForward().setConfigBool(enable);
+        NaConfig.INSTANCE.getMediaViewerMenuItemNoQuoteForward().setConfigBool(enable);
+        NaConfig.INSTANCE.getMediaViewerMenuItemCopyFrame().setConfigBool(enable);
+        NaConfig.INSTANCE.getMediaViewerMenuItemCopyPhoto().setConfigBool(enable);
+        NaConfig.INSTANCE.getMediaViewerMenuItemSetProfilePhoto().setConfigBool(enable);
+        NaConfig.INSTANCE.getMediaViewerMenuItemScanQRCode().setConfigBool(enable);
+        reloadList();
+    }
+
+    private void toggleAllActionBarButtons() {
+        boolean enable = actionBarButtonsSelectedCount() == 0;
+        NaConfig.INSTANCE.getActionBarButtonReply().setConfigBool(enable);
+        NaConfig.INSTANCE.getActionBarButtonEdit().setConfigBool(enable);
+        NaConfig.INSTANCE.getActionBarButtonSelectBetween().setConfigBool(enable);
+        NaConfig.INSTANCE.getActionBarButtonCopy().setConfigBool(enable);
+        NaConfig.INSTANCE.getActionBarButtonForward().setConfigBool(enable);
         rebuildChats();
         reloadList();
     }
@@ -838,6 +982,14 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             messageMenuExpanded = !messageMenuExpanded;
             reloadList();
             return;
+        } else if (position == mediaViewerMenuGroupRow) {
+            mediaViewerMenuExpanded = !mediaViewerMenuExpanded;
+            reloadList();
+            return;
+        } else if (position == actionBarButtonsGroupRow) {
+            actionBarButtonsExpanded = !actionBarButtonsExpanded;
+            reloadList();
+            return;
         } else if (position == extendedSettingsGroupRow) {
             extendedSettingsExpanded = !extendedSettingsExpanded;
             reloadList();
@@ -967,8 +1119,24 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             return quickTransitionGroupRow;
         } else if (position == menuCopyPhotoRow || position == menuSaveRow || position == menuRepeatRow
                 || position == menuClearRow || position == menuHistoryRow || position == menuReportRow
-                || position == menuDetailsRow) {
+                || position == menuDetailsRow || position == menuReactionsRow
+                || position == menuReplyInPrivateRow || position == menuCopyLinkRow
+                || position == menuCopyFrameRow || position == menuCopyAsStickerRow
+                || position == menuAddToStickersRow || position == menuAddToFavoritesRow
+                || position == menuNoQuoteForwardRow || position == menuSetReminderRow
+                || position == menuBookmarkRow || position == menuRepeatAsCopyRow
+                || position == menuTranslateRow || position == menuTranslateLlmRow
+                || position == menuShareRow || position == menuHideRow
+                || position == menuAdminActionsRow || position == menuPermissionsRow) {
             return messageMenuGroupRow;
+        } else if (position == mediaMenuForwardRow || position == mediaMenuNoQuoteForwardRow
+                || position == mediaMenuCopyFrameRow || position == mediaMenuCopyPhotoRow
+                || position == mediaMenuProfilePhotoRow || position == mediaMenuQrRow) {
+            return mediaViewerMenuGroupRow;
+        } else if (position == actionBarReplyRow || position == actionBarEditRow
+                || position == actionBarSelectBetweenRow || position == actionBarCopyRow
+                || position == actionBarForwardRow) {
+            return actionBarButtonsGroupRow;
         } else if (position == seamlessSwitchingRow || position == extendedFpsRow
                 || position == cameraStabilizationRow || position == cameraMirrorModeRow
                 || position == startWithWideAngleRow) {
@@ -1030,6 +1198,34 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == menuHistoryRow) return NekoConfig.showViewHistory;
         if (position == menuReportRow) return NekoConfig.showReport;
         if (position == menuDetailsRow) return NekoConfig.showMessageDetails;
+        if (position == menuReactionsRow) return NaConfig.INSTANCE.getShowReactions();
+        if (position == menuReplyInPrivateRow) return NaConfig.INSTANCE.getShowReplyInPrivate();
+        if (position == menuCopyLinkRow) return NaConfig.INSTANCE.getShowCopyLink();
+        if (position == menuCopyFrameRow) return NaConfig.INSTANCE.getShowCopyFrame();
+        if (position == menuCopyAsStickerRow) return NaConfig.INSTANCE.getShowCopyAsSticker();
+        if (position == menuAddToStickersRow) return NaConfig.INSTANCE.getShowAddToStickers();
+        if (position == menuAddToFavoritesRow) return NaConfig.INSTANCE.getShowAddToFavorites();
+        if (position == menuNoQuoteForwardRow) return NaConfig.INSTANCE.getShowNoQuoteForward();
+        if (position == menuSetReminderRow) return NaConfig.INSTANCE.getShowSetReminder();
+        if (position == menuBookmarkRow) return NaConfig.INSTANCE.getShowAddToBookmark();
+        if (position == menuRepeatAsCopyRow) return NaConfig.INSTANCE.getShowRepeatAsCopy();
+        if (position == menuTranslateRow) return NekoConfig.showTranslate;
+        if (position == menuTranslateLlmRow) return NaConfig.INSTANCE.getShowTranslateMessageLLM();
+        if (position == menuShareRow) return NekoConfig.showShareMessages;
+        if (position == menuHideRow) return NekoConfig.showMessageHide;
+        if (position == menuAdminActionsRow) return NekoConfig.showAdminActions;
+        if (position == menuPermissionsRow) return NekoConfig.showChangePermissions;
+        if (position == mediaMenuForwardRow) return NaConfig.INSTANCE.getMediaViewerMenuItemForward();
+        if (position == mediaMenuNoQuoteForwardRow) return NaConfig.INSTANCE.getMediaViewerMenuItemNoQuoteForward();
+        if (position == mediaMenuCopyFrameRow) return NaConfig.INSTANCE.getMediaViewerMenuItemCopyFrame();
+        if (position == mediaMenuCopyPhotoRow) return NaConfig.INSTANCE.getMediaViewerMenuItemCopyPhoto();
+        if (position == mediaMenuProfilePhotoRow) return NaConfig.INSTANCE.getMediaViewerMenuItemSetProfilePhoto();
+        if (position == mediaMenuQrRow) return NaConfig.INSTANCE.getMediaViewerMenuItemScanQRCode();
+        if (position == actionBarReplyRow) return NaConfig.INSTANCE.getActionBarButtonReply();
+        if (position == actionBarEditRow) return NaConfig.INSTANCE.getActionBarButtonEdit();
+        if (position == actionBarSelectBetweenRow) return NaConfig.INSTANCE.getActionBarButtonSelectBetween();
+        if (position == actionBarCopyRow) return NaConfig.INSTANCE.getActionBarButtonCopy();
+        if (position == actionBarForwardRow) return NaConfig.INSTANCE.getActionBarButtonForward();
         if (position == groupedMessageMenuRow) return NaConfig.INSTANCE.getGroupedMessageMenu();
         if (position == extendedFpsRow) return ChatsConfig.extendedFramesPerSecond;
         if (position == cameraStabilizationRow) return ChatsConfig.cameraStabilization;
@@ -1315,6 +1511,16 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setTextAndCheck(getString(R.string.MessageMenu), selected > 0, messageMenuExpanded);
                 cell.setCollapseArrow(ratio(selected, MESSAGE_MENU_TOTAL), !messageMenuExpanded,
                         OpenExteraChatsActivity.this::toggleAllMessageMenu);
+            } else if (position == mediaViewerMenuGroupRow) {
+                int selected = mediaViewerMenuSelectedCount();
+                cell.setTextAndCheck(getString(R.string.MediaViewerMenu), selected > 0, mediaViewerMenuExpanded);
+                cell.setCollapseArrow(ratio(selected, MEDIA_VIEWER_MENU_TOTAL), !mediaViewerMenuExpanded,
+                        OpenExteraChatsActivity.this::toggleAllMediaViewerMenu);
+            } else if (position == actionBarButtonsGroupRow) {
+                int selected = actionBarButtonsSelectedCount();
+                cell.setTextAndCheck(getString(R.string.ActionBarButtons), selected > 0, actionBarButtonsExpanded);
+                cell.setCollapseArrow(ratio(selected, ACTION_BAR_BUTTONS_TOTAL), !actionBarButtonsExpanded,
+                        OpenExteraChatsActivity.this::toggleAllActionBarButtons);
             } else if (position == extendedSettingsGroupRow) {
                 int selected = cameraSettingsSelected();
                 cell.setTextAndCheck(getString(R.string.OEChatsExtendedSettings), selected > 0, extendedSettingsExpanded);
@@ -1359,6 +1565,62 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setText(getString(R.string.OEChatsMenuReport), "", NekoConfig.showReport.Bool(), true, true);
             } else if (position == menuDetailsRow) {
                 cell.setText(getString(R.string.OEChatsMenuDetails), "", NekoConfig.showMessageDetails.Bool(), true, true);
+            } else if (position == menuReactionsRow) {
+                cell.setText(getString(R.string.Reactions), "", NaConfig.INSTANCE.getShowReactions().Bool(), true, true);
+            } else if (position == menuReplyInPrivateRow) {
+                cell.setText(getString(R.string.ReplyInPrivate), "", NaConfig.INSTANCE.getShowReplyInPrivate().Bool(), true, true);
+            } else if (position == menuCopyLinkRow) {
+                cell.setText(getString(R.string.CopyLink), "", NaConfig.INSTANCE.getShowCopyLink().Bool(), true, true);
+            } else if (position == menuCopyFrameRow) {
+                cell.setText(getString(R.string.CopyVideoFrame), "", NaConfig.INSTANCE.getShowCopyFrame().Bool(), true, true);
+            } else if (position == menuCopyAsStickerRow) {
+                cell.setText(getString(R.string.CopyPhotoAsSticker), "", NaConfig.INSTANCE.getShowCopyAsSticker().Bool(), true, true);
+            } else if (position == menuAddToStickersRow) {
+                cell.setText(getString(R.string.AddToStickers), "", NaConfig.INSTANCE.getShowAddToStickers().Bool(), true, true);
+            } else if (position == menuAddToFavoritesRow) {
+                cell.setText(getString(R.string.AddToFavorites), "", NaConfig.INSTANCE.getShowAddToFavorites().Bool(), true, true);
+            } else if (position == menuNoQuoteForwardRow) {
+                cell.setText(getString(R.string.NoQuoteForward), "", NaConfig.INSTANCE.getShowNoQuoteForward().Bool(), true, true);
+            } else if (position == menuSetReminderRow) {
+                cell.setText(getString(R.string.SetReminder), "", NaConfig.INSTANCE.getShowSetReminder().Bool(), true, true);
+            } else if (position == menuBookmarkRow) {
+                cell.setText(getString(R.string.AddBookmark), "", NaConfig.INSTANCE.getShowAddToBookmark().Bool(), true, true);
+            } else if (position == menuRepeatAsCopyRow) {
+                cell.setText(getString(R.string.RepeatAsCopy), "", NaConfig.INSTANCE.getShowRepeatAsCopy().Bool(), true, true);
+            } else if (position == menuTranslateRow) {
+                cell.setText(getString(R.string.Translate), "", NekoConfig.showTranslate.Bool(), true, true);
+            } else if (position == menuTranslateLlmRow) {
+                cell.setText(getString(R.string.TranslateMessageLLM), "", NaConfig.INSTANCE.getShowTranslateMessageLLM().Bool(), true, true);
+            } else if (position == menuShareRow) {
+                cell.setText(getString(R.string.ShareMessages), "", NekoConfig.showShareMessages.Bool(), true, true);
+            } else if (position == menuHideRow) {
+                cell.setText(getString(R.string.Hide), "", NekoConfig.showMessageHide.Bool(), true, true);
+            } else if (position == menuAdminActionsRow) {
+                cell.setText(getString(R.string.EditAdminRights), "", NekoConfig.showAdminActions.Bool(), true, true);
+            } else if (position == menuPermissionsRow) {
+                cell.setText(getString(R.string.ChangePermissions), "", NekoConfig.showChangePermissions.Bool(), true, true);
+            } else if (position == mediaMenuForwardRow) {
+                cell.setText(getString(R.string.Forward), "", NaConfig.INSTANCE.getMediaViewerMenuItemForward().Bool(), true, true);
+            } else if (position == mediaMenuNoQuoteForwardRow) {
+                cell.setText(getString(R.string.NoQuoteForward), "", NaConfig.INSTANCE.getMediaViewerMenuItemNoQuoteForward().Bool(), true, true);
+            } else if (position == mediaMenuCopyFrameRow) {
+                cell.setText(getString(R.string.CopyVideoFrame), "", NaConfig.INSTANCE.getMediaViewerMenuItemCopyFrame().Bool(), true, true);
+            } else if (position == mediaMenuCopyPhotoRow) {
+                cell.setText(getString(R.string.CopyPhoto), "", NaConfig.INSTANCE.getMediaViewerMenuItemCopyPhoto().Bool(), true, true);
+            } else if (position == mediaMenuProfilePhotoRow) {
+                cell.setText(getString(R.string.SetProfilePhoto), "", NaConfig.INSTANCE.getMediaViewerMenuItemSetProfilePhoto().Bool(), true, true);
+            } else if (position == mediaMenuQrRow) {
+                cell.setText(getString(R.string.ScanQRCode), "", NaConfig.INSTANCE.getMediaViewerMenuItemScanQRCode().Bool(), true, true);
+            } else if (position == actionBarReplyRow) {
+                cell.setText(getString(R.string.Reply), "", NaConfig.INSTANCE.getActionBarButtonReply().Bool(), true, true);
+            } else if (position == actionBarEditRow) {
+                cell.setText(getString(R.string.Edit), "", NaConfig.INSTANCE.getActionBarButtonEdit().Bool(), true, true);
+            } else if (position == actionBarSelectBetweenRow) {
+                cell.setText(getString(R.string.SelectBetween), "", NaConfig.INSTANCE.getActionBarButtonSelectBetween().Bool(), true, true);
+            } else if (position == actionBarCopyRow) {
+                cell.setText(getString(R.string.Copy), "", NaConfig.INSTANCE.getActionBarButtonCopy().Bool(), true, true);
+            } else if (position == actionBarForwardRow) {
+                cell.setText(getString(R.string.Forward), "", NaConfig.INSTANCE.getActionBarButtonForward().Bool(), true, true);
             } else if (position == seamlessSwitchingRow) {
                 cell.setText(getString(R.string.OEChatsSeamlessSwitching), "", isSeamlessSwitchingEnabled(), true, true);
             } else if (position == extendedFpsRow) {
@@ -1540,6 +1802,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         private boolean isGroupHeader(int position) {
             return position == repliesGroupRow || position == hideReactionsGroupRow
                     || position == quickTransitionGroupRow || position == messageMenuGroupRow
+                    || position == mediaViewerMenuGroupRow || position == actionBarButtonsGroupRow
                     || position == extendedSettingsGroupRow || position == pauseGroupRow;
         }
 
