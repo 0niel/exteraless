@@ -1,9 +1,13 @@
 package app.exteraless.nowplaying;
 
+import android.graphics.Bitmap;
 import android.text.TextUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLoader;
+import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ImageLoader;
+import org.telegram.messenger.audioinfo.AudioInfo;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
@@ -95,7 +99,7 @@ public final class ProfileMusicStamp implements NotificationCenter.NotificationC
             awaitedFileName = FileLoader.getAttachFileName(source);
             FileLoader.getInstance(account).loadFile(source,
                     MessagesController.getInstance(account).getUser(selfId),
-                    FileLoader.PRIORITY_NORMAL, 0);
+                    FileLoader.PRIORITY_HIGH, 0);
         }
     }
 
@@ -140,9 +144,35 @@ public final class ProfileMusicStamp implements NotificationCenter.NotificationC
         name.file_name = stampedName;
         out.attributes.add(name);
 
+        attachCover(out, file);
+
         SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
                 out, null, file.getAbsolutePath(), selfId, null, null, null, null, null, null,
                 false, 0, 0, 0, null, null, false));
+    }
+
+    private static void attachCover(TLRPC.TL_document out, File file) {
+        Bitmap cover = null;
+        try {
+            AudioInfo info = AudioInfo.getAudioInfo(file);
+            if (info != null) {
+                cover = info.getCover();
+            }
+            if (cover == null) {
+                return;
+            }
+            TLRPC.PhotoSize thumb = ImageLoader.scaleAndSaveImage(cover, 132, 132, 55, false);
+            if (thumb != null) {
+                out.thumbs.add(thumb);
+                out.flags |= 1;
+            }
+        } catch (Throwable e) {
+            FileLog.e(e);
+        } finally {
+            if (cover != null) {
+                cover.recycle();
+            }
+        }
     }
 
     private void saveMusic(TLRPC.Document document) {
