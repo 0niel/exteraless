@@ -83,6 +83,14 @@ public final class PythonBridge {
 
     // ---------- прочее ----------
 
+    public static boolean hasPermission(String pluginId, String permission) {
+        return PluginPermissions.has(pluginId, permission);
+    }
+
+    public static boolean checkPermission(String pluginId, String permission, String what) {
+        return PluginPermissions.check(pluginId, permission, what);
+    }
+
     /** Абсолютный путь к каталогу плагинов (filesDir/plugins). */
     public static String getPluginsDir() {
         return controller().getPluginsDir().getAbsolutePath();

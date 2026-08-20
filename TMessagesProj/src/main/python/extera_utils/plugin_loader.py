@@ -694,14 +694,13 @@ _permissions_class = _PERMISSIONS_UNSET
 
 
 def _permissions():
-    """app.exteraless.plugins.PluginPermissions или None (нет JVM: хост, тесты)."""
     global _permissions_class
     if _permissions_class is _PERMISSIONS_UNSET:
         try:
-            from app.exteraless.plugins import PluginPermissions
-            _permissions_class = PluginPermissions
+            from app.exteraless.plugins import PythonBridge
+            _permissions_class = PythonBridge
         except Exception:
-            _permissions_class = None
+            return None
     return _permissions_class
 
 
@@ -714,7 +713,7 @@ def has_permission(perm: str, plugin_id: Optional[str] = None) -> bool:
     if java is None:
         return True
     try:
-        return bool(java.has(pid, perm))
+        return bool(java.hasPermission(pid, perm))
     except Exception:
         return True
 
@@ -739,7 +738,7 @@ def require_permission(perm: str, what: str, detail: Optional[str] = None,
     if java is None:
         return
     try:
-        allowed = bool(java.check(pid, perm, what))
+        allowed = bool(java.checkPermission(pid, perm, what))
     except Exception:
         return  # мост сломан — не мешаем работать
     if allowed:
@@ -1953,3 +1952,4 @@ if pip_controller is not None:
     except Exception as e:
         print(f"[exteraless:plugin_loader] restore_sys_path failed: {e}",
               file=sys.stderr)
+
