@@ -97,6 +97,19 @@ def _validate_plugin_id(plugin_id: Any) -> str:
     return plugin_id
 
 
+def _split_bare(text: str) -> list:
+    parts = []
+    for chunk in text.replace("\n", ",").split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if parts and chunk[0] in "<>=!~":
+            parts[-1] = parts[-1] + "," + chunk
+        else:
+            parts.append(chunk)
+    return parts
+
+
 def _validate_permissions(declared: Any) -> list:
     """Normalise and validate ``__permissions__``.
 
@@ -105,7 +118,7 @@ def _validate_permissions(declared: Any) -> list:
     """
     if isinstance(declared, str):
         # Same leniency as __requirements__: a single permission is often written bare.
-        declared = [declared] if declared.strip() else []
+        declared = _split_bare(declared)
     if not isinstance(declared, (list, tuple, set, frozenset)):
         raise PluginMetadataError("__permissions__ must be a list of permission keys")
     out = []
@@ -156,7 +169,7 @@ def read_metadata(path: str) -> Dict[str, Any]:
     # dependency (``__requirements__ = "cachetools"``). Rejecting the string
     # would refuse the plugin outright, so normalise instead.
     if isinstance(requirements, str):
-        requirements = [requirements] if requirements.strip() else []
+        requirements = _split_bare(requirements)
     if not isinstance(requirements, (list, tuple)) \
             or not all(isinstance(item, str) for item in requirements):
         raise PluginMetadataError("__requirements__ must be a string or a list of PEP 508 strings")
