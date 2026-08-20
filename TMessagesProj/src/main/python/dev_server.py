@@ -15,6 +15,7 @@ import base64
 import binascii
 import json
 import os
+import secrets
 import socketserver
 import threading
 
@@ -26,6 +27,33 @@ _failed = False
 _start_lock = threading.Lock()
 
 _debugger = {"listening": False, "host": None, "port": None, "platform": None}
+
+# Токен сессии. Порт слушается на 127.0.0.1, но на Android это не граница:
+# любое приложение на устройстве может подключиться и через write_plugin
+# поставить свой плагин. Токен пишется в файл внутри каталога приложения и в
+# лог, так что инструмент разработчика достаёт его через adb.
+_token = None
+TOKEN_FILE = ".devserver_token"
+_FREE_COMMANDS = frozenset({"ping"})
+
+
+def _ensure_token() -> str:
+    global _token
+    if _token is None:
+        _token = secrets.token_hex(16)
+    return _token
+
+
+def _publish_token(token: str) -> None:
+    try:
+        import file_utils
+        path = os.path.join(file_utils.get_plugins_dir(), TOKEN_FILE)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(token)
+        _log(f"token written to {path}")
+    except Exception as e:
+        _log(f"cannot write token file: {e}")
+    _log(f"token: {token}")
 
 
 def _log(message):
@@ -233,6 +261,12 @@ def dispatch(request: dict) -> dict:
     response = {"#": request_id, "ok": True}
     if not isinstance(command, str) or not command:
         return {**response, "ok": False, "error": "missing \"@\" command"}
+    if command not in _FREE_COMMANDS:
+        supplied = request.get("token")
+        expected = _ensure_token()
+        if not isinstance(supplied, str) \
+                or not secrets.compare_digest(supplied, expected):
+            return {**response, "ok": False, "error": "bad or missing token"}
     try:
         if command.startswith("elyx_") or command == "get_elyx_plugins":
             payload = _cmd_elyx(request)
@@ -305,6 +339,7 @@ def start() -> bool:
                                   name="extera-dev-server", daemon=True)
         thread.start()
         _server = server
+        _publish_token(_ensure_token())
         _log(f"listening on {HOST}:{PORT}")
         return True
 

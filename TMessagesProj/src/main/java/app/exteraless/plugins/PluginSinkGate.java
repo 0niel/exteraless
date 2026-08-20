@@ -59,6 +59,16 @@ public final class PluginSinkGate {
             "java.lang.Runtime",
             "java.lang.ProcessBuilder",
             "java.lang.Process",
+            "app.exteraless.plugins.PluginPermissions",
+            "app.exteraless.plugins.PluginTrustLevel",
+            "app.exteraless.plugins.PluginSinkGate",
+            "app.exteraless.plugins.PluginsWatchdog",
+            "app.exteraless.plugins.PluginRuntime",
+            "app.exteraless.plugins.PluginServices",
+            "app.exteraless.plugins.PluginAuditLog",
+            "app.exteraless.plugins.files.FilesControllerJava",
+            "app.exteraless.plugins.intents.IntentsDispatcher",
+            "app.exteraless.plugins.menus.MenusController",
     };
 
     /**
@@ -72,6 +82,7 @@ public final class PluginSinkGate {
      * hooks, уровень, про который на экране прямо сказано, что защиты дальше нет.
      */
     private static final String[] CODE_LOADING_CLASSES = {
+            "de.robv.android.xposed.",
             "dalvik.system.DexClassLoader",
             "dalvik.system.PathClassLoader",
             "dalvik.system.InMemoryDexClassLoader",

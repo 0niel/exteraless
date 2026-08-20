@@ -137,25 +137,25 @@ _DATABASE = {
 _FILES = {
     "open": 0,
     "os.remove": 0,
-    "os.rename": 0,
+    "os.rename": (0, 1),
     "os.rmdir": 0,
     "os.mkdir": 0,
     "os.chdir": 0,
     "os.chmod": 0,
     "os.chown": 0,
     "os.truncate": 0,
-    "os.link": 0,
-    "os.symlink": 0,
+    "os.link": (0, 1),
+    "os.symlink": (0, 1),
     "os.utime": 0,
     "os.listdir": 0,
     "os.scandir": 0,
     "glob.glob": 0,
     "pathlib.Path.glob": 1,
-    "shutil.copyfile": 0,
+    "shutil.copyfile": (0, 1),
     "shutil.copymode": 0,
     "shutil.copystat": 0,
-    "shutil.copytree": 0,
-    "shutil.move": 0,
+    "shutil.copytree": (0, 1),
+    "shutil.move": (0, 1),
     "shutil.rmtree": 0,
     "shutil.unpack_archive": 0,
     "tempfile.mkstemp": 0,
@@ -172,8 +172,8 @@ _JOURNAL_ONLY = frozenset({
     "code.__new__", "builtins.input",
 })
 
-_WATCHED = (set(_DENY_ALWAYS) | set(_NATIVE) | set(_NETWORK) | set(_FILES)
-            | set(_DATABASE) | set(_JOURNAL_ONLY) | {"object.__getattr__"})
+_WATCHED = frozenset(set(_DENY_ALWAYS) | set(_NATIVE) | set(_NETWORK) | set(_FILES)
+                     | set(_DATABASE) | set(_JOURNAL_ONLY) | {"object.__getattr__"})
 
 # Категория для профиля плагина (что он вообще делал).
 _CATEGORY = {}
@@ -386,14 +386,25 @@ def _is_own_file(plugin_id: str, path: Optional[str]) -> bool:
         return False
 
 
-def _hook(event, args):
-    if event not in _WATCHED:
+def _hook(event, args, _watched=None, _loader_ref=None):
+    """Точка входа PEP 578.
+
+    ``_watched`` связывается значением на момент установки хука: раньше набор
+    читался из глобали, и код плагина выключал гейт целиком одной строкой
+    (``audit_gate._WATCHED.clear()``). Подмена глобали теперь ни на что не
+    влияет, а сам набор — frozenset.
+    """
+    if _watched is None:
+        _watched = _WATCHED
+    if event not in _watched:
         return
+    if _loader_ref is None:
+        _loader_ref = _loader
     if getattr(_local, "busy", False):
         return  # мы сами внутри атрибуции: sys._getframe и open() тоже аудируются
     _local.busy = True
     try:
-        _check(event, args)
+        _check(event, args, _loader_ref)
     except BaseException as e:
         # Отказ обязан долететь до плагина. Раньше здесь стояло `except
         # PermissionError: raise`, и когда сетевой отказ стал бросать
@@ -449,15 +460,47 @@ def _deny_network(plugin_id: str, event: str, what: str, detail: Optional[str]):
     raise _denial(ConnectionRefusedError(message))
 
 
-def _check(event, args):
+def _foreign_code_owner(event, args, plugin_id, loader):
+    """id чужого плагина, чьим именем помечен компилируемый код, или None.
+
+    Владелец действия определяется по ``co_filename`` кадра, а имя файла в
+    ``compile()`` — произвольная строка. Подставив путь чужого плагина, плагин
+    действовал от его имени: с его разрешениями и с его именем в журнале.
+    Файл существовать не обязан, а пути предсказуемы — плагин лежит как
+    ``<каталог плагинов>/<id>.py``.
+    """
+    if loader is None:
+        return None
+    try:
+        if event == "compile":
+            path = _arg(args, 1)
+        else:
+            path = getattr(_arg(args, 0), "co_filename", None)
+        if not isinstance(path, str) or not path or path.startswith("<"):
+            return None
+        owner = loader._resolve_owner(path)
+    except Exception:
+        return None
+    return owner if owner is not None and owner != plugin_id else None
+
+
+def _check(event, args, loader):
     if event == "object.__getattr__":
         name = _arg(args, 1)
         if name not in _FRAME_ATTRS:
             return
 
-    plugin_id = _loader.plugin_frame_owner() if _loader is not None else None
+    plugin_id = loader.plugin_frame_owner() if loader is not None else None
     if plugin_id is None:
         return  # код SDK или приложения — гейтить нечего
+
+    if event in ("compile", "exec"):
+        victim = _foreign_code_owner(event, args, plugin_id, loader)
+        if victim is not None:
+            _record(plugin_id, event, victim, False)
+            raise _denial(PermissionError(
+                f"plugin {plugin_id!r} cannot run code labelled as {victim!r}: "
+                f"co_filename of another plugin"))
 
     if event in _JOURNAL_ONLY:
         detail = _as_text(_arg(args, 0))
@@ -474,7 +517,7 @@ def _check(event, args):
     if what is not None:
         detail = _as_text(_arg(args, 0))
         _record(plugin_id, event, detail, False)
-        _loader.log_denial(plugin_id, event, what)
+        loader.log_denial(plugin_id, event, what)
         raise _denial(PermissionError(
             f"plugin {plugin_id!r} cannot {what}: this is never available to "
             f"plugins ({event})"))
@@ -484,16 +527,16 @@ def _check(event, args):
         detail = _as_text(_arg(args, 0))
         if _is_runtime_file(detail):
             return  # рантайм грузит зависимость своего же модуля, а не плагин лезет в FFI
-        allowed = _loader.has_permission(_loader.PERM_NATIVE, plugin_id)
+        allowed = loader.has_permission(loader.PERM_NATIVE, plugin_id)
         _record(plugin_id, event, detail, allowed)
-        _loader.require_permission(_loader.PERM_NATIVE, what,
+        loader.require_permission(loader.PERM_NATIVE, what,
                                    detail=detail, plugin_id=plugin_id)
         return
 
     what = _NETWORK.get(event)
     if what is not None:
         detail = _network_detail(event, args)
-        allowed = _loader.has_permission(_loader.PERM_NETWORK, plugin_id)
+        allowed = loader.has_permission(loader.PERM_NETWORK, plugin_id)
         _record(plugin_id, event, detail, allowed)
         if not allowed:
             _deny_network(plugin_id, event, what, detail)
@@ -503,23 +546,32 @@ def _check(event, args):
         path = _as_text(_arg(args, 0))
         if _is_own_file(plugin_id, path) or _is_runtime_file(path):
             return
-        allowed = _loader.has_permission(_loader.PERM_FILES, plugin_id)
+        allowed = loader.has_permission(loader.PERM_FILES, plugin_id)
         _record(plugin_id, event, path, allowed)
-        _loader.require_permission(_loader.PERM_FILES, _DATABASE[event],
+        loader.require_permission(loader.PERM_FILES, _DATABASE[event],
                                    detail=path, plugin_id=plugin_id)
         return
 
     if event in _FILES:
         index = _FILES[event]
-        path = _as_text(_arg(args, index)) if index is not None else None
-        if _is_own_file(plugin_id, path):
-            return  # свой каталог плагину открыт всегда
-        if _is_runtime_file(path):
-            return  # это загрузка модуля интерпретатором, а не доступ к файлам
-        allowed = _loader.has_permission(_loader.PERM_FILES, plugin_id)
-        _record(plugin_id, event, path, allowed)
-        _loader.require_permission(_loader.PERM_FILES, _file_verb(event),
-                                   detail=path, plugin_id=plugin_id)
+        # У os.rename, os.link и shutil.move путей два, и раньше проверялся
+        # только первый: плагин переносил свой файл поверх любого файла
+        # приложения, не имея разрешения files.
+        indexes = index if isinstance(index, tuple) else (index,)
+        for one in indexes:
+            path = _as_text(_arg(args, one)) if one is not None else None
+            if path is None:
+                continue
+            if _is_own_file(plugin_id, path):
+                continue  # свой каталог плагину открыт всегда
+            if _is_runtime_file(path):
+                continue  # это загрузка модуля интерпретатором
+            allowed = loader.has_permission(loader.PERM_FILES, plugin_id)
+            _record(plugin_id, event, path, allowed)
+            loader.require_permission(loader.PERM_FILES, _file_verb(event),
+                                       detail=path, plugin_id=plugin_id)
+            return
+        return
 
 
 def _file_verb(event: str) -> str:
@@ -540,7 +592,11 @@ def install(loader_module) -> bool:
     if _installed:
         return True
     try:
-        sys.addaudithook(_hook)
+        bound_watched = _WATCHED
+        bound_hook = _hook
+        bound_loader = loader_module
+        sys.addaudithook(
+            lambda event, args: bound_hook(event, args, bound_watched, bound_loader))
         _installed = True
     except Exception as e:  # интерпретатор без PEP 578 — работаем на врапперах
         print(f"[exteraless:audit_gate] install failed: {e}", file=sys.stderr)

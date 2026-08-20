@@ -297,6 +297,46 @@ _IMPORT_RULES = {
 # поэтому в общем случае он должен стоить один lookup в множестве.
 _GATED_ROOTS = frozenset(key.partition(".")[0] for key in _IMPORT_RULES)
 
+#: Внутренние модули движка: плагину они не отдаются вовсе.
+#:
+#: Импорты вообще-то не запрещаются (см. _guard_import: запрет ломал плагины
+#: целиком), но здесь импорт и есть действие: `from extera_utils import
+#: audit_gate; audit_gate._WATCHED.clear()` выключал весь гейт одной строкой.
+#: Плагины каталога берут из пакета только classes и text_formatting.
+_INTERNAL_MODULES = frozenset({
+    "extera_utils.audit_gate",
+    "extera_utils.plugin_loader",
+    "extera_utils.class_aliases",
+    "extera_utils.capability_scan",
+    "extera_utils.sandbox_main",
+    "extera_utils.metadata_parser",
+    "dev_server",
+})
+
+
+def _deny_internal_import(name, fromlist=()) -> None:
+    """Бросить ImportError, если плагин лезет во внутренний модуль движка."""
+    if type(name) is not str:
+        return
+    candidates = [name]
+    if fromlist:
+        candidates.extend(f"{name}.{item}" for item in fromlist
+                          if isinstance(item, str) and item != "*")
+    for candidate in candidates:
+        if candidate not in _INTERNAL_MODULES:
+            continue
+        try:
+            pid = _direct_plugin_caller()
+        except Exception:
+            return  # сломанная атрибуция не должна ломать импорты процесса
+        if pid is None:
+            return
+        _log_once(f"{pid}|internal|{candidate}",
+                  f"plugin {pid!r}: module {candidate!r} is internal to the engine")
+        raise ImportError(
+            f"{candidate} is internal to the plugin engine and not available "
+            f"to plugins")
+
 
 #: Java-классы, за которыми стоит разрешение. Ключ — точное имя или префикс
 #: с точкой на конце.
@@ -319,7 +359,35 @@ _JAVA_CLASS_RULES = {
     "dalvik.system.PathClassLoader": "hooks",
     "dalvik.system.InMemoryDexClassLoader": "hooks",
     "dalvik.system.BaseDexClassLoader": "hooks",
+    "java.net.DatagramSocket": PERM_NETWORK,
+    "java.net.MulticastSocket": PERM_NETWORK,
+    "java.net.ServerSocket": PERM_NETWORK,
+    "java.nio.channels.SocketChannel": PERM_NETWORK,
+    "java.nio.channels.DatagramChannel": PERM_NETWORK,
+    "java.nio.channels.ServerSocketChannel": PERM_NETWORK,
 }
+
+#: Java-классы, которые плагину не отдаются ни при каком разрешении.
+#:
+#: Это управляющий слой самого движка: он хранит уровни доверия, разрешения и
+#: журнал. Раньше их не было ни в одном списке, поэтому плагин двумя вызовами
+#: (`PluginTrustLevel.setLevel(id, 2)`, `PluginPermissions.grant(id, "native")`)
+#: выдавал себе TRUSTED. Ни один плагин каталога эти классы не зовёт.
+_JAVA_CLASS_DENIED = frozenset({
+    "app.exteraless.plugins.PluginPermissions",
+    "app.exteraless.plugins.PluginTrustLevel",
+    "app.exteraless.plugins.PluginSinkGate",
+    "app.exteraless.plugins.PluginsWatchdog",
+    "app.exteraless.plugins.PluginRuntime",
+    "app.exteraless.plugins.PluginServices",
+    "app.exteraless.plugins.PluginAuditLog",
+    "app.exteraless.plugins.PluginDenialNotice",
+    "app.exteraless.plugins.files.FilesControllerJava",
+    "app.exteraless.plugins.intents.IntentsDispatcher",
+    "app.exteraless.plugins.menus.MenusController",
+    "java.lang.Runtime",
+    "java.lang.ProcessBuilder",
+})
 
 
 def java_class_permission(name):
@@ -349,6 +417,13 @@ def guard_java_class(name):
     (app.exteraless.plugins.PluginSinkGate), эта проверка лишь снимает самый
     ходовой путь: 178 плагинов зовут find_class, 94 — jclass.
     """
+    if name in _JAVA_CLASS_DENIED:
+        pid = plugin_frame_owner()
+        if pid is not None:
+            _log_once(f"{pid}|jclass|{name}",
+                      f"plugin {pid!r}: class {name!r} is never available to plugins")
+            return False
+        return True
     perm = java_class_permission(name)
     if perm is None:
         return True
@@ -662,6 +737,8 @@ def _sandboxed_import_module(name, package=None):
     Отдельно от __import__: import_module идёт в машинерию напрямую, минуя
     builtins.__import__, а для уже загруженного модуля — ещё и минуя meta_path.
     """
+    if package is None:
+        _deny_internal_import(name)
     if package is None and type(name) is str \
             and name.partition(".")[0] in _GATED_ROOTS:
         try:
@@ -681,6 +758,8 @@ def _sandboxed_import(name, globals=None, locals=None, fromlist=(), level=0):
     старта движка уже лежат в sys.modules, а закэшированный импорт до
     meta_path вообще не доходит. Враппер ловит именно этот случай — для лога.
     """
+    if level == 0:
+        _deny_internal_import(name, fromlist)
     if level == 0 and type(name) is str and name.partition(".")[0] in _GATED_ROOTS:
         try:
             _guard_import(name, fromlist)
@@ -733,6 +812,48 @@ def _sandboxed_open(file, mode="r", *args, **kwargs):
 _sandboxed_open._exteraless_sandbox = True
 
 
+#: Функции os, работающие с уже открытым дескриптором или со ссылкой.
+#:
+#: Событий PEP 578 у них нет вовсе (проверено на CPython 3.12): плагин мог
+#: читать чужой дескриптор через os.pread, не имея разрешения files. Своего
+#: пути к чужому дескриптору у плагина быть не должно, поэтому правило простое:
+#: прямой вызов из кода плагина требует files.
+_FD_FUNCTIONS = ("pread", "preadv", "readlink", "dup", "dup2", "fdopen")
+
+_original_fd_functions = {}
+
+
+def _install_fd_guards() -> None:
+    """Обернуть функции os без audit-событий. Идемпотентно, не бросает."""
+    try:
+        for name in _FD_FUNCTIONS:
+            original = getattr(os, name, None)
+            if original is None or getattr(original, "_exteraless_sandbox", False):
+                continue
+            _original_fd_functions[name] = original
+
+            def make(func_name, func):
+                def guarded(*args, **kwargs):
+                    try:
+                        pid = _direct_plugin_caller()
+                        if pid is not None:
+                            require_permission(PERM_FILES, f"call os.{func_name}",
+                                               detail=None, plugin_id=pid)
+                    except PermissionError:
+                        raise
+                    except Exception:
+                        pass
+                    return func(*args, **kwargs)
+
+                guarded._exteraless_sandbox = True
+                guarded.__name__ = func_name
+                return guarded
+
+            setattr(os, name, make(name, original))
+    except Exception as e:
+        print(f"[exteraless:plugin_loader] fd guards failed: {e}", file=sys.stderr)
+
+
 def owner_of_object(obj) -> Optional[str]:
     """Владелец функции, метода или класса — по файлу его кода."""
     for candidate in (obj, getattr(obj, "__func__", None), getattr(obj, "run", None)):
@@ -764,7 +885,11 @@ def _install_thread_marking() -> None:
         def run(self):
             owner = None
             try:
-                owner = owner_of_object(getattr(self, "_target", None))
+                owner = getattr(self, "_exteraless_owner", None)
+                if owner is None:
+                    owner = owner_of_object(getattr(self, "_target", None))
+                if owner is None:
+                    owner = owner_of_object(getattr(self, "function", None))
                 if owner is None:
                     owner = owner_of_object(type(self))
             except Exception:
@@ -776,6 +901,24 @@ def _install_thread_marking() -> None:
 
         run._exteraless_marked = True
         threading.Thread.run = run
+
+        original_start = threading.Thread.start
+        if not getattr(original_start, "_exteraless_marked", False):
+            def start(self):
+                # Владельца берём в момент запуска, на стеке создателя: у
+                # threading.Timer колбэк лежит в .function, а воркеры
+                # ThreadPoolExecutor создаются с target из стандартной
+                # библиотеки — по объекту потока владелец в обоих случаях
+                # не определяется, и поток уходил без метки.
+                try:
+                    if getattr(self, "_exteraless_owner", None) is None:
+                        self._exteraless_owner = plugin_frame_owner()
+                except Exception:
+                    pass
+                return original_start(self)
+
+            start._exteraless_marked = True
+            threading.Thread.start = start
     except Exception as e:
         print(f"[exteraless:plugin_loader] thread marking failed: {e}", file=sys.stderr)
 
@@ -842,6 +985,7 @@ def _install_sandbox() -> None:
         if _original_open is None:
             _original_open = builtins.open
             builtins.open = _sandboxed_open
+        _install_fd_guards()
         # Audit hook (PEP 578) — принуждение уровня действия. Врапперы выше
         # остаются: они дают внятный текст ошибки в точке импорта, а гейт
         # ловит то, что мимо них проходит (sys.modules, importlib изнутри C).
