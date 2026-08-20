@@ -483,7 +483,16 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     }
 
     private void applyLastFmToProfileMusic(String nick) {
+        AlertDialog progress = getParentActivity() != null
+                ? new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER) : null;
+        if (progress != null) {
+            progress.setCanCancel(false);
+            progress.showDelayed(300);
+        }
         ProfileMusicStamp.apply(currentAccount, nick, (ok, reason) -> {
+            if (progress != null) {
+                progress.dismiss();
+            }
             if (getParentActivity() == null) {
                 return;
             }
