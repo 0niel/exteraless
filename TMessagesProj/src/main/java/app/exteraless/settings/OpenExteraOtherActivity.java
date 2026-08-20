@@ -9,12 +9,12 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.FrameLayout;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 
@@ -31,17 +31,17 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_account;
 import org.telegram.ui.ActionBar.AlertDialog;
-import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.CheckBoxCell;
 import org.telegram.ui.Cells.TextCell;
-import org.telegram.ui.Cells.TextCheckBoxCell;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Cells.TextCheckCell2;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -74,6 +74,10 @@ import tw.nekomimi.nekogram.utils.AlertUtil;
  */
 public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
+    private static final int TYPE_EXPANDABLE_SWITCH = 104;
+    private static final int TYPE_ROUND_CHECK = 105;
+    private static final int SAVE_MEDIA_TOTAL = 5;
+
     /** Кнопка удаления остаётся заблокированной 30 секунд. */
     private static final long DELETE_ACCOUNT_DELAY = 30_000L;
 
@@ -101,6 +105,12 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     private int ayuSaveDeletedRow;
     private int ayuSaveEditsRow;
     private int ayuSaveMediaRow;
+    private int saveMediaPrivateChatsRow;
+    private int saveMediaPublicChannelsRow;
+    private int saveMediaPrivateChannelsRow;
+    private int saveMediaPublicGroupsRow;
+    private int saveMediaPrivateGroupsRow;
+    private boolean saveMediaExpanded;
     private int ayuBotUserRow;
     private int ayuBotChatRow;
     private int ayuTranslucentRow;
@@ -151,6 +161,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         ayuMomentsRow = addRow("ayuMoments");
         ayuGhostRow = ayuRegexRow = ayuSaveLastSeenRow = ayuSaveDeletedRow = ayuSaveEditsRow = -1;
         ayuSaveMediaRow = ayuBotUserRow = ayuBotChatRow = ayuTranslucentRow = -1;
+        saveMediaPrivateChatsRow = saveMediaPublicChannelsRow = saveMediaPrivateChannelsRow = -1;
+        saveMediaPublicGroupsRow = saveMediaPrivateGroupsRow = -1;
         ayuDeletedIconRow = ayuDeletedMarkRow = ayuClearDbRow = -1;
         if (GeneralConfig.showAyuMoments()) {
             ayuGhostRow = addRow("ayuGhost");
@@ -162,6 +174,13 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             // тот же порядок, что у NekoExperimentalSettingsActivity.checkSaveDeletedRows.
             if (NaConfig.INSTANCE.getEnableSaveDeletedMessages().Bool()) {
                 ayuSaveMediaRow = addRow(NaConfig.INSTANCE.getMessageSavingSaveMedia().getKey());
+                if (saveMediaExpanded) {
+                    saveMediaPrivateChatsRow = addRow();
+                    saveMediaPublicChannelsRow = addRow();
+                    saveMediaPrivateChannelsRow = addRow();
+                    saveMediaPublicGroupsRow = addRow();
+                    saveMediaPrivateGroupsRow = addRow();
+                }
                 ayuBotUserRow = addRow(NaConfig.INSTANCE.getSaveDeletedMessageForBotUser().getKey());
                 if (NaConfig.INSTANCE.getSaveDeletedMessageForBotUser().Bool()) {
                     ayuBotChatRow = addRow(NaConfig.INSTANCE.getSaveDeletedMessageForBot().getKey());
@@ -244,14 +263,18 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         } else if (position == ayuSaveEditsRow) {
             toggleAyuConfig(view, NaConfig.INSTANCE.getEnableSaveEditsHistory(), false);
         } else if (position == ayuSaveMediaRow) {
-            boolean onSwitch = LocaleController.isRTL
-                    ? x <= AndroidUtilities.dp(76)
-                    : x >= view.getMeasuredWidth() - AndroidUtilities.dp(76);
-            if (onSwitch) {
-                toggleAyuConfig(view, NaConfig.INSTANCE.getMessageSavingSaveMedia(), false);
-            } else {
-                showSaveMediaDialog();
-            }
+            saveMediaExpanded = !saveMediaExpanded;
+            rebuildRowsAndNotify();
+        } else if (position == saveMediaPrivateChatsRow) {
+            toggleSaveMediaKind(view, NaConfig.INSTANCE.getSaveMediaInPrivateChats());
+        } else if (position == saveMediaPublicChannelsRow) {
+            toggleSaveMediaKind(view, NaConfig.INSTANCE.getSaveMediaInPublicChannels());
+        } else if (position == saveMediaPrivateChannelsRow) {
+            toggleSaveMediaKind(view, NaConfig.INSTANCE.getSaveMediaInPrivateChannels());
+        } else if (position == saveMediaPublicGroupsRow) {
+            toggleSaveMediaKind(view, NaConfig.INSTANCE.getSaveMediaInPublicGroups());
+        } else if (position == saveMediaPrivateGroupsRow) {
+            toggleSaveMediaKind(view, NaConfig.INSTANCE.getSaveMediaInPrivateGroups());
         } else if (position == ayuBotUserRow) {
             toggleAyuConfig(view, NaConfig.INSTANCE.getSaveDeletedMessageForBotUser(), true);
         } else if (position == ayuBotChatRow) {
@@ -401,79 +424,50 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         }
     }
 
-    private void showSaveMediaDialog() {
-        Context context = getParentActivity();
-        if (context == null) {
-            return;
+    private void toggleSaveMediaKind(View view, ConfigItem config) {
+        boolean enabled = config.toggleConfigBool();
+        if (view instanceof CheckBoxCell) {
+            ((CheckBoxCell) view).setChecked(enabled, true);
         }
-        BottomSheet.Builder builder = new BottomSheet.Builder(context);
-        builder.setApplyTopPadding(false);
-        builder.setApplyBottomPadding(false);
-        LinearLayout linearLayout = new LinearLayout(context);
-        linearLayout.setOrientation(LinearLayout.VERTICAL);
-        builder.setCustomView(linearLayout);
+        if (listAdapter != null && ayuSaveMediaRow >= 0) {
+            listAdapter.notifyItemChanged(ayuSaveMediaRow);
+        }
+    }
 
-        HeaderCell headerCell = new HeaderCell(context, Theme.key_dialogTextBlue2, 21, 15, false);
-        headerCell.setText(getString(R.string.MessageSavingSaveMedia).toUpperCase());
-        linearLayout.addView(headerCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        ConfigItem[] configs = {
+    private ConfigItem[] saveMediaKinds() {
+        return new ConfigItem[]{
                 NaConfig.INSTANCE.getSaveMediaInPrivateChats(),
                 NaConfig.INSTANCE.getSaveMediaInPublicChannels(),
                 NaConfig.INSTANCE.getSaveMediaInPrivateChannels(),
                 NaConfig.INSTANCE.getSaveMediaInPublicGroups(),
                 NaConfig.INSTANCE.getSaveMediaInPrivateGroups(),
         };
-        int[] titles = {
-                R.string.MessageSavingSaveMediaInPrivateChats,
-                R.string.MessageSavingSaveMediaInPublicChannels,
-                R.string.MessageSavingSaveMediaInPrivateChannels,
-                R.string.MessageSavingSaveMediaInPublicGroups,
-                R.string.MessageSavingSaveMediaInPrivateGroups,
-        };
-        TextCheckBoxCell[] cells = new TextCheckBoxCell[configs.length];
-        for (int a = 0; a < cells.length; a++) {
-            TextCheckBoxCell checkBoxCell = cells[a] = new TextCheckBoxCell(context, true, false);
-            checkBoxCell.setTextAndCheck(getString(titles[a]), configs[a].Bool(), a < cells.length - 1);
-            checkBoxCell.setBackground(Theme.getSelectorDrawable(false));
-            checkBoxCell.setOnClickListener(v -> {
-                if (!v.isEnabled()) {
-                    return;
-                }
-                checkBoxCell.setChecked(!checkBoxCell.isChecked());
-            });
-            linearLayout.addView(checkBoxCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 50));
-        }
+    }
 
-        FrameLayout buttonsLayout = new FrameLayout(context);
-        buttonsLayout.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
-        linearLayout.addView(buttonsLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 52));
-
-        TextView cancelView = new TextView(context);
-        cancelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        cancelView.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2));
-        cancelView.setGravity(Gravity.CENTER);
-        cancelView.setTypeface(AndroidUtilities.bold());
-        cancelView.setText(getString(R.string.Cancel).toUpperCase());
-        cancelView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
-        buttonsLayout.addView(cancelView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.TOP | Gravity.LEFT));
-        cancelView.setOnClickListener(v -> builder.getDismissRunnable().run());
-
-        TextView saveView = new TextView(context);
-        saveView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        saveView.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2));
-        saveView.setGravity(Gravity.CENTER);
-        saveView.setTypeface(AndroidUtilities.bold());
-        saveView.setText(getString(R.string.Save).toUpperCase());
-        saveView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
-        buttonsLayout.addView(saveView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.TOP | Gravity.RIGHT));
-        saveView.setOnClickListener(v -> {
-            for (int a = 0; a < cells.length; a++) {
-                configs[a].setConfigBool(cells[a].isChecked());
+    private int saveMediaSelectedCount() {
+        int selected = 0;
+        for (ConfigItem config : saveMediaKinds()) {
+            if (config.Bool()) {
+                selected++;
             }
-            builder.getDismissRunnable().run();
-        });
-        showDialog(builder.create());
+        }
+        return selected;
+    }
+
+    private void toggleSaveMedia() {
+        ConfigItem master = NaConfig.INSTANCE.getMessageSavingSaveMedia();
+        boolean enable = !master.Bool();
+        master.setConfigBool(enable);
+        if (enable && saveMediaSelectedCount() == 0) {
+            for (ConfigItem config : saveMediaKinds()) {
+                config.setConfigBool(true);
+            }
+        }
+        rebuildRowsAndNotify();
+    }
+
+    private static String ratio(int selected, int total) {
+        return String.format(Locale.getDefault(), "%d/%d", selected, total);
     }
 
     private void refreshAyuDataSize() {
@@ -730,9 +724,85 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             super(context);
         }
 
+        @NonNull
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view;
+            switch (viewType) {
+                case TYPE_EXPANDABLE_SWITCH:
+                    view = new TextCheckCell2(mContext);
+                    view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    break;
+                case TYPE_ROUND_CHECK: {
+                    CheckBoxCell checkBoxCell = new CheckBoxCell(mContext, 4, 21, resourcesProvider);
+                    checkBoxCell.getCheckBoxRound().setColor(Theme.key_switch2TrackChecked,
+                            Theme.key_radioBackground, Theme.key_checkboxCheck);
+                    checkBoxCell.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    view = checkBoxCell;
+                    break;
+                }
+                default:
+                    return super.onCreateViewHolder(parent, viewType);
+            }
+            view.setLayoutParams(new RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
+            return new RecyclerListView.Holder(view);
+        }
+
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            int type = holder.getItemViewType();
+            if (type == TYPE_EXPANDABLE_SWITCH || type == TYPE_ROUND_CHECK) {
+                return true;
+            }
+            return super.isEnabled(holder);
+        }
+
+        @Override
+        protected boolean isSectionContent(int viewType) {
+            if (viewType == TYPE_EXPANDABLE_SWITCH || viewType == TYPE_ROUND_CHECK) {
+                return true;
+            }
+            return super.isSectionContent(viewType);
+        }
+
+        private void bindSaveMediaGroup(TextCheckCell2 cell) {
+            int selected = saveMediaSelectedCount();
+            cell.setTextAndCheck(getString(NaConfig.INSTANCE.getMessageSavingSaveMedia().getKey()),
+                    NaConfig.INSTANCE.getMessageSavingSaveMedia().Bool(), saveMediaExpanded);
+            cell.setCollapseArrow(ratio(selected, SAVE_MEDIA_TOTAL), !saveMediaExpanded,
+                    OpenExteraOtherActivity.this::toggleSaveMedia);
+        }
+
+        private void bindSaveMediaKind(CheckBoxCell cell, int position) {
+            if (position == saveMediaPrivateChatsRow) {
+                cell.setText(getString(R.string.MessageSavingSaveMediaInPrivateChats), "",
+                        NaConfig.INSTANCE.getSaveMediaInPrivateChats().Bool(), true, true);
+            } else if (position == saveMediaPublicChannelsRow) {
+                cell.setText(getString(R.string.MessageSavingSaveMediaInPublicChannels), "",
+                        NaConfig.INSTANCE.getSaveMediaInPublicChannels().Bool(), true, true);
+            } else if (position == saveMediaPrivateChannelsRow) {
+                cell.setText(getString(R.string.MessageSavingSaveMediaInPrivateChannels), "",
+                        NaConfig.INSTANCE.getSaveMediaInPrivateChannels().Bool(), true, true);
+            } else if (position == saveMediaPublicGroupsRow) {
+                cell.setText(getString(R.string.MessageSavingSaveMediaInPublicGroups), "",
+                        NaConfig.INSTANCE.getSaveMediaInPublicGroups().Bool(), true, true);
+            } else if (position == saveMediaPrivateGroupsRow) {
+                cell.setText(getString(R.string.MessageSavingSaveMediaInPrivateGroups), "",
+                        NaConfig.INSTANCE.getSaveMediaInPrivateGroups().Bool(), true, true);
+            }
+            cell.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        }
+
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position, boolean partial) {
             switch (holder.getItemViewType()) {
+                case TYPE_EXPANDABLE_SWITCH:
+                    bindSaveMediaGroup((TextCheckCell2) holder.itemView);
+                    break;
+                case TYPE_ROUND_CHECK:
+                    bindSaveMediaKind((CheckBoxCell) holder.itemView, position);
+                    break;
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
                     if (position == nagramHeaderRow) {
@@ -764,11 +834,6 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                             bindAyuCheck(cell, NaConfig.INSTANCE.getEnableSaveDeletedMessages(), true);
                         } else if (position == ayuSaveEditsRow) {
                             bindAyuCheck(cell, NaConfig.INSTANCE.getEnableSaveEditsHistory(), true);
-                        } else if (position == ayuSaveMediaRow) {
-                            cell.setTextAndValueAndCheck(
-                                    getString(NaConfig.INSTANCE.getMessageSavingSaveMedia().getKey()),
-                                    getString(R.string.MessageSavingSaveMediaHint),
-                                    NaConfig.INSTANCE.getMessageSavingSaveMedia().Bool(), true, true);
                         } else if (position == ayuBotUserRow) {
                             bindAyuCheck(cell, NaConfig.INSTANCE.getSaveDeletedMessageForBotUser(), true);
                         } else if (position == ayuBotChatRow) {
@@ -845,6 +910,12 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 return TYPE_TEXT;
             } else if (position == ayuDeletedMarkRow || position == ayuClearDbRow) {
                 return TYPE_SETTINGS;
+            } else if (position == ayuSaveMediaRow) {
+                return TYPE_EXPANDABLE_SWITCH;
+            } else if (position == saveMediaPrivateChatsRow || position == saveMediaPublicChannelsRow
+                    || position == saveMediaPrivateChannelsRow || position == saveMediaPublicGroupsRow
+                    || position == saveMediaPrivateGroupsRow) {
+                return TYPE_ROUND_CHECK;
             }
             return TYPE_CHECK;
         }
