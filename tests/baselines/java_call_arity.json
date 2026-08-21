@@ -1,7 +1,5 @@
 {
   "known": [
-    "app.exteraless.plugins.ui.PluginSettingsActivity#<init>(2)",
-    "com.exteragram.messenger.ExteraConfig#getAvatarCorners(3)",
     "org.telegram.messenger.MessageObject#<init>(3)",
     "org.telegram.messenger.SendMessagesHelper#getInstance(0)",
     "org.telegram.messenger.SendMessagesHelper#prepareSendingDocument(17)",

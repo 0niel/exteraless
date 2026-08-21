@@ -75,6 +75,9 @@ _FIELD_SHAPED = {
         "pluginsSafeMode": "pluginsSafeMode",
         "iconPack": "iconPack",
         "inAppVibration": "inAppVibration",
+        "editor": "getEditor",
+        "pluginsEngine": "getPluginsEngine",
+        "centerTitle": "getCenterTitle",
     },
     "com.exteragram.messenger.plugins.PluginsController": {
         "engines": "getEngines",
