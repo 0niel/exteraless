@@ -1,4 +1,4 @@
-package app.exteraless.plugins.ui;
+package app.exteraless.plugins.ui.components;
 
 import android.content.Context;
 import android.graphics.PorterDuff;
@@ -27,6 +27,7 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginsController;
+import app.exteraless.plugins.ui.PluginIcons;
 
 /**
  * Карточка плагина: иконка, имя, версия с автором, описание и ряд действий.
@@ -41,20 +42,6 @@ import app.exteraless.plugins.PluginsController;
  * до строки с иконкой слева, как у exteraGram.
  */
 public class PluginCell extends FrameLayout {
-
-    public interface Delegate {
-        void onToggle(Plugin plugin);
-
-        void onShare(Plugin plugin);
-
-        void onPin(Plugin plugin);
-
-        void onSettings(Plugin plugin);
-
-        void onPermissions(Plugin plugin);
-
-        void onDelete(Plugin plugin);
-    }
 
     private final View card;
     private final BackupImageView imageView;
@@ -73,12 +60,12 @@ public class PluginCell extends FrameLayout {
 
     private String pluginId;
     private String pluginIcon;
-    private Delegate delegate;
+    private PluginCellDelegate delegate;
     private boolean compact;
 
-    static final class Model {
-        final Plugin plugin;
-        final String id;
+    public static final class Model {
+        public final Plugin plugin;
+        public final String id;
         final String name;
         final String subtitle;
         final String description;
@@ -132,7 +119,7 @@ public class PluginCell extends FrameLayout {
         public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter,
                              UniversalRecyclerView listView) {
             PluginCell cell = (PluginCell) view;
-            cell.setDelegate((Delegate) item.object2);
+            cell.setDelegate((PluginCellDelegate) item.object2);
             cell.setModel((Model) item.object);
         }
 
@@ -150,7 +137,13 @@ public class PluginCell extends FrameLayout {
             return a != null && a.sameContent(b);
         }
 
-        static UItem of(Plugin plugin, boolean pinned, boolean compact, Delegate delegate) {
+        public static UItem asPlugin(Plugin plugin, PluginCellDelegate delegate) {
+            PluginsController controller = PluginsController.getInstance();
+            return of(plugin, controller.isPluginPinned(plugin.id),
+                    controller.isCompactView(), delegate);
+        }
+
+        static UItem of(Plugin plugin, boolean pinned, boolean compact, PluginCellDelegate delegate) {
             UItem item = UItem.ofFactory(Factory.class);
             item.object = new Model(plugin, pinned, compact);
             item.object2 = delegate;
@@ -278,17 +271,17 @@ public class PluginCell extends FrameLayout {
         if (delegate == null || pluginId == null) {
             return;
         }
-        Plugin plugin = PluginsController.getInstance().getPlugin(pluginId);
-        if (plugin == null) {
-            return;
-        }
         switch (action) {
-            case TOGGLE: delegate.onToggle(plugin); break;
-            case SHARE: delegate.onShare(plugin); break;
-            case PIN: delegate.onPin(plugin); break;
-            case SETTINGS: delegate.onSettings(plugin); break;
-            case PERMISSIONS: delegate.onPermissions(plugin); break;
-            case DELETE: delegate.onDelete(plugin); break;
+            case TOGGLE: delegate.togglePlugin(switchView); break;
+            case SHARE: delegate.sharePlugin(); break;
+            case PIN: delegate.pinPlugin(pinButton); break;
+            case SETTINGS: delegate.openPluginSettings(); break;
+            case DELETE: delegate.deletePlugin(); break;
+            case PERMISSIONS:
+                if (delegate instanceof PluginPermissionsDelegate) {
+                    ((PluginPermissionsDelegate) delegate).openPluginPermissions();
+                }
+                break;
         }
     }
 
@@ -335,8 +328,17 @@ public class PluginCell extends FrameLayout {
         }
     }
 
-    public void setDelegate(Delegate delegate) {
+    public void setDelegate(PluginCellDelegate delegate) {
         this.delegate = delegate;
+        permissionsButton.setVisibility(
+                delegate instanceof PluginPermissionsDelegate ? VISIBLE : GONE);
+    }
+
+    public void set(Plugin plugin, PluginCellDelegate delegate) {
+        setDelegate(delegate);
+        PluginsController controller = PluginsController.getInstance();
+        setModel(new Model(plugin, controller.isPluginPinned(plugin.id),
+                controller.isCompactView()));
     }
 
     private void setModel(Model model) {
