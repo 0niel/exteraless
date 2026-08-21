@@ -37,6 +37,7 @@ class Selector:
     text: str
     default: int
     items: List[str]
+    subtext: Optional[str] = None
     icon: Optional[str] = None
     on_change: Optional[Callable] = None
     on_long_click: Optional[Callable] = None

@@ -518,7 +518,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     /** Строка-текст: selector, input, edittext и просто text. */
     private UItem textRow(JSONObject row, int id, String type) {
         final boolean isText = "text".equals(type);
-        final String subtext = isText ? optNonEmpty(row, "subtext") : null;
+        final String subtext = optNonEmpty(row, "subtext");
         final String value = isText ? null : rowValue(row);
         UItem item = UItem.asButton(id, resolveIcon(row), rowTitle(row), value);
         item.red = row.optBoolean("red");
