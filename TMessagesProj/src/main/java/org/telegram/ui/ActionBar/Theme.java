@@ -7178,6 +7178,10 @@ public class Theme {
         return currentTheme.isDark();
     }
 
+    public static boolean isCurrentThemeMonet() {
+        return currentTheme != null && currentTheme.isMonet();
+    }
+
     public static ThemeInfo getActiveTheme() {
         return currentTheme;
     }
