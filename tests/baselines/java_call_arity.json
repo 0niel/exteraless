@@ -1,10 +1,6 @@
 {
   "known": [
     "app.exteraless.plugins.ui.PluginSettingsActivity#<init>(2)",
-    "app.exteraless.plugins.xposed.PyMethodHook#<init>(2)",
-    "app.exteraless.plugins.xposed.PyMethodHook#<init>(3)",
-    "app.exteraless.plugins.xposed.PyMethodReplacement#<init>(2)",
-    "app.exteraless.plugins.xposed.PyMethodReplacement#<init>(3)",
     "com.exteragram.messenger.ExteraConfig#getAvatarCorners(3)",
     "org.telegram.messenger.MessageObject#<init>(3)",
     "org.telegram.messenger.SendMessagesHelper#getInstance(0)",

@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import corpus
+import javaapi
 
 REPO = os.environ.get("EXTERALESS_REPO", corpus.REPO)
 PYTHON_ROOT = os.environ.get("EXTERALESS_PYTHON_ROOT", corpus.PYTHON_ROOT)
@@ -16,6 +17,12 @@ PROGUARD_RULES = os.path.join(REPO, "TMessagesProj", "proguard-rules.pro")
 USAGE = os.path.join(REPO, "TMessagesProj", "build", "outputs", "mapping", "release", "usage.txt")
 
 EXTERA_CONFIG = "com.exteragram.messenger.ExteraConfig"
+
+PLUGIN_ENTRY_POINTS = (
+    ("com.exteragram.messenger.utils.AppUtils", "getGson"),
+    ("com.exteragram.messenger.plugins.PluginsController", "getEngines"),
+    ("com.exteragram.messenger.utils.chats.ChatUtils", "getDCName"),
+)
 
 
 def _load(path, name):
@@ -98,10 +105,46 @@ def test_field_shaped_class_calls_only_field_shaped_names(aliases, fake_config):
 
 
 def test_adapt_leaves_unlisted_classes_alone(aliases, fake_config):
-    other = aliases.adapt("com.exteragram.messenger.plugins.PluginsController", fake_config)
+    other = aliases.adapt("com.exteragram.messenger.plugins.PythonPluginsEngine", fake_config)
 
     assert other is fake_config
     assert aliases.adapt(EXTERA_CONFIG, None) is None
+
+
+def test_adapt_wraps_by_the_name_find_class_really_passes(aliases):
+    for source, fields in aliases._FIELD_SHAPED.items():
+        fake = type("FakeJavaClass", (), {
+            method: staticmethod(lambda: "read as a field")
+            for method in fields.values()})
+        for name in (source, aliases.resolve(source)):
+            wrapped = aliases.adapt(name, fake)
+            assert aliases.unwrap(wrapped) is fake
+            for attr in fields:
+                assert getattr(wrapped, attr) == "read as a field", \
+                    f"adapt({name!r}) left {attr} as a method object"
+
+
+def test_field_shaped_attributes_point_at_a_real_java_method(aliases):
+    assert aliases._FIELD_SHAPED
+    for source, fields in aliases._FIELD_SHAPED.items():
+        target = aliases.resolve(source)
+        jtype = javaapi.type_of(target)
+        assert jtype is not None, f"{source} resolves to a missing class {target}"
+        assert fields
+        for attr, method in fields.items():
+            assert jtype.method_arities(method), \
+                f"{target}.{method}() is gone, so {source}.{attr} reads as nothing"
+            assert 0 in jtype.method_arities(method), \
+                f"{target}.{method}() needs arguments, so it cannot read as a field"
+
+
+def test_alias_targets_declare_what_plugins_call(aliases):
+    for source, member in PLUGIN_ENTRY_POINTS:
+        target = aliases.resolve(source)
+        jtype = javaapi.type_of(target)
+        assert jtype is not None, f"{source} resolves to a missing class {target}"
+        assert jtype.method_arities(member), \
+            f"{source} resolves to {target}, which has no {member}()"
 
 
 def test_resolve_maps_every_exact_name(aliases):
