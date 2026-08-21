@@ -5,9 +5,12 @@ import android.content.SharedPreferences;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
+import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.LaunchActivity;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -892,6 +895,27 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         Map<String, PythonPluginsEngine> engines = new ConcurrentHashMap<>();
         engines.put(PluginsConstants.PYTHON, PythonPluginsEngine.getInstance());
         return engines;
+    }
+
+    public static void openPluginSettings(String pluginId) {
+        openPluginSettings(pluginId, null);
+    }
+
+    public static void openPluginSettings(String pluginId, String targetSetting) {
+        if (pluginId == null || pluginId.isEmpty()) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            Plugin plugin = getInstance().getPlugin(pluginId);
+            if (plugin == null) {
+                return;
+            }
+            BaseFragment fragment = LaunchActivity.getSafeLastFragment();
+            if (fragment == null) {
+                return;
+            }
+            PythonPluginsEngine.getInstance().openPluginSettings(plugin, fragment, targetSetting);
+        });
     }
 
     public void importPluginSettings(String pluginId, String json, boolean reloadSettings) {

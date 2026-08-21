@@ -79,6 +79,8 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
      */
     private Plugin plugin;
 
+    private String targetSetting;
+
     private String subPageJson;
     private String subPageTitle;
     private int[] subPageIndex;
@@ -101,9 +103,20 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
         this.plugin = plugin;
     }
 
+    public PluginSettingsActivity(Plugin plugin, String targetSetting) {
+        this(plugin);
+        this.targetSetting = targetSetting;
+    }
+
     public static PluginSettingsActivity newInstance(String pluginId) {
         PluginSettingsActivity fragment = new PluginSettingsActivity();
         fragment.pluginId = pluginId;
+        return fragment;
+    }
+
+    public static PluginSettingsActivity newInstance(String pluginId, String targetSetting) {
+        PluginSettingsActivity fragment = newInstance(pluginId);
+        fragment.targetSetting = targetSetting;
         return fragment;
     }
 
@@ -285,6 +298,25 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
             FileLog.e("PluginSettingsActivity: fillItems failed for " + pluginId, t);
         }
         appendPermissionsRow(items);
+        if (targetSetting != null) {
+            AndroidUtilities.runOnUIThread(this::scrollToTargetSetting);
+        }
+    }
+
+    private void scrollToTargetSetting() {
+        if (targetSetting == null || listView == null || listView.adapter == null
+                || layoutManager == null) {
+            return;
+        }
+        final int id = targetSetting.hashCode() & 0x7FFFFFFF;
+        for (int i = 0; i < listView.adapter.getItemCount(); i++) {
+            UItem item = listView.adapter.getItem(i);
+            if (item != null && item.id == id) {
+                layoutManager.scrollToPositionWithOffset(i, AndroidUtilities.dp(48));
+                targetSetting = null;
+                return;
+            }
+        }
     }
 
     /**
