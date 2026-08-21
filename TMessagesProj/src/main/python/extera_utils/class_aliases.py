@@ -23,6 +23,8 @@ _EXACT = {
         "com.exteragram.messenger.utils.chats.ChatUtils",
     "com.exteragram.messenger.utils.text.LocaleUtils":
         "com.exteragram.messenger.utils.text.LocaleUtils",
+    "com.exteragram.messenger.utils.AppUtils":
+        "com.exteragram.messenger.utils.AppUtils",
     "com.exteragram.messenger.utils.system.VibratorUtils":
         "com.exteragram.messenger.utils.system.VibratorUtils",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill":
@@ -69,7 +71,14 @@ def resolve(name):
 
 
 _FIELD_SHAPED = {
-    "com.exteragram.messenger.ExteraConfig": ("pluginsSafeMode", "iconPack", "inAppVibration"),
+    "com.exteragram.messenger.ExteraConfig": {
+        "pluginsSafeMode": "pluginsSafeMode",
+        "iconPack": "iconPack",
+        "inAppVibration": "inAppVibration",
+    },
+    "com.exteragram.messenger.plugins.PluginsController": {
+        "engines": "getEngines",
+    },
 }
 
 
@@ -85,14 +94,14 @@ class _FieldShapedClass:
 
     def __init__(self, java_class, fields):
         object.__setattr__(self, "_exteraless_java", java_class)
-        object.__setattr__(self, "_exteraless_fields", frozenset(fields))
+        object.__setattr__(self, "_exteraless_fields", dict(fields))
 
     def __getattr__(self, attr):
         target = object.__getattribute__(self, "_exteraless_java")
-        value = getattr(target, attr)
-        if attr in object.__getattribute__(self, "_exteraless_fields"):
-            return value()
-        return value
+        method = object.__getattribute__(self, "_exteraless_fields").get(attr)
+        if method is not None:
+            return getattr(target, method)()
+        return getattr(target, attr)
 
     def __repr__(self):
         return repr(object.__getattribute__(self, "_exteraless_java"))
@@ -105,11 +114,21 @@ def unwrap(obj):
     return obj
 
 
+def _field_shape(name):
+    fields = _FIELD_SHAPED.get(name)
+    if fields is not None:
+        return fields
+    for source, shaped in _FIELD_SHAPED.items():
+        if resolve(source) == name:
+            return shaped
+    return None
+
+
 def adapt(name, obj):
     """Обёртка над классом, форма которого у нас разошлась с эталоном."""
     if obj is None or isinstance(obj, _FieldShapedClass):
         return obj
-    fields = _FIELD_SHAPED.get(name)
+    fields = _field_shape(name)
     if fields is None:
         return obj
     try:

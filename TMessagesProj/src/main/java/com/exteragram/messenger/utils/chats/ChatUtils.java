@@ -43,6 +43,29 @@ public final class ChatUtils {
         return local;
     }
 
+    public static String getDCName(int dc) {
+        switch (dc) {
+            case 1:
+            case 3:
+                return "Miami FL, USA";
+            case 2:
+            case 4:
+                return "Amsterdam, NL";
+            case 5:
+                return "Singapore, SG";
+            default:
+                return null;
+        }
+    }
+
+    public static long extractOwnerId(long id) {
+        long owner = id >> 32;
+        if (((id >> 16) & 255) == 63) {
+            owner |= 2147483648L;
+        }
+        return ((id >> 24) & 255) != 0 ? owner + 4294967296L : owner;
+    }
+
     /** Путь к скачанному файлу сообщения или null, если файла нет. */
     public String getPathToMessage(MessageObject messageObject) {
         if (messageObject == null) {
