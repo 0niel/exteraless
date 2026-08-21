@@ -25,6 +25,8 @@ _EXACT = {
         "com.exteragram.messenger.utils.text.LocaleUtils",
     "com.exteragram.messenger.utils.AppUtils":
         "com.exteragram.messenger.utils.AppUtils",
+    "com.exteragram.messenger.R":
+        "org.telegram.messenger.R",
     "com.exteragram.messenger.utils.system.VibratorUtils":
         "com.exteragram.messenger.utils.system.VibratorUtils",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill":

@@ -7,6 +7,8 @@
     "app.exteraless.plugins.ui.PluginSettingsActivity#class_",
     "app.exteraless.plugins.ui.PluginsActivity#newInstance",
     "app.exteraless.plugins.ui.components.templates.UniversalFragment#getActionBar",
+    "app.exteraless.plugins.ui.components.templates.UniversalView#setImportantForAccessibility",
+    "app.exteraless.plugins.ui.components.templates.UniversalView#setWillNotDraw",
     "com.exteragram.messenger.ExteraConfig#editor",
     "com.exteragram.messenger.ExteraConfig#pluginsEngine",
     "org.telegram.messenger.AndroidUtilities#TYPEFACE_ROBOTO_REGULAR",
