@@ -67,20 +67,64 @@ class JavaType:
         return f"<JavaType {self.fqcn} {self.kind}>"
 
 
-def _blank_out(text, pattern):
-    def repl(match):
-        chunk = match.group(0)
-        return "".join(ch if ch == "\n" else " " for ch in chunk)
-    return pattern.sub(repl, text)
+def _blank_run(length, source):
+    return "".join("\n" if ch == "\n" else " " for ch in source[:length])
 
 
 def strip_noise(text):
-    text = _blank_out(text, _BLOCK_COMMENT)
-    text = _blank_out(text, _LINE_COMMENT)
-    text = _blank_out(text, _STRING)
-    text = _blank_out(text, _CHAR)
-    text = _blank_out(text, _ANNOTATION)
-    return text
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if ch == "/" and nxt == "/":
+            j = text.find("\n", i)
+            j = n if j == -1 else j
+            out.append(_blank_run(j - i, text[i:j]))
+            i = j
+            continue
+        if ch == "/" and nxt == "*":
+            j = text.find("*/", i + 2)
+            j = n if j == -1 else j + 2
+            out.append(_blank_run(j - i, text[i:j]))
+            i = j
+            continue
+        if ch == '"':
+            j = i + 1
+            while j < n:
+                if text[j] == "\\":
+                    j += 2
+                    continue
+                if text[j] == '"' or text[j] == "\n":
+                    j += 1
+                    break
+                j += 1
+            out.append(_blank_run(j - i, text[i:j]))
+            i = j
+            continue
+        if ch == "'":
+            j = i + 1
+            while j < n:
+                if text[j] == "\\":
+                    j += 2
+                    continue
+                if text[j] == "'" or text[j] == "\n":
+                    j += 1
+                    break
+                j += 1
+            out.append(_blank_run(j - i, text[i:j]))
+            i = j
+            continue
+        if ch == "@":
+            m = _ANNOTATION.match(text, i)
+            if m:
+                out.append(_blank_run(m.end() - i, text[i:m.end()]))
+                i = m.end()
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 def split_params(raw):
@@ -127,6 +171,7 @@ def _hierarchy(rest):
 
 
 _BRACE = re.compile(r"[{}]")
+_SPACES = re.compile(r"[ \t]{2,}")
 
 
 def parse_file(path, package_of):
@@ -197,6 +242,7 @@ def _declared_type(head, package, stack, path):
 def _absorb(owner, body, cut=False):
     if owner is None or not body.strip():
         return
+    body = _SPACES.sub(" ", body)
     if cut:
         matches = list(_TYPE_DECL.finditer(body))
         if matches:
