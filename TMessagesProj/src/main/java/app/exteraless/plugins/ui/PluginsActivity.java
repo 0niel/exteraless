@@ -411,9 +411,10 @@ public class PluginsActivity extends BaseFragment {
         if (activity == null) {
             return;
         }
-        StringBuilder message = new StringBuilder();
+        SpannableStringBuilder message = new SpannableStringBuilder();
         if (!TextUtils.isEmpty(plugin.description)) {
-            message.append(plugin.description).append("\n\n");
+            message.append(com.exteragram.messenger.utils.text.LocaleUtils
+                    .fullyFormatText(plugin.description)).append("\n\n");
         }
         message.append(plugin.getSubtitle());
         if (plugin.requirements != null && !plugin.requirements.isEmpty()) {
@@ -425,7 +426,7 @@ public class PluginsActivity extends BaseFragment {
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(activity)
                 .setTitle(plugin.getDisplayName())
-                .setMessage(message.toString())
+                .setMessage(message)
                 .setPositiveButton(getString(R.string.OK), null);
         // Разбираться с падением будет автор плагина в другом чате — отдаём
         // ему traceback целиком, а на экране оставляем короткую строку.

@@ -19,6 +19,7 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.Switch;
 import org.telegram.ui.Components.UItem;
@@ -27,6 +28,8 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginsController;
+import com.exteragram.messenger.utils.text.LocaleUtils;
+
 import app.exteraless.plugins.ui.PluginIcons;
 
 /**
@@ -49,7 +52,7 @@ public class PluginCell extends FrameLayout {
     private final LinearLayout textsLayout;
     private final TextView nameView;
     private final TextView subtitleView;
-    private final TextView descriptionView;
+    private final LinkSpanDrawable.LinksTextView descriptionView;
     private final View divider;
     private final ImageView shareButton;
     private final ImageView pinButton;
@@ -207,7 +210,7 @@ public class PluginCell extends FrameLayout {
         textsLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                 LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
-        descriptionView = new TextView(context);
+        descriptionView = new LinkSpanDrawable.LinksTextView(context);
         descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         descriptionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         root.addView(descriptionView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
@@ -372,7 +375,7 @@ public class PluginCell extends FrameLayout {
             descriptionView.setTypeface(AndroidUtilities.getTypeface("fonts/rmono.ttf"));
             descriptionView.setVisibility(VISIBLE);
         } else if (!TextUtils.isEmpty(model.description)) {
-            descriptionView.setText(model.description);
+            descriptionView.setText(LocaleUtils.fullyFormatText(model.description));
             descriptionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
             descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
             descriptionView.setTypeface(android.graphics.Typeface.DEFAULT);
