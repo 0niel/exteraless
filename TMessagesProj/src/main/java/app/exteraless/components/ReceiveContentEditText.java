@@ -7,6 +7,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.os.Build;
+import android.util.AttributeSet;
 import android.text.Editable;
 import android.text.Selection;
 import android.view.DragEvent;
@@ -36,6 +37,11 @@ public abstract class ReceiveContentEditText extends EditText implements OnRecei
 
     public ReceiveContentEditText(Context context) {
         super(context);
+        defaultOnReceiveContentListener = new TextViewOnReceiveContentListener();
+    }
+
+    public ReceiveContentEditText(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
         defaultOnReceiveContentListener = new TextViewOnReceiveContentListener();
     }
 
