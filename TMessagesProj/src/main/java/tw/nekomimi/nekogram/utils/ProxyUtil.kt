@@ -53,6 +53,9 @@ object ProxyUtil {
 
     private var networkCallbackRegistered = false
 
+    @Volatile
+    private var proxyAutoDisabled = false
+
     /**
      * Подходит ли текущая сеть под условия автоотключения прокси.
      *
@@ -70,6 +73,23 @@ object ProxyUtil {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
+    private fun applyProxyDisableConditions(disable: Boolean) {
+        if (disable) {
+            if (!SharedConfig.isProxyEnabled() || SharedConfig.currentProxy == null) return
+            proxyAutoDisabled = true
+            SharedConfig.setProxyEnable(false)
+        } else {
+            if (!proxyAutoDisabled) return
+            proxyAutoDisabled = false
+            if (SharedConfig.isProxyEnabled() || SharedConfig.currentProxy == null) return
+            SharedConfig.setProxyEnable(true)
+        }
+        AndroidUtilities.runOnUIThread {
+            NotificationCenter.getGlobalInstance()
+                .postNotificationName(NotificationCenter.proxySettingsChanged)
+        }
+    }
+
     @JvmStatic
     fun registerNetworkCallback() {
         if (networkCallbackRegistered) return
@@ -81,23 +101,7 @@ object ProxyUtil {
                 override fun onAvailable(network: Network) {
                     val networkCapabilities =
                         connectivityManager.getNetworkCapabilities(network) ?: return
-                    val disable = shouldDisableProxyOn(networkCapabilities)
-                    if (!disable) {
-                        if (SharedConfig.currentProxy == null) {
-                            if (!SharedConfig.proxyList.isEmpty()) {
-                                SharedConfig.setCurrentProxy(SharedConfig.proxyList[0])
-                            } else {
-                                return
-                            }
-                        }
-                    }
-                    if ((SharedConfig.isProxyEnabled() && disable) || (!SharedConfig.isProxyEnabled() && !disable)) {
-                        SharedConfig.setProxyEnable(!disable)
-                        AndroidUtilities.runOnUIThread {
-                            NotificationCenter.getGlobalInstance()
-                                .postNotificationName(NotificationCenter.proxySettingsChanged)
-                        }
-                    }
+                    applyProxyDisableConditions(shouldDisableProxyOn(networkCapabilities))
                 }
             }
 
