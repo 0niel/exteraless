@@ -87,7 +87,7 @@ public class PluginCell extends FrameLayout {
             description = plugin.description;
             loadError = plugin.loadError;
             icon = plugin.icon;
-            enabled = plugin.enabled;
+            enabled = plugin.enabled && plugin.loadError == null;
             hasSettings = plugin.hasSettings;
             this.pinned = pinned;
             this.compact = compact;
