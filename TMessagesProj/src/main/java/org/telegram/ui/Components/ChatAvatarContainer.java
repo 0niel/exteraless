@@ -972,6 +972,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
 
     public void showTimeItem(boolean animated) {
+        if (avatarImageView.getVisibility() != VISIBLE) {
+            return;
+        }
         animatorTimeVisible.setValue(true, animated);
     }
 
