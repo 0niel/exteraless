@@ -223,15 +223,19 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         }
     }
 
-    public synchronized List<Plugin> getPlugins() {
+    public synchronized List<Plugin> getPluginsSnapshot() {
         return new ArrayList<>(plugins.values());
     }
 
     /**
-     * Живая карта id → плагин. Имя и тип совпадают с полем {@code plugins}
-     * внешнего контроллера: опубликованные плагины ходят в неё через шим
-     * {@code com.exteragram.messenger.plugins.PluginsController.plugins}.
+     * Живая карта id → плагин, как {@code getPlugins()} эталона: dex-модули берут
+     * её рефлексией и зовут у результата {@code values()}.
      */
+    @Override
+    public Map<String, Plugin> getPlugins() {
+        return plugins;
+    }
+
     public Map<String, Plugin> getPluginsMap() {
         return plugins;
     }
@@ -493,7 +497,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
             FileLog.d("PluginsController: safe mode, no plugins loaded");
             return;
         }
-        List<Plugin> snapshot = getPlugins();
+        List<Plugin> snapshot = getPluginsSnapshot();
         for (Plugin p : snapshot) {
             if (p.enabled && p.loadError == null) {
                 loadPluginInternal(p);
@@ -557,7 +561,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
     }
 
     private void unloadAll() {
-        List<Plugin> snapshot = getPlugins();
+        List<Plugin> snapshot = getPluginsSnapshot();
         for (Plugin p : snapshot) {
             if (p.loaded) {
                 unregisterPluginHooks(p.id);
@@ -1150,7 +1154,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         if (!PythonPluginsEngine.getInstance().isStarted()) {
             return;
         }
-        List<Plugin> snapshot = getPlugins();
+        List<Plugin> snapshot = getPluginsSnapshot();
         for (Plugin p : snapshot) {
             if (p.loaded) {
                 PythonPluginsEngine.getInstance().callAppEvent(p.id, event);

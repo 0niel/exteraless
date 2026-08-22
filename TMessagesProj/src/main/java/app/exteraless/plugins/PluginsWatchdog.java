@@ -509,7 +509,7 @@ public class PluginsWatchdog {
             return;
         }
         String name = pluginId;
-        for (Plugin plugin : PluginsController.getInstance().getPlugins()) {
+        for (Plugin plugin : PluginsController.getInstance().getPluginsSnapshot()) {
             if (pluginId.equals(plugin.id)) {
                 name = plugin.getDisplayName();
                 break;

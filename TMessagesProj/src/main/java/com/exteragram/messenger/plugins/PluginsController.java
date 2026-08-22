@@ -3,8 +3,10 @@ package com.exteragram.messenger.plugins;
 /**
  * Основание контроллера плагинов под именем exteraGram.
  *
- * dex-модули зовут `Class.forName(...).getMethod("getInstance")` и следом
- * `loadPluginSettings(String)`, поэтому оба метода объявлены здесь.
+ * dex-модули берут именно этот класс (`PluginsController.class`) и перебирают его
+ * `getDeclaredMethods()`, поэтому всё, что они зовут, обязано быть объявлено здесь,
+ * а не только у наследника: унаследованные и объявленные ниже по иерархии методы
+ * такой перебор не видит.
  */
 public abstract class PluginsController {
 
@@ -13,4 +15,6 @@ public abstract class PluginsController {
     }
 
     public abstract void loadPluginSettings(String pluginId);
+
+    public abstract java.util.Map<String, ? extends Plugin> getPlugins();
 }

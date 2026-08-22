@@ -10,4 +10,10 @@ package com.exteragram.messenger.plugins;
 public abstract class Plugin {
 
     public abstract String getId();
+
+    public abstract String getName();
+
+    public abstract String getAuthor();
+
+    public abstract String getVersion();
 }
