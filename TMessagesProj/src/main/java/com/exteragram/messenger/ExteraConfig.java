@@ -84,12 +84,13 @@ public final class ExteraConfig {
         return new SafeModeEditor();
     }
 
-    /**
-     * Вибро-отклик внутри приложения. В этом форке отдельного тумблера нет,
-     * поэтому отклик считается разрешённым — плагин сам решает, вибрировать ли.
-     */
+    /** Вибро-отклик внутри приложения; в этом форке за него отвечает NekoConfig.disableVibration. */
     public static boolean inAppVibration() {
-        return true;
+        return !tw.nekomimi.nekogram.NekoConfig.disableVibration.Bool();
+    }
+
+    public static boolean getInAppVibration() {
+        return inAppVibration();
     }
 
     private static final class SafeModeEditor implements SharedPreferences.Editor {

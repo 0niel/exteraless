@@ -3,6 +3,7 @@ package com.exteragram.messenger.utils.chats;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 
 import tw.nekomimi.nekogram.helpers.MessageHelper;
@@ -21,7 +22,7 @@ import tw.nekomimi.nekogram.helpers.MessageHelper;
  */
 public final class ChatUtils {
 
-    private static volatile ChatUtils instance;
+    private static final ChatUtils[] instances = new ChatUtils[UserConfig.MAX_ACCOUNT_COUNT];
 
     private final int currentAccount;
 
@@ -30,13 +31,20 @@ public final class ChatUtils {
     }
 
     public static ChatUtils getInstance() {
-        ChatUtils local = instance;
-        if (local == null || local.currentAccount != UserConfig.selectedAccount) {
+        return getInstance(UserConfig.selectedAccount);
+    }
+
+    public static ChatUtils getInstance(int account) {
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) {
+            account = UserConfig.selectedAccount;
+        }
+        ChatUtils local = instances[account];
+        if (local == null) {
             synchronized (ChatUtils.class) {
-                local = instance;
-                if (local == null || local.currentAccount != UserConfig.selectedAccount) {
-                    local = new ChatUtils(UserConfig.selectedAccount);
-                    instance = local;
+                local = instances[account];
+                if (local == null) {
+                    local = new ChatUtils(account);
+                    instances[account] = local;
                 }
             }
         }
@@ -76,10 +84,15 @@ public final class ChatUtils {
 
     /** Текст сообщения без разметки; пустая строка вместо null — как ждут плагины. */
     public CharSequence getMessageText(MessageObject messageObject) {
+        return getMessageText(messageObject, null);
+    }
+
+    public CharSequence getMessageText(MessageObject messageObject,
+                                       MessageObject.GroupedMessages group) {
         if (messageObject == null) {
             return "";
         }
-        String text = MessageHelper.getMessagePlainText(messageObject, null);
+        String text = MessageHelper.getMessagePlainText(messageObject, group);
         return text == null ? "" : text;
     }
 
@@ -93,8 +106,35 @@ public final class ChatUtils {
         if (username == null || username.isEmpty()) {
             return null;
         }
-        String name = username.startsWith("@") ? username.substring(1) : username;
-        Object cached = MessagesController.getInstance(currentAccount).getUserOrChat(name);
+        Object cached = MessagesController.getInstance(currentAccount)
+                .getUserOrChat(stripAt(username));
         return cached instanceof TLRPC.Chat ? (TLRPC.Chat) cached : null;
+    }
+
+    public void resolveChannel(String username, Utilities.Callback<TLRPC.Chat> callback) {
+        if (callback == null) {
+            return;
+        }
+        TLRPC.Chat cached = resolveChannel(username);
+        if (cached != null) {
+            callback.run(cached);
+            return;
+        }
+        if (username == null || username.isEmpty()) {
+            callback.run(null);
+            return;
+        }
+        MessagesController controller = MessagesController.getInstance(currentAccount);
+        controller.getUserNameResolver().resolve(stripAt(username), peerId -> {
+            if (peerId == null || peerId >= 0) {
+                callback.run(null);
+                return;
+            }
+            callback.run(controller.getChat(Long.valueOf(-peerId)));
+        });
+    }
+
+    private static String stripAt(String username) {
+        return username.startsWith("@") ? username.substring(1) : username;
     }
 }
