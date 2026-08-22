@@ -22,7 +22,7 @@ exteraGram реализованы с открытым исходным кодо�
 видно на экране установки, и получает он только заявленное.
 
 Проект **в бете**: часть возможностей exteraGram ещё не перенесена. Если заметили, что
-каких-то функций не хватает, — откройте issue или напишите в [канал](https://t.me/exteraless).
+каких-то функций не хватает, — откройте issue или напишите в [канал](https://t.me/exteraless?direct).
 
 * Имя пакета: `com.exteraless.app`
 * Что перенесено: экраны настроек, оформление и параметры чатов, иконпаки, полоса
@@ -130,7 +130,7 @@ any way; here it comes with a permission model and isolation: a plugin declares 
 needs, you see that on the install sheet, and it gets only what was declared.
 
 The project is **in beta**: some exteraGram features have not been ported yet. If you
-notice a missing feature, open an issue or write to the [channel](https://t.me/exteraless).
+notice a missing feature, open an issue or write to the [channel](https://t.me/exteraless?direct).
 
 * Package name: `com.exteraless.app`
 
