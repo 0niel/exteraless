@@ -173,9 +173,7 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
     }, null));
     private final AbstractConfigCell notificationIconRow = cellGroup.appendCell(new ConfigCellSelectBox(null, NaConfig.INSTANCE.getNotificationIcon(), new String[]{
             getString(R.string.MapPreviewProviderTelegram),
-            getString(R.string.NagramX),
-            getString(R.string.Nagram),
-            getString(R.string.NekoX)
+            getString(R.string.OpenExtera)
     }, null));
     private final AbstractConfigCell dividerAppearance = cellGroup.appendCell(new ConfigCellDivider());
 
