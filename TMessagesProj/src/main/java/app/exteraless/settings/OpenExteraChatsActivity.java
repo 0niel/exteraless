@@ -1187,7 +1187,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
         if (position == hideSendAsPeerRow) return NekoConfig.hideSendAsChannel;
         if (position == removeMessageTailRow) return ChatsConfig.removeMessageTail;
-        if (position == replaceEditedRow) return ChatsConfig.replaceEditedWithIcon;
+        if (position == replaceEditedRow) return NaConfig.INSTANCE.getUseEditedIcon();
         if (position == showOnlineStatusRow) return NaConfig.INSTANCE.getShowOnlineStatus();
         if (position == hideShareButtonRow) return NaConfig.INSTANCE.getHideShareButtonInChannel();
         if (position == showResultsBeforeVotingRow) return ChatsConfig.showResultsBeforeVoting;
@@ -1664,7 +1664,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == replaceEditedRow) {
                 // В подпись подставляется локализованное «edited».
                 cell.setTextAndCheck(LocaleController.formatString(R.string.OEChatsReplaceEditedWithIcon,
-                        getString(R.string.EditedMessage)), ChatsConfig.replaceEditedWithIcon.Bool(), true);
+                        getString(R.string.EditedMessage)), NaConfig.INSTANCE.getUseEditedIcon().Bool(), true);
             } else if (position == showOnlineStatusRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsShowOnlineStatus), NaConfig.INSTANCE.getShowOnlineStatus().Bool(), true);
             } else if (position == hideShareButtonRow) {

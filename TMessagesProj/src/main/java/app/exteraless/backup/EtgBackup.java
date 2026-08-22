@@ -352,7 +352,7 @@ public final class EtgBackup {
         bool(list, "addCommaAfterMention", OpenExteraConfig.addCommaAfterMention);
         bool(list, "hideSendAsPeer", NekoConfig.hideSendAsChannel);
         bool(list, "removeMessageTail", ChatsConfig.removeMessageTail);
-        bool(list, "replaceEditedWithIcon", ChatsConfig.replaceEditedWithIcon);
+        bool(list, "replaceEditedWithIcon", NaConfig.INSTANCE.getUseEditedIcon());
         bool(list, "showOnlineStatus", NaConfig.INSTANCE.getShowOnlineStatus());
         bool(list, "hideShareButton", NaConfig.INSTANCE.getHideShareButtonInChannel());
         bool(list, "showResultsBeforeVoting", ChatsConfig.showResultsBeforeVoting);
