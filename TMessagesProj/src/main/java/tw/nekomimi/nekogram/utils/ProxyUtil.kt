@@ -40,6 +40,7 @@ import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.FileLog
 import org.telegram.messenger.LocaleController.getString
+import org.telegram.messenger.MessagesController
 import org.telegram.messenger.NotificationCenter
 import org.telegram.messenger.R
 import org.telegram.messenger.SharedConfig
@@ -53,8 +54,13 @@ object ProxyUtil {
 
     private var networkCallbackRegistered = false
 
-    @Volatile
-    private var proxyAutoDisabled = false
+    private const val PROXY_AUTO_DISABLED_KEY = "oe_proxy_auto_disabled"
+
+    private var proxyAutoDisabled: Boolean
+        get() = MessagesController.getGlobalMainSettings()
+            .getBoolean(PROXY_AUTO_DISABLED_KEY, false)
+        set(value) = MessagesController.getGlobalMainSettings().edit()
+            .putBoolean(PROXY_AUTO_DISABLED_KEY, value).apply()
 
     /**
      * Подходит ли текущая сеть под условия автоотключения прокси.
