@@ -180,12 +180,12 @@ public class ReplyMessageLine {
 
         reversedOut = false;
         if (oeReplyColors()) {
-            color1 = p.colors.get(0) | 0xFF000000;
+            color1 = colors.get(0) | 0xFF000000;
             if (hasColor2 = colors.size() >= 2) {
-                color2 = p.colors.get(1) | 0xFF000000;
+                color2 = colors.get(1) | 0xFF000000;
             }
             if (hasColor3 = colors.size() >= 3) {
-                color3 = p.colors.get(2) | 0xFF000000;
+                color3 = colors.get(2) | 0xFF000000;
             }
             nameColor = accent_color | 0xFF000000;
         } else {
