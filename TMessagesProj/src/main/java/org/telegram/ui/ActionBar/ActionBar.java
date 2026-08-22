@@ -233,12 +233,12 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         glassDrawable = factory.create(this)
             .setColorProvider(colorProvider)
             .setPadding(dp(6));
-        if (app.exteraless.appearance.ChatHeaderUiHelper.isMaterial3ChatHeaderStyle()) {
-            glassDrawableLeftRadius = Math.min(dp(23),
-                app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarRadius(app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarSizeDp(), isForum, false) + dp(3.33f));
-        } else {
-            glassDrawableLeftRadius = isForum ? dp(18.33f) : dp(23);
-        }
+        final int glassAvatarSizeDp = app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarSizeDp();
+        final float glassAvatarGap = app.exteraless.appearance.ChatHeaderUiHelper.isMaterial3ChatHeaderStyle()
+            ? dp(3.33f)
+            : (dp(46) - app.exteraless.appearance.ChatHeaderUiHelper.getAvatarSizePx(glassAvatarSizeDp)) / 2f;
+        glassDrawableLeftRadius = Math.min(dp(23),
+            app.exteraless.appearance.ChatHeaderUiHelper.getChatAvatarRadius(glassAvatarSizeDp, isForum, false) + glassAvatarGap);
         glassDrawable.setRadius(glassDrawableLeftRadius, dp(23), dp(23), glassDrawableLeftRadius);
 
 
@@ -2304,13 +2304,13 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             final int widthDefault = rightDefault - leftDefault;
             final int left, right;
             if (chatAvatarContainer != null) {
-                final int width = lerp(Math.min(widthDefault, (int) animatorAvatarContainerWidth.getFactor() + p * 2), widthDefault, Math.max(searchFactor, actionModeFactor));
+                final int width = lerp(Math.min(widthDefault, (int) animatorAvatarContainerWidth.getFactor() + p * 2 + dp(6)), widthDefault, Math.max(searchFactor, actionModeFactor));
                 left = (rightDefault + leftDefault - width) / 2;
                 right = left + width;
                 chatAvatarContainer.setTranslationX(left
                     - ((MarginLayoutParams)(chatAvatarContainer.getLayoutParams())).leftMargin
                     - chatAvatarContainer.getLeftPadding()
-                    + p + dp(3));
+                    + p + dp(6));
             } else {
                 left = leftDefault;
                 right = rightDefault;

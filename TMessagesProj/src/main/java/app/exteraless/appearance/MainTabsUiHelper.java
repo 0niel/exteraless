@@ -88,9 +88,14 @@ public final class MainTabsUiHelper {
      * Левый и правый инсеты несёт обёртка, поэтому переданы отдельно.
      */
     public static void applyTabsBottomInset(MainTabsLayout layout, View wrapper, int bottomInset, int leftInset, int rightInset) {
+        applyTabsBottomInset(layout, bottomInset);
+        wrapper.setPadding(leftInset, 0, rightInset, isMaterial3NavigationBar() ? 0 : bottomInset);
+    }
+
+    public static void applyTabsBottomInset(MainTabsLayout layout, int bottomInset) {
         final int height = getTabsViewHeight(bottomInset);
         final ViewGroup.LayoutParams lp = layout.getLayoutParams();
-        if (lp instanceof ViewGroup.MarginLayoutParams && lp.height != height) {
+        if (lp != null && lp.height != height) {
             lp.height = height;
             layout.setLayoutParams(lp);
         }
@@ -98,7 +103,6 @@ public final class MainTabsUiHelper {
         if (layout.getPaddingBottom() != paddingBottom) {
             layout.setPadding(layout.getPaddingLeft(), layout.getPaddingTop(), layout.getPaddingRight(), paddingBottom);
         }
-        wrapper.setPadding(leftInset, 0, rightInset, isMaterial3NavigationBar() ? 0 : bottomInset);
     }
 
     /** В M3 обводки у панели нет; значения не-M3 ветки — те же, что в mainTabs. */
