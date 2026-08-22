@@ -4,7 +4,7 @@ import android.content.SharedPreferences;
 
 import org.telegram.messenger.AndroidUtilities;
 
-import tw.nekomimi.nekogram.config.NaConfig;
+import xyz.nextalone.nagram.NaConfig;
 
 import app.exteraless.appearance.AppearanceConfig;
 import app.exteraless.icons.BaseIconPacks;
