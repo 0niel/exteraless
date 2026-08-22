@@ -6,6 +6,8 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 
+import java.util.concurrent.atomic.AtomicReferenceArray;
+
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 
 /**
@@ -22,7 +24,8 @@ import tw.nekomimi.nekogram.helpers.MessageHelper;
  */
 public final class ChatUtils {
 
-    private static final ChatUtils[] instances = new ChatUtils[UserConfig.MAX_ACCOUNT_COUNT];
+    private static final AtomicReferenceArray<ChatUtils> instances =
+            new AtomicReferenceArray<>(UserConfig.MAX_ACCOUNT_COUNT);
 
     private final int currentAccount;
 
@@ -38,14 +41,11 @@ public final class ChatUtils {
         if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) {
             account = UserConfig.selectedAccount;
         }
-        ChatUtils local = instances[account];
+        ChatUtils local = instances.get(account);
         if (local == null) {
-            synchronized (ChatUtils.class) {
-                local = instances[account];
-                if (local == null) {
-                    local = new ChatUtils(account);
-                    instances[account] = local;
-                }
+            local = new ChatUtils(account);
+            if (!instances.compareAndSet(account, null, local)) {
+                local = instances.get(account);
             }
         }
         return local;
