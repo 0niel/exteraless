@@ -382,7 +382,6 @@ public class NotificationCenter {
 
     // custom
     public static final int updateLoginToken = totalEvents++;
-    public static final int accountLogin = totalEvents++;
 
     // exteraless plugins
     /** Плагин завис или отвис: слушатели перерисовывают его строку. */

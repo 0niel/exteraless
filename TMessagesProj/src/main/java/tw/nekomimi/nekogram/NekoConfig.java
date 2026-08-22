@@ -92,6 +92,7 @@ public class NekoConfig {
     // Маппинг ассетов на системные семейства у TypefaceHelper.createTypeface практически
     // совпадает с их FontUtils.getSystemTypeface, расходился только дефолт.
     public static ConfigItem typeface = addConfig("TypefaceUseDefault", configTypeBool, true);
+    public static ConfigItem forceFontWeightFallback = addConfig("forceFontWeightFallback", configTypeBool, false);
     public static ConfigItem nameOrder = addConfig("NameOrder", configTypeInt, 1);
     public static ConfigItem mapPreviewProvider = addConfig("MapPreviewProvider", configTypeInt, 0);
     public static ConfigItem showAddToSavedMessages = addConfig("showAddToSavedMessages", configTypeBool, true);
