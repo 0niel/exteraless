@@ -667,9 +667,17 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     private static String rowValue(JSONObject item) {
         if ("selector".equals(item.optString("type"))) {
             JSONArray options = item.optJSONArray("items");
+            if (options == null || options.length() == 0) {
+                return "";
+            }
             int selected = item.optInt("value");
-            return options != null && selected >= 0 && selected < options.length()
-                    ? options.optString(selected) : "";
+            if (selected < 0 || selected >= options.length()) {
+                selected = item.optInt("default", 0);
+            }
+            if (selected < 0 || selected >= options.length()) {
+                selected = 0;
+            }
+            return options.optString(selected);
         }
         return item.optString("value");
     }

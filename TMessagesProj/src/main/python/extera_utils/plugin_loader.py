@@ -1658,6 +1658,7 @@ def _serialize_setting_item(item, record: PluginRecord, scope: str = "",
             "text": item.text,
             "items": [str(entry) for entry in item.items],
             "value": instance.get_setting(item.key, item.default),
+            "default": item.default,
         }
         _put(data, "subtext", item.subtext)
         _put(data, "icon", item.icon)
