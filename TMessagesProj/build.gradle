@@ -5,12 +5,26 @@ plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
     id 'com.google.firebase.crashlytics'
+    id 'org.telegram.lottie-meta'
+    id 'idea'
+}
+
+idea {
+    module {
+        excludeDirs += [
+            file('jni/third_party'),
+            file('jni/ffmpeg'),
+            file('jni/tlottie'),
+            file('jni/boringssl'),
+            file('jni/sqlite')
+        ]
+    }
 }
 
 def buildTimestamp = System.getenv('BUILD_TIMESTAMP') ?: '0'
 def commitId = System.getenv('COMMIT_ID')
 def verName = "${APP_VERSION_NAME}${commitId?.take(7) ? "-${commitId.take(7)}" : ''}"
-def verCode = 1260
+def verCode = 1261
 
 def officialVer = APP_VERSION_NAME
 def officialCode = APP_VERSION_CODE
@@ -55,6 +69,13 @@ if (nativeTarget == 'SKIP') {
 
 android {
     defaultConfig.applicationId = APP_PACKAGE
+
+    androidResources {
+        localeFilters += [
+                'en', 'ar', 'de', 'es', 'es-rES', 'fa-rIR', 'in-rID', 'it', 'it-rIT', 'ja-rJP',
+                'ko', 'nl', 'pl-rPL', 'pt-rBR', 'ru-rRU', 'tr-rTR', 'uk-rUA', 'vi-rVN', 'zh-rCN', 'zh-rTW'
+        ]
+    }
 
     packaging {
         jniLibs {
@@ -206,6 +227,7 @@ dependencies {
     implementation 'androidx.exifinterface:exifinterface:1.4.2'
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     implementation 'androidx.mediarouter:mediarouter:1.8.1'
+    implementation 'com.google.zxing:core:3.5.4'
     implementation 'androidx.sharetarget:sharetarget:1.2.0'
     implementation 'androidx.interpolator:interpolator:1.0.0'
     implementation 'androidx.biometric:biometric:1.1.0'
