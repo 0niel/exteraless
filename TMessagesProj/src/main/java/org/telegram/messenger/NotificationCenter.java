@@ -391,6 +391,10 @@ public class NotificationCenter {
     /** Состав плагинов изменился; имя из exteraGram — на него ссылаются dex-модули. */
     public static final int pluginsUpdated = totalEvents++;
 
+    public static final int pluginSettingsRegistered = totalEvents++;
+
+    public static final int pluginSettingsUnregistered = totalEvents++;
+
     public static final int feedNeedReload = totalEvents++;
     public static final int feedTabVisibleToggled = totalEvents++;
 

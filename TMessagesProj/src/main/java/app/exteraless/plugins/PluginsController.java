@@ -9,6 +9,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.LaunchActivity;
 
@@ -547,6 +548,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
                 p.loadError = null;
                 p.loadDebug = null;
                 p.hasSettings = root.optBoolean("has_settings", false);
+                notifyPluginSettings(p.id, p.hasSettings);
                 return true;
             }
             p.loaded = false;
@@ -836,6 +838,15 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
     }
 
     /** Есть ли у плагина сохранённые настройки (кнопка сброса показывается только тогда). */
+    private static void notifyPluginSettings(String pluginId, boolean hasSettings) {
+        if (pluginId == null || pluginId.isEmpty()) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance().postNotificationName(
+                hasSettings ? NotificationCenter.pluginSettingsRegistered
+                        : NotificationCenter.pluginSettingsUnregistered, pluginId));
+    }
+
     public boolean hasPluginSettingsPreferences(String pluginId) {
         return appContext != null && pluginId != null && !pluginPrefs(pluginId).getAll().isEmpty();
     }
