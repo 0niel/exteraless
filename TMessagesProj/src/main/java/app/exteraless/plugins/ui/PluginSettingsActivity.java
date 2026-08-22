@@ -82,6 +82,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     private String targetSetting;
 
     private String subPageJson;
+    private Object createSubFragmentCallback;
     private String subPageTitle;
     private int[] subPageIndex;
     private String[] subPageOwners;
@@ -125,6 +126,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
         PluginSettingsActivity fragment = new PluginSettingsActivity();
         fragment.pluginId = pluginId;
         fragment.subPageJson = json;
+        fragment.createSubFragmentCallback = json;
         fragment.subPageTitle = title;
         fragment.subPageIndex = index;
         fragment.subPageOwners = owners;
