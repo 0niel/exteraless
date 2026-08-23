@@ -9,11 +9,15 @@ CAPTION_LIMIT = 1024
 
 
 def caption() -> str:
-    subject = (os.environ.get("COMMIT_MESSAGE") or "").strip().splitlines()
-    subject = subject[0] if subject else "без описания"
+    lines = (os.environ.get("COMMIT_MESSAGE") or "").strip().splitlines()
+    subject = lines[0] if lines else "без описания"
+    body = "\n".join(lines[1:]).strip()
     sha = (os.environ.get("COMMIT_SHA") or "")[:9]
-    text = f"**{subject}**\n\n`{sha}`\n{os.environ.get('RUN_URL', '')}"
-    return text[:CAPTION_LIMIT]
+    parts = [f"**{subject}**"]
+    if body:
+        parts.append(body)
+    parts.append(f"`{sha}`\n{os.environ.get('RUN_URL', '')}")
+    return "\n\n".join(parts)[:CAPTION_LIMIT]
 
 
 def chat() -> "int | str":
