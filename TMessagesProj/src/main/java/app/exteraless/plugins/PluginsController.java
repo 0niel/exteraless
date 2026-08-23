@@ -421,7 +421,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         }
     }
 
-    /** Проверка __app_version__/__sdk_version__ (операторы >=, <=, ==, >, <). */
+    /** Проверка __app_version__/__sdk_version__ (операторы >=, <=, ==, >, <; без оператора — >=). */
     private String checkVersionConstraints(Plugin p) {
         if (p.appVersion != null && !checkVersionConstraint(p.appVersion, BuildVars.BUILD_VERSION_STRING)) {
             return "requires app " + p.appVersion;
@@ -436,7 +436,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         if (constraint == null || constraint.isEmpty()) {
             return true;
         }
-        String op = "==";
+        String op = ">=";
         String version = constraint.trim();
         // Ограничение без единой цифры — это не версия: пустая строка, "null",
         // мусор из метаданных. Считать такое невыполненным нельзя, иначе плагин
