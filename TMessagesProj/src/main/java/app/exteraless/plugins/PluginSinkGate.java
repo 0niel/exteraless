@@ -54,9 +54,16 @@ public final class PluginSinkGate {
      */
     private static final ThreadLocal<Boolean> INSIDE = new ThreadLocal<>();
 
-    /** Классы, недоступные плагину ни при каких разрешениях. */
+    /**
+     * Классы, недоступные плагину ни при каких разрешениях.
+     *
+     * {@code java.lang.Runtime} здесь не место: класс нужен и ради
+     * {@code exit}, {@code gc}, {@code availableProcessors}, а запрет на
+     * резолв ронял плагин на строке импорта, до всякого разрешения. Опасное в
+     * нём закрыто по методам: {@code exec} — hookDeny, {@code load0} и
+     * {@code loadLibrary0} — hookNativeLoad.
+     */
     private static final String[] DENIED_CLASSES = {
-            "java.lang.Runtime",
             "java.lang.ProcessBuilder",
             "java.lang.Process",
             "app.exteraless.plugins.PluginPermissions",
@@ -124,6 +131,7 @@ public final class PluginSinkGate {
         int ok = 0;
         ok += hookDeny(Runtime.class, "exec", "run a shell command", "process");
         ok += hookDeny(ProcessBuilder.class, "start", "start a process", "process");
+        ok += hookDeny(ProcessBuilder.class, "startPipeline", "start a process", "process");
         ok += hookNativeLoad();
         ok += hookNetwork(URL.class, "openConnection", "open a network connection");
         ok += hookNetwork(Socket.class, "connect", "connect to the network");

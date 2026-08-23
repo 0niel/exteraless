@@ -452,7 +452,6 @@ _JAVA_CLASS_DENIED = frozenset({
     "app.exteraless.plugins.files.FilesControllerJava",
     "app.exteraless.plugins.intents.IntentsDispatcher",
     "app.exteraless.plugins.menus.MenusController",
-    "java.lang.Runtime",
     "java.lang.ProcessBuilder",
     "java.lang.Process",
 })
