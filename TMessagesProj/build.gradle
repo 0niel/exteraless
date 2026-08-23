@@ -156,10 +156,20 @@ android {
         def appId = '6'
         def appHash = 'eb06d4abfb49dc3eeb1aeb98ae0f581e'
 
+        // obtain your own key at https://developers.google.com/maps/documentation/android-sdk/get-api-key
+        // Android keys are restricted by package name and signing certificate,
+        // so a key taken from another build shows an empty map.
+        def mapsKey = 'AIzaSyDE_x6GRKJCSfCY33soBYUQ2piYsgjVpVE'
+
         if (properties != null) {
             appId = properties.getProperty('TELEGRAM_APP_ID') ?: System.getenv('TELEGRAM_APP_ID') ?: appId
             appHash = properties.getProperty('TELEGRAM_APP_HASH') ?: System.getenv('TELEGRAM_APP_HASH') ?: appHash
+            mapsKey = properties.getProperty('MAPS_API_KEY') ?: System.getenv('MAPS_API_KEY') ?: mapsKey
+        } else {
+            mapsKey = System.getenv('MAPS_API_KEY') ?: mapsKey
         }
+
+        manifestPlaceholders += [MAPS_API_KEY: mapsKey]
 
         buildConfigField 'String', 'BUILD_VERSION_STRING', '"' + verName + '"'
         buildConfigField 'String', 'OFFICIAL_VERSION', '"' + officialVer + '"'
