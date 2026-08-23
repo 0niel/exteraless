@@ -7818,6 +7818,9 @@ public class ChatActivityEnterView extends FrameLayout implements
     }
 
     private void checkAttachButton(boolean use, int duration) {
+        if (use && app.exteraless.chats.ChatsConfig.keepAttachButton.Bool()) {
+            use = false;
+        }
         int fromRes;
         int targetRes;
 

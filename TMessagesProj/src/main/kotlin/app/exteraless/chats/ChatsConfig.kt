@@ -118,6 +118,10 @@ object ChatsConfig {
     @JvmStatic
     fun flashIntensity(): Float = flashIntensity.Int() / 100f
 
+    /** Скрепка при наборе остаётся скрепкой, а не «тремя точками» с меню. */
+    @JvmField
+    val keepAttachButton = addConfig("OEChatsKeepAttachButton", ConfigItem.configTypeBool, false)
+
     /** Скрыть плитку камеры в шторке вложений. */
     @JvmField
     val hideCameraTile = addConfig("OEChatsHideCameraTile", ConfigItem.configTypeBool, false)

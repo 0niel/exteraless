@@ -145,6 +145,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private int hideKeyboardOnScrollRow;
     private int addCommaRow;
     private int hideSendAsPeerRow;
+    private int tapToSwitchRecordRow;
+    private int keepAttachButtonRow;
     private int chatsDividerRow;
 
     // Messages
@@ -295,6 +297,8 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         hideKeyboardOnScrollRow = addRow("hideKeyboardOnScroll");
         addCommaRow = addRow("addCommaAfterMention");
         hideSendAsPeerRow = addRow("hideSendAsPeer");
+        tapToSwitchRecordRow = addRow("tapToSwitchRecord");
+        keepAttachButtonRow = addRow("keepAttachButton");
         chatsDividerRow = addRow();
 
         messagesHeaderRow = addRow("messagesHeader");
@@ -1056,6 +1060,15 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             return;
         }
 
+        if (position == tapToSwitchRecordRow) {
+            boolean tapToSwitch = NekoConfig.useChatAttachMediaMenu.Bool();
+            NekoConfig.useChatAttachMediaMenu.setConfigBool(!tapToSwitch);
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(tapToSwitch);
+            }
+            return;
+        }
+
         ConfigItem item = configForRow(position);
         if (item == null) {
             return;
@@ -1186,6 +1199,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
         if (position == hideKeyboardOnScrollRow) return NekoConfig.hideKeyboardOnChatScroll;
         if (position == addCommaRow) return OpenExteraConfig.addCommaAfterMention;
         if (position == hideSendAsPeerRow) return NekoConfig.hideSendAsChannel;
+        if (position == keepAttachButtonRow) return ChatsConfig.keepAttachButton;
         if (position == removeMessageTailRow) return ChatsConfig.removeMessageTail;
         if (position == replaceEditedRow) return NaConfig.INSTANCE.getUseEditedIcon();
         if (position == showOnlineStatusRow) return NaConfig.INSTANCE.getShowOnlineStatus();
@@ -1658,7 +1672,11 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             } else if (position == addCommaRow) {
                 cell.setTextAndCheck(getString(R.string.AddCommaAfterMention), OpenExteraConfig.addCommaAfterMention.Bool(), true);
             } else if (position == hideSendAsPeerRow) {
-                cell.setTextAndCheck(getString(R.string.OEChatsHideSendAsPeer), NekoConfig.hideSendAsChannel.Bool(), false);
+                cell.setTextAndCheck(getString(R.string.OEChatsHideSendAsPeer), NekoConfig.hideSendAsChannel.Bool(), true);
+            } else if (position == tapToSwitchRecordRow) {
+                cell.setTextAndCheck(getString(R.string.OEChatsTapToSwitchRecord), !NekoConfig.useChatAttachMediaMenu.Bool(), true);
+            } else if (position == keepAttachButtonRow) {
+                cell.setTextAndCheck(getString(R.string.OEChatsKeepAttachButton), ChatsConfig.keepAttachButton.Bool(), false);
             } else if (position == removeMessageTailRow) {
                 cell.setTextAndCheck(getString(R.string.OEChatsRemoveMessageTail), ChatsConfig.removeMessageTail.Bool(), true);
             } else if (position == replaceEditedRow) {
