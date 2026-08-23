@@ -168,13 +168,17 @@ public class PluginPermissionsActivity extends BaseFragment {
         if (plugin == null) {
             return new ArrayList<>();
         }
-        List<String> requested = plugin.permissionsDeclared
+        final Map<String, List<String>> scan = PluginCapabilityScan.load(plugin.id);
+        // Обфусцированному плагину диалог установки предлагает весь список:
+        // объявленному в таком коде верить не на чем, и отзывать выданное надо
+        // там же, где выдавали.
+        List<String> requested = plugin.permissionsDeclared && !PluginCapabilityScan.isObfuscated(scan)
                 ? PluginPermissions.getRequested(plugin)
                 : new ArrayList<>(PluginPermissions.REQUESTABLE);
         // Объявленному верить целиком нельзя: диалог установки спрашивает по
         // уликам разбора, и без этого объединения выданное там разрешение
         // потом негде было бы увидеть и отозвать.
-        for (String perm : PluginCapabilityScan.ordered(PluginCapabilityScan.load(plugin.id))) {
+        for (String perm : PluginCapabilityScan.ordered(scan)) {
             if (!requested.contains(perm)) {
                 requested.add(perm);
             }

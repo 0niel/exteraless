@@ -124,6 +124,7 @@
     <string name="PluginsInstallScanned">We analysed the plugin\'s code and found what it may use. Tick what it is allowed to do — the rest stays blocked.</string>
     <string name="PluginsInstallNothingFound">Nothing beyond its own menus and settings was found in the source.</string>
     <string name="PluginsObfuscated">The code is obfuscated</string>
+    <string name="PluginsInstallObfuscatedChoice">The code could not be read, so every permission is listed. Tick only what you are sure this plugin needs.</string>
     <string name="PluginsObfuscatedInfo">Names and strings were deliberately made unreadable, so the analysis above proves nothing: the plugin can do things it does not appear to. Install it only if you trust the author.</string>
     <string name="PluginsObfuscatedEvidence">Signs: %1$s</string>
     <string name="PluginsInstallDenied">The plugin stopped on its first run: it needs \"%1$s\" and does not have it. Tick that permission on the plugin\'s screen and reload it.</string>

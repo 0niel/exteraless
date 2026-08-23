@@ -71,6 +71,7 @@ public class PluginInstallSheet extends BottomSheet {
 
         final Context context = activity;
         final List<String> permissions = PluginCapabilityScan.ordered(capabilities);
+        final boolean obfuscated = PluginCapabilityScan.isObfuscated(capabilities);
 
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -112,13 +113,15 @@ public class PluginInstallSheet extends BottomSheet {
         note.setTextColor(Theme.getColor(Theme.key_dialogTextGray2));
         note.setText(getString(plugin == null || TextUtils.isEmpty(plugin.id)
                 ? R.string.PluginsInstallUnknownConfirm
-                : permissions.isEmpty()
-                    ? R.string.PluginsInstallNothingFound
-                    : R.string.PluginsInstallScanned));
+                : obfuscated
+                    ? R.string.PluginsInstallObfuscatedChoice
+                    : permissions.isEmpty()
+                        ? R.string.PluginsInstallNothingFound
+                        : R.string.PluginsInstallScanned));
         content.addView(note, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                 LayoutHelper.WRAP_CONTENT, 21, 20, 21, permissions.isEmpty() ? 0 : 6));
 
-        if (PluginCapabilityScan.isObfuscated(capabilities)) {
+        if (obfuscated) {
             content.addView(createObfuscationWarning(context,
                             PluginCapabilityScan.obfuscationEvidence(capabilities)),
                     LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
@@ -134,7 +137,7 @@ public class PluginInstallSheet extends BottomSheet {
                     PluginPermissionsActivity.infoOf(permission),
                     PluginCapabilityScan.evidenceOf(capabilities, permission),
                     i < permissions.size() - 1);
-            cell.setChecked(!PluginPermissions.isDangerous(permission), false);
+            cell.setChecked(!obfuscated && !PluginPermissions.isDangerous(permission), false);
             cell.setOnToggle(() -> cell.setChecked(!cell.isChecked(), true));
             cells.add(cell);
             content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,

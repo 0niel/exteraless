@@ -116,6 +116,7 @@
     <string name="PluginsInstallScanned">Przeanalizowaliśmy kod wtyczki i znaleźliśmy to, z czego może skorzystać. Zaznacz, na co jej pozwalasz — reszta pozostanie zablokowana.</string>
     <string name="PluginsInstallNothingFound">W źródłach nie znaleziono niczego poza własnymi menu i ustawieniami.</string>
     <string name="PluginsObfuscated">Kod jest zaciemniony</string>
+    <string name="PluginsInstallObfuscatedChoice">Kodu nie da się odczytać, więc wypisano wszystkie uprawnienia. Zaznacz tylko to, czego wtyczka na pewno potrzebuje.</string>
     <string name="PluginsObfuscatedInfo">Nazwy i napisy celowo uczyniono nieczytelnymi, więc powyższa analiza niczego nie dowodzi: wtyczka może robić rzeczy, na które wcale nie wygląda. Instaluj ją tylko wtedy, gdy ufasz autorowi.</string>
     <string name="PluginsObfuscatedEvidence">Oznaki: %1$s</string>
     <string name="PluginsInstallDenied">Wtyczka zatrzymała się przy pierwszym uruchomieniu: potrzebuje „%1$s”, a tego nie ma. Zaznacz to uprawnienie na ekranie wtyczki i załaduj ją ponownie.</string>

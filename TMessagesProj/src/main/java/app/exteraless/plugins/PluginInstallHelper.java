@@ -234,17 +234,30 @@ public final class PluginInstallHelper {
         });
     }
 
+    /**
+     * Что показать галочками.
+     *
+     * Обычный плагин спрашивает по уликам разбора. У обфусцированного улик нет
+     * по построению — имена переписаны, ни один маркер не совпадает, — и
+     * короткий список читался бы как «плагин почти ничего не умеет». Поэтому
+     * для него перечисляем всё: разбор не смог сказать ничего, решает человек.
+     */
     private static Map<String, List<String>> offeredPermissions(
             Plugin plugin, Map<String, List<String>> capabilities) {
-        if (!capabilities.isEmpty()) {
+        final boolean obfuscated = PluginCapabilityScan.isObfuscated(capabilities);
+        if (!capabilities.isEmpty() && !obfuscated) {
             return capabilities;
         }
-        List<String> fallback = plugin != null && plugin.permissionsDeclared
+        List<String> fallback = !obfuscated && plugin != null && plugin.permissionsDeclared
                 ? PluginPermissions.getRequested(plugin)
                 : PluginPermissions.REQUESTABLE;
         Map<String, List<String>> offered = new LinkedHashMap<>();
         for (String permission : PluginPermissions.sanitize(fallback)) {
-            offered.put(permission, java.util.Collections.emptyList());
+            offered.put(permission, PluginCapabilityScan.evidenceOf(capabilities, permission));
+        }
+        if (obfuscated) {
+            offered.put(PluginCapabilityScan.KEY_OBFUSCATION,
+                    PluginCapabilityScan.obfuscationEvidence(capabilities));
         }
         return offered;
     }

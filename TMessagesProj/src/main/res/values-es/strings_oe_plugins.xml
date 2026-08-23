@@ -116,6 +116,7 @@
     <string name="PluginsInstallScanned">Analizamos el código del plugin y encontramos lo que puede usar. Marca lo que le permites hacer; el resto seguirá bloqueado.</string>
     <string name="PluginsInstallNothingFound">En el código no se encontró nada más allá de sus propios menús y ajustes.</string>
     <string name="PluginsObfuscated">El código está ofuscado</string>
+    <string name="PluginsInstallObfuscatedChoice">El código no se pudo leer, así que se listan todos los permisos. Marca solo lo que estés seguro de que este plugin necesita.</string>
     <string name="PluginsObfuscatedInfo">Los nombres y las cadenas se volvieron ilegibles a propósito, así que el análisis anterior no demuestra nada: el plugin puede hacer cosas que no aparenta. Instálalo solo si confías en el autor.</string>
     <string name="PluginsObfuscatedEvidence">Indicios: %1$s</string>
     <string name="PluginsInstallDenied">El plugin se detuvo en su primera ejecución: necesita «%1$s» y no lo tiene. Marca ese permiso en la pantalla del plugin y recárgalo.</string>
