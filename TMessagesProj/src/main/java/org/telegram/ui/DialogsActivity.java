@@ -4033,7 +4033,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
                 if (id == -1) {
                     // Левая кнопка переключает свою шторку.
-                    if (AppearanceConfig.navigationDrawer() && drawerContainer() != null && canOpenDrawer()) {
+                    if (!actionBar.isActionModeShowed() && AppearanceConfig.navigationDrawer() && drawerContainer() != null && canOpenDrawer()) {
                         drawerContainer().toggleDrawer();
                         return;
                     }
@@ -6927,6 +6927,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // actionMode.drawBlur = false;
 
         // При своей шторке слева уже есть бургер/стрелка.
+        actionModeCloseView = null;
         if (hasMainTabs && !AppearanceConfig.navigationDrawer()) {
             actionModeCloseView = new ImageView(getContext());
             actionModeCloseView.setScaleType(ImageView.ScaleType.CENTER);
@@ -6942,7 +6943,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         selectedDialogsCountTextView.setTextSize(18);
         selectedDialogsCountTextView.setTypeface(AndroidUtilities.bold());
         selectedDialogsCountTextView.setTextColor(getThemedColor(Theme.key_actionBarActionModeDefaultIcon));
-        actionMode.addView(selectedDialogsCountTextView, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1.0f, hasMainTabs ? 18 : 72, 0, 0, 0));
+        actionMode.addView(selectedDialogsCountTextView, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1.0f, actionModeCloseView != null ? 18 : 72, 0, 0, 0));
         selectedDialogsCountTextView.setOnTouchListener((v, event) -> true);
 
         pinItem = actionMode.addItemWithWidth(pin, R.drawable.msg_pin, dp(48));
