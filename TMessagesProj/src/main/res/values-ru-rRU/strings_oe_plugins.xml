@@ -118,6 +118,10 @@
     <string name="PluginDeniedOpen">Разрешения</string>
     <string name="PluginsInstallScanned">Мы разобрали код плагина и нашли, что он может использовать. Отметьте, что ему разрешено, — остальное останется закрытым.</string>
     <string name="PluginsInstallNothingFound">Ничего сверх своих меню и настроек в исходнике не нашлось.</string>
+    <string name="PluginsObfuscated">Код обфусцирован</string>
+    <string name="PluginsInstallObfuscatedChoice">Код прочитать не удалось, поэтому перечислены все разрешения. Отметьте только то, что плагину точно нужно.</string>
+    <string name="PluginsObfuscatedInfo">Имена и строки намеренно сделаны нечитаемыми, поэтому разбор выше ничего не доказывает: плагин может делать не то, чем выглядит. Ставьте, только если доверяете автору.</string>
+    <string name="PluginsObfuscatedEvidence">Признаки: %1$s</string>
     <string name="PluginsInstallDenied">Плагин остановился на первом запуске: ему нужно «%1$s», а этого у него нет. Отметьте это разрешение на экране плагина и перезагрузите его.</string>
     <string name="PluginsInstallDeniedGeneric">Плагин остановился на первом запуске: он попытался сделать то, чего ему нельзя. Разрешения — на экране плагина.</string>
     <string name="PluginsMenuInfo">О плагине</string>
