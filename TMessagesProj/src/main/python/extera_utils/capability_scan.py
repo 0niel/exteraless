@@ -21,6 +21,7 @@
 
 import ast
 import re
+import zipfile
 from typing import Dict, List
 
 PERM_MESSAGES_READ = "messages.read"
@@ -104,27 +105,61 @@ _MARKERS = (
 _MAX_SOURCE_BYTES = 4 * 1024 * 1024
 
 
+_MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
+
+_SOURCE_MEMBER_SUFFIXES = (".py", ".pyc")
+
+
+def _merge(target: Dict[str, List[str]], addition: Dict[str, List[str]]) -> None:
+    for permission, evidence in addition.items():
+        bucket = target.setdefault(permission, [])
+        for item in evidence:
+            if item not in bucket:
+                bucket.append(item)
+
+
+def _scan_source(source: str) -> Dict[str, List[str]]:
+    found: Dict[str, List[str]] = {}
+    for marker, permission, evidence in _MARKERS:
+        if marker in source and evidence not in found.setdefault(permission, []):
+            found[permission].append(evidence)
+
+    _merge(found, _scan_imports(source))
+
+    return {perm: names for perm, names in found.items() if names}
+
+
+def _scan_archive(path: str) -> Dict[str, List[str]]:
+    found: Dict[str, List[str]] = {}
+    budget = _MAX_ARCHIVE_BYTES
+    with zipfile.ZipFile(path) as archive:
+        for info in archive.infolist():
+            if budget <= 0:
+                break
+            if info.is_dir() or not info.filename.endswith(_SOURCE_MEMBER_SUFFIXES):
+                continue
+            try:
+                with archive.open(info) as handle:
+                    raw = handle.read(min(_MAX_SOURCE_BYTES, budget))
+            except Exception:
+                continue
+            budget -= len(raw)
+            _merge(found, _scan_source(raw.decode("utf-8", errors="replace")))
+    return {perm: names for perm, names in found.items() if names}
+
+
 def scan(path: str) -> Dict[str, List[str]]:
     """{разрешение: [улики]} — что плагин по исходнику может делать."""
     try:
+        if zipfile.is_zipfile(path):
+            return _scan_archive(path)
         with open(path, "rb") as handle:
             raw = handle.read(_MAX_SOURCE_BYTES)
         source = raw.decode("utf-8", errors="replace")
     except Exception:
         return {}
 
-    found: Dict[str, List[str]] = {}
-    for marker, permission, evidence in _MARKERS:
-        if marker in source and evidence not in found.setdefault(permission, []):
-            found[permission].append(evidence)
-
-    for permission, evidence in _scan_imports(source).items():
-        target = found.setdefault(permission, [])
-        for item in evidence:
-            if item not in target:
-                target.append(item)
-
-    return {perm: names for perm, names in found.items() if names}
+    return _scan_source(source)
 
 
 #: Что именно импортируют из пакетов мессенджера. Пакет целиком ни о чём не
