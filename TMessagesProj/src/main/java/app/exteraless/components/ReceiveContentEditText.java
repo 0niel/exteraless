@@ -114,14 +114,17 @@ public abstract class ReceiveContentEditText extends EditText implements OnRecei
     @Override
     public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
         final InputConnection ic = super.onCreateInputConnection(editorInfo);
-        if (ic == null || Build.VERSION.SDK_INT > 30) {
-            return ic;
+        if (ic == null) {
+            return null;
         }
         final String[] mimeTypes = ViewCompat.getOnReceiveContentMimeTypes(this);
         if (mimeTypes == null) {
             return ic;
         }
         EditorInfoCompat.setContentMimeTypes(editorInfo, mimeTypes);
+        if (Build.VERSION.SDK_INT > 30) {
+            return ic;
+        }
         return InputConnectionCompat.createWrapper(this, ic, editorInfo);
     }
 

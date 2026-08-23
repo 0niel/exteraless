@@ -5874,6 +5874,15 @@ public class ChatActivityEnterView extends FrameLayout implements
         CanvasButton canvasButton;
 
         @Override
+        public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
+            final InputConnection ic = super.onCreateInputConnection(editorInfo);
+            if (ic != null && (isEditingBusinessLink() || isLiveComment)) {
+                EditorInfoCompat.setContentMimeTypes(editorInfo, null);
+            }
+            return ic;
+        }
+
+        @Override
         protected void onScrollChanged(int horiz, int vert, int oldHoriz, int oldVert) {
             super.onScrollChanged(horiz, vert, oldHoriz, oldVert);
             if (delegate != null) {
