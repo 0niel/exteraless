@@ -53,10 +53,13 @@ public class PluginPermissionsActivity extends BaseFragment {
     private static final int ID_PERM_BASE = 100;
     /** Ниже базы переключателей: id строк-переключателей начинаются со 100. */
     private static final int ID_ACTIVITY_LOG = 1;
+    private static final int ID_OBFUSCATION = 2;
 
     private final String pluginId;
 
     private UniversalRecyclerView listView;
+    /** Блок «код обфусцирован»: держим один, чтобы список не переанимировал строку. */
+    private android.view.View obfuscationView;
     /** Какие строки раскрыты — переживает пересборку списка. */
     private final java.util.Set<String> expanded = new java.util.HashSet<>();
     /** Вьюхи строк по разрешению: новая вьюха на каждую пересборку = анимация строки. */
@@ -249,6 +252,19 @@ public class PluginPermissionsActivity extends BaseFragment {
         // Улики разбора: по ним видно, откуда разрешение вообще взялось.
         // Читаются из записанного при установке, файл заново не разбирается.
         final Map<String, List<String>> capabilities = PluginCapabilityScan.load(pluginId);
+        if (PluginCapabilityScan.isObfuscated(capabilities)) {
+            if (obfuscationView == null) {
+                android.widget.FrameLayout frame = new android.widget.FrameLayout(getContext());
+                frame.addView(PluginInstallSheet.createObfuscationWarning(getContext(),
+                                PluginCapabilityScan.obfuscationEvidence(capabilities)),
+                        org.telegram.ui.Components.LayoutHelper.createFrame(
+                                org.telegram.ui.Components.LayoutHelper.MATCH_PARENT,
+                                org.telegram.ui.Components.LayoutHelper.WRAP_CONTENT,
+                                android.view.Gravity.TOP, 16, 4, 16, 12));
+                obfuscationView = frame;
+            }
+            items.add(UItem.asCustom(ID_OBFUSCATION, obfuscationView));
+        }
         List<String> enforced = new ArrayList<>();
         for (String perm : requested) {
             if (!isEnforced(perm)) {

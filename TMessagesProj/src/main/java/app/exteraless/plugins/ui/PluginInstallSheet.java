@@ -15,6 +15,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.core.graphics.ColorUtils;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -116,6 +118,13 @@ public class PluginInstallSheet extends BottomSheet {
         content.addView(note, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                 LayoutHelper.WRAP_CONTENT, 21, 20, 21, permissions.isEmpty() ? 0 : 6));
 
+        if (PluginCapabilityScan.isObfuscated(capabilities)) {
+            content.addView(createObfuscationWarning(context,
+                            PluginCapabilityScan.obfuscationEvidence(capabilities)),
+                    LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                            LayoutHelper.WRAP_CONTENT, 21, 12, 21, permissions.isEmpty() ? 0 : 6));
+        }
+
         for (int i = 0; i < permissions.size(); i++) {
             final String permission = permissions.get(i);
             PluginPermissionCell cell = new PluginPermissionCell(context,
@@ -150,6 +159,47 @@ public class PluginInstallSheet extends BottomSheet {
         ScrollView scroll = new ScrollView(context);
         scroll.addView(content);
         setCustomView(scroll);
+    }
+
+    /**
+     * Предупреждение о нечитаемом коде.
+     *
+     * Стоит отдельным блоком, а не строкой в списке разрешений: разбор выше
+     * перечисляет то, что нашлось, а здесь речь о том, что искать бесполезно.
+     */
+    public static android.view.View createObfuscationWarning(Context context, List<String> evidence) {
+        LinearLayout box = new LinearLayout(context);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        box.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(10),
+                ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_text_RedBold), 30)));
+
+        TextView title = new TextView(context);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setTextColor(Theme.getColor(Theme.key_text_RedBold));
+        title.setText(getString(R.string.PluginsObfuscated));
+        box.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
+
+        TextView info = new TextView(context);
+        info.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        info.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        info.setText(getString(R.string.PluginsObfuscatedInfo));
+        box.addView(info, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
+
+        if (evidence != null && !evidence.isEmpty()) {
+            TextView signs = new TextView(context);
+            signs.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+            signs.setTextColor(Theme.getColor(Theme.key_dialogTextGray2));
+            signs.setText(LocaleController.formatString(R.string.PluginsObfuscatedEvidence,
+                    TextUtils.join(", ", evidence)));
+            box.addView(signs, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
+                    LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
+        }
+        return box;
     }
 
     /**

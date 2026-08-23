@@ -115,6 +115,9 @@
     <string name="PluginDeniedOpen">权限</string>
     <string name="PluginsInstallScanned">我们分析了插件的代码，找出了它可能会用到的能力。勾选允许它做的事，其余仍会被拦截。</string>
     <string name="PluginsInstallNothingFound">在源码中没有发现自有菜单和设置之外的任何行为。</string>
+    <string name="PluginsObfuscated">代码已被混淆</string>
+    <string name="PluginsObfuscatedInfo">名称和字符串被刻意改成不可读的样子，因此上面的分析什么也证明不了：插件能做的事可能与它看起来的完全不同。只有在你信任作者时才安装。</string>
+    <string name="PluginsObfuscatedEvidence">迹象：%1$s</string>
     <string name="PluginsInstallDenied">插件在首次运行时停下了：它需要「%1$s」，却没有拿到。请在插件界面勾选该权限并重新加载。</string>
     <string name="PluginsInstallDeniedGeneric">插件在首次运行时停下了：它试图执行未获授权的操作。它的权限在插件界面上。</string>
     <string name="PluginsMenuInfo">关于此插件</string>

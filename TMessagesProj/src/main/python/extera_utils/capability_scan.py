@@ -100,6 +100,96 @@ _MARKERS = (
     (".so'", PERM_NATIVE, "native library"),
 )
 
+KEY_OBFUSCATION = "obfuscation"
+
+#: Упаковщики, которые подписываются сами.
+_OBF_PACKERS = (
+    ("__pyarmor__", "pyarmor"),
+    ("pytransform", "pyarmor"),
+    ("pyarmor_runtime", "pyarmor"),
+    ("PYARMOR", "pyarmor"),
+    ("pyminifier", "pyminifier"),
+    ("Sourcedefender", "sourcedefender"),
+    ("sourcedefender", "sourcedefender"),
+)
+
+#: Распаковщики: сами по себе законны, уликой становятся в паре с exec/eval.
+_OBF_DECODERS = (
+    ("marshal.loads(", "marshal"),
+    ("zlib.decompress(", "zlib"),
+    ("lzma.decompress(", "lzma"),
+    ("bz2.decompress(", "bz2"),
+    ("b64decode(", "base64"),
+    ("b85decode(", "base85"),
+    ("a85decode(", "base85"),
+    ("b32decode(", "base32"),
+    ("b16decode(", "base16"),
+    ("unhexlify(", "unhexlify"),
+    ("codecs.decode(", "codecs"),
+)
+
+#: Вызов exec/eval/compile, а не re.compile и не чужой метод .exec().
+_OBF_EXEC = re.compile(r"(?<![\w.])(?:exec|eval|compile)\s*\(")
+
+#: Имена вида _lt6i9dini5txqwg60v06rmg44mp6x5tv: подчёркивание, буква-другая и
+#: длинный хвост из строчных букв и цифр. Человек так переменные не называет.
+_OBF_NAME = re.compile(r"\b_[A-Za-z]{0,2}[0-9a-z]{16,}\b")
+
+_OBF_HEX = re.compile(r"\\x[0-9a-fA-F]{2}")
+
+#: Столько разных нечитаемых имён считаем перезаписью всего файла, а не
+#: одним неудачно названным полем.
+_OBF_NAME_LIMIT = 8
+
+#: Длина строки, после которой исходник перестаёт быть читаемым глазами.
+_OBF_LINE_LIMIT = 2000
+
+_OBF_HEX_LIMIT = 50
+
+
+def _detect_obfuscation(source: str) -> List[str]:
+    """Улики того, что исходник намеренно сделан нечитаемым.
+
+    Разбор возможностей выше опирается на то, что в тексте видны настоящие
+    имена. Обфускация ровно это и ломает: `ctypes` превращается в
+    `_lui3h1my3nt73zqovaek04oy4snpuk`, ни один маркер не совпадает, и диалог
+    установки честно показывает пустой список. Поэтому нечитаемость — сама по
+    себе улика, и человеку её нужно назвать.
+    """
+    strong: List[str] = []
+    weak: List[str] = []
+
+    def note(bucket: List[str], name: str) -> None:
+        if name not in bucket:
+            bucket.append(name)
+
+    for marker, evidence in _OBF_PACKERS:
+        if marker in source:
+            note(strong, evidence)
+
+    if _OBF_EXEC.search(source):
+        for marker, evidence in _OBF_DECODERS:
+            if marker in source:
+                note(strong, "exec+" + evidence)
+
+    names = set(_OBF_NAME.findall(source))
+    if len(names) >= _OBF_NAME_LIMIT:
+        note(strong, "mangled names")
+
+    lines = source.splitlines() or [""]
+    if max(len(line) for line in lines) >= _OBF_LINE_LIMIT:
+        note(weak, "long lines")
+
+    if len(_OBF_HEX.findall(source)) >= _OBF_HEX_LIMIT:
+        note(weak, "escaped strings")
+
+    if strong:
+        return strong + weak
+    if len(weak) >= 2:
+        return weak
+    return []
+
+
 #: Файл больше этого не разбираем: плагины такого размера не встречаются,
 #: а на упавшем установщике польза от разбора отрицательная.
 _MAX_SOURCE_BYTES = 4 * 1024 * 1024
@@ -125,6 +215,10 @@ def _scan_source(source: str) -> Dict[str, List[str]]:
             found[permission].append(evidence)
 
     _merge(found, _scan_imports(source))
+
+    obfuscation = _detect_obfuscation(source)
+    if obfuscation:
+        found[KEY_OBFUSCATION] = obfuscation
 
     return {perm: names for perm, names in found.items() if names}
 
