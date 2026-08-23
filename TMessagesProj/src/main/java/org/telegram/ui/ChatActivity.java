@@ -50690,7 +50690,8 @@ public class ChatActivity extends BaseFragment implements
         }
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
-        app.exteraless.appearance.ChatHeaderUiHelper.setupChatTopFade(chatActivityFadeView, actionBar, (int) fadeHeight);
+        app.exteraless.appearance.ChatHeaderUiHelper.setupChatTopFade(chatActivityFadeView, actionBar,
+            getThemedColor(app.exteraless.appearance.ChatHeaderUiHelper.getChatFadeColorKey()), (int) fadeHeight);
     }
 
     private void checkUi_messagesSearchListPadding() {

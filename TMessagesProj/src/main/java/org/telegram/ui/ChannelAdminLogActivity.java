@@ -1479,6 +1479,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         chatActivityFadeView = new ChatActivityFadeView(context);
         chatActivityFadeView.setup(navbarContentDrawableFactory);
         app.exteraless.appearance.ChatHeaderUiHelper.setupChatTopFade(chatActivityFadeView, actionBar,
+                getThemedColor(app.exteraless.appearance.ChatHeaderUiHelper.getChatFadeColorKey()),
                 AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(2));
         chatActivityFadeView.setFadeZoneBottom(AndroidUtilities.navigationBarHeight + dp(9) + dp(44) + dp(7));
         chatActivityFadeView.setFadeHeightBottom(dp(60));
