@@ -23,6 +23,7 @@ public final class PluginsConstants {
     public static final String KEY_COMPACT_VIEW = "plugins_compact_view";
     /** Режим совместимости: отключить ART Profile Saver ради надёжности хуков. */
     public static final String KEY_COMPATIBILITY_MODE = "plugins_compatibility_mode";
+    public static final String KEY_UNSAFE_MODE = "pluginsUnsafeMode";
 
     /** Префикс ключа включённости конкретного плагина: plugin_enabled_<id>. */
     public static final String KEY_PLUGIN_ENABLED_PREFIX = "plugin_enabled_";

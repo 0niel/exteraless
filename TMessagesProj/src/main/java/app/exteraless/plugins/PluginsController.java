@@ -169,6 +169,25 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         preferences.edit().putBoolean(PluginsConstants.KEY_SAFE_MODE, safeMode).apply();
     }
 
+    public boolean isUnsafeMode() {
+        if (unsafeMode == null) {
+            unsafeMode = preferences != null
+                    && preferences.getBoolean(PluginsConstants.KEY_UNSAFE_MODE, false);
+        }
+        return unsafeMode;
+    }
+
+    public void setUnsafeMode(boolean value) {
+        unsafeMode = value;
+        if (preferences != null) {
+            preferences.edit().putBoolean(PluginsConstants.KEY_UNSAFE_MODE, value).apply();
+        }
+        FileLog.w("PluginsController: unsafe mode " + (value ? "ON" : "off"));
+        PythonPluginsEngine.getInstance().setUnsafeMode(value);
+    }
+
+    private Boolean unsafeMode;
+
     public boolean isDeveloperMode() {
         return preferences != null && preferences.getBoolean(PluginsConstants.KEY_DEVELOPER_MODE, false);
     }

@@ -769,6 +769,10 @@ public final class PluginSinkGate {
      */
     private static void denySilently(String pluginId, String event, String category, String detail,
                                      String reason, XC_MethodHook.MethodHookParam param) {
+        if (PluginPermissions.isUnsafeMode()) {
+            PluginAuditJournal.record(pluginId, event, category, detail, true);
+            return;
+        }
         PluginAuditJournal.record(pluginId, event, category, detail, false);
         FileLog.w("PluginSinkGate: skipped " + event + " for plugin " + pluginId + " — " + reason);
         param.setResult(emptyResultFor(param));
@@ -803,6 +807,10 @@ public final class PluginSinkGate {
 
     private static void deny(String pluginId, String event, String category, String detail,
                              String reason, XC_MethodHook.MethodHookParam param) {
+        if (PluginPermissions.isUnsafeMode()) {
+            PluginAuditJournal.record(pluginId, event, category, detail, true);
+            return;
+        }
         PluginAuditJournal.record(pluginId, event, category, detail, false, callerStack());
         FileLog.w("PluginSinkGate: denied " + event + " to plugin " + pluginId + " — " + reason);
         param.setThrowable(denialFor(event, category, pluginId, reason));

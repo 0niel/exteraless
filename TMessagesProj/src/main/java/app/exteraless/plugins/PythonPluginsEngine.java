@@ -150,6 +150,17 @@ public class PythonPluginsEngine extends com.exteragram.messenger.plugins.Python
         }
     }
 
+    public void setUnsafeMode(boolean value) {
+        if (!started) {
+            return;
+        }
+        try {
+            loader.callAttr("set_unsafe_mode", value);
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: cannot push unsafe mode", t);
+        }
+    }
+
     // ---------- журнал наблюдений ----------
 
     /** Журнал Python-гейта по плагину (или по всем, если id == null). */

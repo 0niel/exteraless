@@ -67,6 +67,7 @@ __all__ = [
     "plugin_context", "current_plugin_id",
     # песочница
     "caller_plugin_id", "has_permission", "require_permission", "plugin_files",
+    "unsafe_mode", "set_unsafe_mode",
     "PERM_UI", "PERM_MESSAGES_READ", "PERM_MESSAGES_SEND", "PERM_NETWORK",
     "PERM_FILES", "PERM_INTENTS", "PERM_SETTINGS", "PERM_HOOKS", "PERM_NATIVE",
 ]
@@ -383,7 +384,7 @@ _INTERNAL_MODULES = frozenset({
 
 def _deny_internal_import(name, fromlist=()) -> None:
     """Бросить ImportError, если плагин лезет во внутренний модуль движка."""
-    if type(name) is not str:
+    if type(name) is not str or unsafe_mode():
         return
     candidates = [name]
     if fromlist:
@@ -484,6 +485,8 @@ def guard_java_class(name):
     (app.exteraless.plugins.PluginSinkGate), эта проверка лишь снимает самый
     ходовой путь: 178 плагинов зовут find_class, 94 — jclass.
     """
+    if unsafe_mode():
+        return True
     if name in _JAVA_CLASS_DENIED:
         pid = plugin_frame_owner()
         if pid is not None:
@@ -706,6 +709,8 @@ def _permissions():
 
 def has_permission(perm: str, plugin_id: Optional[str] = None) -> bool:
     """Тихая проверка. Вне кода плагина и без JVM — True (гейтить нечего)."""
+    if unsafe_mode():
+        return True
     pid = plugin_id or caller_plugin_id()
     if pid is None:
         return True
@@ -716,6 +721,27 @@ def has_permission(perm: str, plugin_id: Optional[str] = None) -> bool:
         return bool(java.hasPermission(pid, perm))
     except Exception:
         return True
+
+
+_unsafe_mode: Optional[bool] = None
+
+
+def set_unsafe_mode(value) -> None:
+    global _unsafe_mode
+    _unsafe_mode = bool(value)
+
+
+def unsafe_mode() -> bool:
+    global _unsafe_mode
+    if _unsafe_mode is None:
+        java = _permissions()
+        if java is None:
+            return False
+        try:
+            _unsafe_mode = bool(java.isUnsafeMode())
+        except Exception:
+            return False
+    return _unsafe_mode
 
 
 def require_permission(perm: str, what: str, detail: Optional[str] = None,
@@ -731,6 +757,8 @@ def require_permission(perm: str, what: str, detail: Optional[str] = None,
     исключения, иначе множество дедупликации на Java-стороне росло бы
     на каждый новый путь.
     """
+    if unsafe_mode():
+        return
     pid = plugin_id or caller_plugin_id()
     if pid is None:
         return

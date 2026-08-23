@@ -3,6 +3,12 @@
     <string name="OpenExteraPlugins">插件</string>
     <string name="PluginsSafeMode">安全模式</string>
     <string name="PluginsSafeModeSummary">开启安全模式后不会加载任何插件。当某个插件导致应用异常时可以使用。</string>
+    <string name="PluginsUnsafeMode">不安全模式</string>
+    <string name="PluginsUnsafeModeInfo">插件不受任何限制</string>
+    <string name="PluginsUnsafeModeSummary">不再询问也不再校验权限。无论等级如何，任何插件都能获得消息、文件、网络、钩子和原生代码。只对自己编写或完全信任的插件开启。</string>
+    <string name="PluginsUnsafeModeConfirm">这会移除插件与你的数据之间的全部检查。插件将能读取聊天记录、以你的名义发送消息、取走文件并执行原生代码，不受任何限制。\n\n只有在清楚自己安装的是什么时才开启。</string>
+    <string name="PluginsUnsafeModeEnable">仍然开启</string>
+    <string name="PluginsUnsafeModeOn">不安全模式已开启</string>
     <string name="PluginsDeveloperMode">开发者模式</string>
     <string name="PluginsInstallFromFile">从文件安装</string>
     <string name="PluginsInstalling">正在安装插件…</string>
