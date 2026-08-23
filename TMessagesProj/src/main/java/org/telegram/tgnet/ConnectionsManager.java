@@ -679,7 +679,23 @@ public class ConnectionsManager extends BaseController {
         native_setNetworkAvailable(currentAccount, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), ApplicationLoader.isConnectionSlow());
     }
 
+    /**
+     * Состояние push-соединения на нативной стороне.
+     *
+     * Нужно, чтобы не дёргать её повторно тем же значением: обновление конфига
+     * с сервера (MessagesController.updateConfig) применяет флаг на каждом
+     * изменении keepAliveService, а экран уведомлений — на каждом нажатии.
+     * Каждый такой вызов пересобирает соединение, и резолв хоста прилетает в
+     * Java уже посреди разборки — на Pixel это кончалось SIGSEGV в
+     * getHostByName.
+     */
+    private Boolean pushConnectionEnabled;
+
     public void setPushConnectionEnabled(boolean value) {
+        if (pushConnectionEnabled != null && pushConnectionEnabled == value) {
+            return;
+        }
+        pushConnectionEnabled = value;
         native_setPushConnectionEnabled(currentAccount, value);
     }
 
@@ -724,6 +740,7 @@ public class ConnectionsManager extends BaseController {
             packageId = "";
         }
 
+        pushConnectionEnabled = enablePushConnection;
         native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset, userId, userPremium, enablePushConnection, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), SharedConfig.measureDevicePerformanceClass());
         checkConnection();
     }
