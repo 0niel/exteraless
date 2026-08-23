@@ -99,3 +99,20 @@ jobs:
           name: Release
           path: |
             TMessagesProj/build/outputs/apk/release/*.apk
+      - name: Send APK to Telegram
+        if: ${{ github.event.inputs.upload != 'y' }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TG_BOT_TOKEN" ] || [ -z "$TG_API_ID" ] || [ -z "$TG_API_HASH" ] || [ -z "$TG_CHAT_ID" ]; then
+            echo "секреты Telegram не заданы — отправка пропущена"
+            exit 0
+          fi
+          pip install --quiet kurigram tgcrypto
+          python3 .github/scripts/send_apk.py
