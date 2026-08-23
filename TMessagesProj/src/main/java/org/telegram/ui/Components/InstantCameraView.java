@@ -2430,6 +2430,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
          * InstantCameraView.java:2429: 60 отдаётся только если драйвер подтвердил
          * расширенный диапазон, иначе кадры снимутся в 60, а запишутся как 30.
          */
+        /** Частота, с которой энкодер реально настроен: она же уходит в VideoEditedInfo. */
+        private int encoderFrameRate = FRAME_RATE;
+
         private int resolveEncoderFrameRate() {
             if (!app.exteraless.chats.ChatsConfig.extendedFramesPerSecond.Bool()) {
                 return FRAME_RATE;
@@ -3127,7 +3130,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 videoEditedInfo.key = key;
                 videoEditedInfo.iv = iv;
                 videoEditedInfo.estimatedSize = Math.max(1, size);
-                videoEditedInfo.framerate = 25;
+                videoEditedInfo.framerate = encoderFrameRate;
                 videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 360;
                 videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 360;
                 videoEditedInfo.originalPath = previewFile.getAbsolutePath();
@@ -3225,7 +3228,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                         videoEditedInfo.encryptedFile = encryptedFile;
                         videoEditedInfo.key = key;
                         videoEditedInfo.iv = iv;
-                        videoEditedInfo.framerate = 25;
+                        videoEditedInfo.framerate = encoderFrameRate;
                         videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 360;
                         videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 360;
                         videoEditedInfo.originalPath = videoFile.getAbsolutePath();
@@ -3378,7 +3381,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                         videoEditedInfo.encryptedFile = encryptedFile;
                         videoEditedInfo.key = key;
                         videoEditedInfo.iv = iv;
-                        videoEditedInfo.framerate = 25;
+                        videoEditedInfo.framerate = encoderFrameRate;
                         videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = 360;
                         videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = 360;
                         videoEditedInfo.originalPath = videoFile.getAbsolutePath();
@@ -3546,7 +3549,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
                 format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
                 format.setInteger(MediaFormat.KEY_BIT_RATE, videoBitrate);
-                format.setInteger(MediaFormat.KEY_FRAME_RATE, resolveEncoderFrameRate());
+                encoderFrameRate = resolveEncoderFrameRate();
+                format.setInteger(MediaFormat.KEY_FRAME_RATE, encoderFrameRate);
                 format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
 
                 videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
