@@ -183,6 +183,35 @@ _IMPORTED_NAMES = {
 }
 
 
+_IMPORTED_MODULES = {
+    "ctypes": (PERM_NATIVE, "ctypes"),
+    "requests": (PERM_NETWORK, "requests"),
+    "httpx": (PERM_NETWORK, "httpx"),
+    "aiohttp": (PERM_NETWORK, "aiohttp"),
+    "urllib": (PERM_NETWORK, "urllib"),
+    "urllib3": (PERM_NETWORK, "urllib"),
+    "http": (PERM_NETWORK, "http.client"),
+    "socket": (PERM_NETWORK, "socket"),
+    "socketserver": (PERM_NETWORK, "socket"),
+    "ftplib": (PERM_NETWORK, "ftplib"),
+    "smtplib": (PERM_NETWORK, "smtplib"),
+    "telnetlib": (PERM_NETWORK, "telnetlib"),
+    "websocket": (PERM_NETWORK, "websocket"),
+    "websockets": (PERM_NETWORK, "websocket"),
+    "subprocess": (PERM_NATIVE, "subprocess"),
+}
+
+
+def _note_module(result: Dict[str, List[str]], name: str) -> None:
+    rule = _IMPORTED_MODULES.get(name.partition(".")[0])
+    if rule is None:
+        return
+    permission, evidence = rule
+    bucket = result.setdefault(permission, [])
+    if evidence not in bucket:
+        bucket.append(evidence)
+
+
 def _scan_imports(source: str) -> Dict[str, List[str]]:
     """Импорты: важно не откуда, а что именно."""
     result: Dict[str, List[str]] = {}
@@ -191,17 +220,25 @@ def _scan_imports(source: str) -> Dict[str, List[str]]:
     except Exception:
         # Битый Python разберём регулярным выражением: диалог установки всё
         # равно должен что-то показать.
-        for names in re.findall(r"^\s*from\s+[A-Za-z0-9_.]+\s+import\s+([^\n#]+)", source, re.M):
+        for module, names in re.findall(
+                r"^\s*from\s+([A-Za-z0-9_.]+)\s+import\s+([^\n#]+)", source, re.M):
+            _note_module(result, module)
             for name in names.split(","):
                 _note_name(result, name.strip().split(" as ")[0])
+        for names in re.findall(r"^\s*import\s+([^\n#]+)", source, re.M):
+            for name in names.split(","):
+                _note_module(result, name.strip().split(" as ")[0])
         return result
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
+            if node.module:
+                _note_module(result, node.module)
             for alias in node.names:
                 _note_name(result, alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
+                _note_module(result, alias.name)
                 _note_name(result, alias.name.rpartition(".")[2])
     return result
 
