@@ -112,6 +112,8 @@ public class TextSettingsCell extends FrameLayout {
         return valueImageView;
     }
 
+    private boolean wrapText;
+
     private boolean betterLayout = BuildVars.DEBUG_PRIVATE_VERSION;
     public void setBetterLayout(boolean betterLayout) {
         // I might break something with this, gonna need to further test
@@ -120,7 +122,29 @@ public class TextSettingsCell extends FrameLayout {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), AndroidUtilities.dp(50) + (needDivider ? 1 : 0));
+        final int fixed = AndroidUtilities.dp(50);
+        measureContent(widthMeasureSpec, fixed);
+        if (!wrapText) {
+            return;
+        }
+        // Название в neko-ячейках переносится без ограничения по строкам,
+        // а высота оставалась фиксированной — со второй строки текст резало.
+        // Ширина названия уже посчитана выше, поэтому второй проход нужен
+        // только чтобы разложить ячейку на итоговой высоте.
+        final int wanted = Math.max(fixed, wrappedTitleHeight() + AndroidUtilities.dp(30));
+        if (wanted != fixed) {
+            measureContent(widthMeasureSpec, wanted);
+        }
+    }
+
+    private int wrappedTitleHeight() {
+        textView.measure(MeasureSpec.makeMeasureSpec(textView.getMeasuredWidth(), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        return textView.getMeasuredHeight();
+    }
+
+    private void measureContent(int widthMeasureSpec, int cellHeight) {
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), cellHeight + (needDivider ? 1 : 0));
 
         int availableWidth = getMeasuredWidth() - getPaddingLeft() - getPaddingRight() - AndroidUtilities.dp(34);
         int width = betterLayout ? availableWidth : availableWidth / 2;
@@ -175,6 +199,14 @@ public class TextSettingsCell extends FrameLayout {
         return textView;
     }
 
+    /** Ячейку могли переиспользовать после neko-привязки — она снимает лимит строк. */
+    private void setTitleSingleLine() {
+        wrapText = false;
+        textView.setLines(1);
+        textView.setMaxLines(1);
+        textView.setSingleLine(true);
+    }
+
     public void setCanDisable(boolean value) {
         canDisable = value;
     }
@@ -193,6 +225,7 @@ public class TextSettingsCell extends FrameLayout {
 
     public void setText(CharSequence text, boolean divider) {
         textView.setText(text);
+        setTitleSingleLine();
         valueTextView.setVisibility(INVISIBLE);
         valueImageView.setVisibility(INVISIBLE);
         needDivider = divider;
@@ -213,7 +246,10 @@ public class TextSettingsCell extends FrameLayout {
             textView.setLines(0);
             textView.setMaxLines(0);
             textView.setSingleLine(false);
+        } else {
+            setTitleSingleLine();
         }
+        wrapText = isNekoCell;
         valueImageView.setVisibility(INVISIBLE);
         if (value != null) {
             valueTextView.setText(value, animated);
@@ -228,6 +264,7 @@ public class TextSettingsCell extends FrameLayout {
 
     public void setTextAndIcon(CharSequence text, int resId, boolean divider) {
         textView.setText(text);
+        setTitleSingleLine();
         valueTextView.setVisibility(INVISIBLE);
         if (resId != 0) {
             valueImageView.setVisibility(VISIBLE);
