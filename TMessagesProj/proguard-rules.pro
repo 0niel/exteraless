@@ -258,6 +258,8 @@
 -keep class com.exteragram.messenger.** { *; }
 -keep class de.robv.android.xposed.** { *; }
 -keep class kotlin.** { *; }
+-keep class com.google.android.material.** { *; }
+-keep class com.google.zxing.** { *; }
 -keep class org.mvel2.** { *; }
 -keep class com.android.dx.** { *; }
 -keep class com.google.android.collect.** { *; }
