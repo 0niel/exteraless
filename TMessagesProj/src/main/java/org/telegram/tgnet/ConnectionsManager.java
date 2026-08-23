@@ -299,12 +299,20 @@ public class ConnectionsManager extends BaseController {
     }
 
     public boolean isPushConnectionEnabled() {
-        SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
+        // Переключатель в настройках уведомлений пишет в хранилище аккаунта
+        // (NotificationsSettingsActivity), а читалось глобальное — значение
+        // не находилось никогда, и постоянное подключение оставалось выключенным
+        // независимо от переключателя. Глобальное остаётся запасным: у ставивших
+        // сборку раньше значение лежит там.
+        SharedPreferences preferences = MessagesController.getNotificationsSettings(currentAccount);
         if (preferences.contains("pushConnection")) {
             return preferences.getBoolean("pushConnection", true);
-        } else {
-            return MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("backgroundConnection", false);
         }
+        preferences = MessagesController.getGlobalNotificationsSettings();
+        if (preferences.contains("pushConnection")) {
+            return preferences.getBoolean("pushConnection", true);
+        }
+        return MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("backgroundConnection", false);
     }
 
     public long getCurrentTimeMillis() {
