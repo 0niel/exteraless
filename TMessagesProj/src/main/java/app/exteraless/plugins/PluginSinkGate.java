@@ -279,7 +279,14 @@ public final class PluginSinkGate {
                     return;
                 }
                 try {
-                    deny(pluginId, "Runtime." + param.method.getName(), "native", describe(param),
+                    String event = "Runtime." + param.method.getName();
+                    String reason = allowNativeLoadReason(param);
+                    if (reason != null) {
+                        PluginAuditJournal.record(pluginId, event, "native",
+                                describe(param) + " (" + reason + ")", true);
+                        return;
+                    }
+                    deny(pluginId, event, "native", describe(param),
                             "loading a native library is never available to plugins", param);
                 } finally {
                     leaveCheck();
@@ -289,6 +296,55 @@ public final class PluginSinkGate {
         int count = hookAll(Runtime.class, "load0", hook);
         count += hookAll(Runtime.class, "loadLibrary0", hook);
         return count;
+    }
+
+    /**
+     * Почему этот вызов {@code loadLibrary} не считается загрузкой плагина.
+     *
+     * Метка на потоке говорит лишь, что где-то ниже по стеку исполняется
+     * плагин, — а .so грузит не он. Плагин зовёт публичный API, тот уходит в
+     * платформу, и библиотеку тянет уже она. На vivo так падало приложение:
+     * плагин вызывал {@code CameraManager.getCameraIdList()},
+     * {@code VivoJavaJsonOperate.<clinit>} звал {@code System.loadLibrary},
+     * наш отказ прилетал исключением из статического инициализатора —
+     * и класс платформы оставался испорченным до конца жизни процесса.
+     * Следующий колбэк камеры получал {@code NoClassDefFoundError} на
+     * binder-потоке, где обработчика нет.
+     *
+     * Отсюда два послабления. Загрузчик boot — код платформы, плагину такой
+     * класс не принадлежит. Статический инициализатор — отказ там бьёт не по
+     * вызову, а по классу целиком, включая тех, кто плагина в глаза не видел.
+     *
+     * Собственная загрузка плагина под них не подходит: его классы приходят
+     * из своего загрузчика, а вызов идёт из обычного метода.
+     */
+    private static String allowNativeLoadReason(XC_MethodHook.MethodHookParam param) {
+        final Object[] args = param.args;
+        final Class<?>[] types = param.method instanceof Method
+                ? ((Method) param.method).getParameterTypes() : null;
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof Class) {
+                    if (((Class<?>) args[i]).getClassLoader() == null) {
+                        return "platform class " + ((Class<?>) args[i]).getName();
+                    }
+                    break;
+                }
+                if (args[i] instanceof ClassLoader) {
+                    break;
+                }
+                if (args[i] == null && types != null && i < types.length
+                        && ClassLoader.class.isAssignableFrom(types[i])) {
+                    return "boot class loader";
+                }
+            }
+        }
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            if ("<clinit>".equals(element.getMethodName())) {
+                return "static initializer of " + element.getClassName();
+            }
+        }
+        return null;
     }
 
     /**
