@@ -1,5 +1,6 @@
 import asyncio
 import glob
+import json
 import os
 
 from pyrogram import Client
@@ -8,24 +9,52 @@ APK_GLOB = "TMessagesProj/build/outputs/apk/release/*.apk"
 CAPTION_LIMIT = 1024
 
 
-def caption() -> str:
+def commits():
+    try:
+        payload = json.loads(os.environ.get("COMMITS_JSON") or "[]")
+    except Exception:
+        payload = []
+    out = []
+    for commit in payload:
+        subject = (commit.get("message") or "").strip().splitlines()
+        if subject:
+            out.append(subject[0])
+    return out
+
+
+def head():
     lines = (os.environ.get("COMMIT_MESSAGE") or "").strip().splitlines()
     subject = lines[0] if lines else "без описания"
-    body = "\n".join(lines[1:]).strip()
+    return subject, "\n".join(lines[1:]).strip()
+
+
+def quote(entries):
+    if not entries:
+        return None
+    body = [f">• {entry}" for entry in entries]
+    body[0] = "**" + body[0]
+    body[-1] = body[-1] + "||"
+    return "\n".join(body)
+
+
+def caption():
+    subject, body = head()
     sha = (os.environ.get("COMMIT_SHA") or "")[:9]
-    parts = [f"**{subject}**"]
-    if body:
-        parts.append(body)
-    parts.append(f"`{sha}`\n{os.environ.get('RUN_URL', '')}")
-    return "\n\n".join(parts)[:CAPTION_LIMIT]
+    tail = f"`{sha}`\n{os.environ.get('RUN_URL', '')}"
+    entries = commits()
 
-
-def chat() -> "int | str":
-    raw = os.environ["TG_CHAT_ID"].strip()
-    try:
-        return int(raw)
-    except ValueError:
-        return raw
+    while True:
+        parts = [f"**{subject}**"]
+        if body:
+            parts.append(body)
+        block = quote(entries)
+        if block:
+            parts.append(block)
+        parts.append(tail)
+        text = "\n\n".join(parts)
+        if len(text) <= CAPTION_LIMIT or not entries:
+            return text[:CAPTION_LIMIT]
+        entries = entries[1:]
 
 
 async def main() -> None:
@@ -51,6 +80,14 @@ async def main() -> None:
             force_document=True,
         )
         print("отправлено, id =", message.id)
+
+
+def chat():
+    raw = os.environ["TG_CHAT_ID"].strip()
+    try:
+        return int(raw)
+    except ValueError:
+        return raw
 
 
 asyncio.run(main())
