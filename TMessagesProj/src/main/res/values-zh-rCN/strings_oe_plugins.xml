@@ -9,6 +9,7 @@
     <string name="PluginsUnsafeModeConfirm">这会移除插件与你的数据之间的全部检查。插件将能读取聊天记录、以你的名义发送消息、取走文件并执行原生代码，不受任何限制。\n\n只有在清楚自己安装的是什么时才开启。</string>
     <string name="PluginsUnsafeModeEnable">仍然开启</string>
     <string name="PluginsUnsafeModeOn">不安全模式已开启</string>
+    <string name="PluginsUnsafeModeActive">在不安全模式开启期间，这些开关不起任何作用：插件已经拥有全部权限。在插件设置中关闭该模式即可恢复。</string>
     <string name="PluginsDeveloperMode">开发者模式</string>
     <string name="PluginsInstallFromFile">从文件安装</string>
     <string name="PluginsInstalling">正在安装插件…</string>

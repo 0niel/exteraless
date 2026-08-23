@@ -10,6 +10,7 @@
     <string name="PluginsUnsafeModeConfirm">This removes every check between plugins and your data. A plugin will be able to read your chats, send messages as you, take your files and run native code with no restrictions whatsoever.\n\nTurn it on only if you understand what you are installing.</string>
     <string name="PluginsUnsafeModeEnable">Turn on anyway</string>
     <string name="PluginsUnsafeModeOn">Unsafe mode is on</string>
+    <string name="PluginsUnsafeModeActive">These switches decide nothing while unsafe mode is on: the plugin already has everything. Turn unsafe mode off in the plugin settings to get them back.</string>
     <string name="PluginsDeveloperMode">Developer mode</string>
     <string name="PluginsInstallFromFile">Install from file</string>
     <string name="PluginsInstalling">Installing plugin…</string>

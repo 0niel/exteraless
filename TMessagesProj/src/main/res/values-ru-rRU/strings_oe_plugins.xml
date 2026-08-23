@@ -10,6 +10,7 @@
     <string name="PluginsUnsafeModeConfirm">Это убирает все проверки между плагинами и вашими данными. Плагин сможет читать переписку, отправлять сообщения от вашего имени, забирать файлы и исполнять нативный код без каких-либо запретов.\n\nВключайте, только если понимаете, что ставите.</string>
     <string name="PluginsUnsafeModeEnable">Всё равно включить</string>
     <string name="PluginsUnsafeModeOn">Небезопасный режим включён</string>
+    <string name="PluginsUnsafeModeActive">Пока включён небезопасный режим, эти переключатели ничего не решают: у плагина уже есть всё. Выключите режим в настройках плагинов, чтобы они снова работали.</string>
     <string name="PluginsDeveloperMode">Режим разработчика</string>
     <string name="PluginsInstallFromFile">Установить из файла</string>
     <string name="PluginsInstalling">Установка плагина…</string>

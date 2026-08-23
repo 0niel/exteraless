@@ -9,6 +9,7 @@
     <string name="PluginsUnsafeModeConfirm">Esto elimina todas las comprobaciones entre los plugins y tus datos. Un plugin podrá leer tus chats, enviar mensajes en tu nombre, llevarse tus archivos y ejecutar código nativo sin restricción alguna.\n\nActívalo solo si entiendes lo que estás instalando.</string>
     <string name="PluginsUnsafeModeEnable">Activar de todos modos</string>
     <string name="PluginsUnsafeModeOn">El modo inseguro está activado</string>
+    <string name="PluginsUnsafeModeActive">Mientras el modo inseguro esté activado, estos interruptores no deciden nada: el plugin ya lo tiene todo. Desactiva el modo en los ajustes de plugins para recuperarlos.</string>
     <string name="PluginsDeveloperMode">Modo desarrollador</string>
     <string name="PluginsInstallFromFile">Instalar desde un archivo</string>
     <string name="PluginsInstalling">Instalando el plugin…</string>

@@ -171,6 +171,15 @@ public class PluginInstallSheet extends BottomSheet {
      * перечисляет то, что нашлось, а здесь речь о том, что искать бесполезно.
      */
     public static android.view.View createObfuscationWarning(Context context, List<String> evidence) {
+        return createWarningBox(context, getString(R.string.PluginsObfuscated),
+                getString(R.string.PluginsObfuscatedInfo),
+                evidence == null || evidence.isEmpty() ? null
+                        : LocaleController.formatString(R.string.PluginsObfuscatedEvidence,
+                                TextUtils.join(", ", evidence)));
+    }
+
+    public static android.view.View createWarningBox(Context context, CharSequence titleText,
+                                                     CharSequence infoText, CharSequence footText) {
         LinearLayout box = new LinearLayout(context);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10),
@@ -182,23 +191,22 @@ public class PluginInstallSheet extends BottomSheet {
         title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         title.setTypeface(AndroidUtilities.bold());
         title.setTextColor(Theme.getColor(Theme.key_text_RedBold));
-        title.setText(getString(R.string.PluginsObfuscated));
+        title.setText(titleText);
         box.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                 LayoutHelper.WRAP_CONTENT));
 
         TextView info = new TextView(context);
         info.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
         info.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        info.setText(getString(R.string.PluginsObfuscatedInfo));
+        info.setText(infoText);
         box.addView(info, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                 LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
 
-        if (evidence != null && !evidence.isEmpty()) {
+        if (!TextUtils.isEmpty(footText)) {
             TextView signs = new TextView(context);
             signs.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
             signs.setTextColor(Theme.getColor(Theme.key_dialogTextGray2));
-            signs.setText(LocaleController.formatString(R.string.PluginsObfuscatedEvidence,
-                    TextUtils.join(", ", evidence)));
+            signs.setText(footText);
             box.addView(signs, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT,
                     LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
         }

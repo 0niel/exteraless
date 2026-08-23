@@ -9,6 +9,7 @@
     <string name="PluginsUnsafeModeConfirm">To usuwa wszystkie kontrole między wtyczkami a Twoimi danymi. Wtyczka będzie mogła czytać rozmowy, wysyłać wiadomości w Twoim imieniu, zabrać pliki i uruchomić kod natywny bez jakichkolwiek ograniczeń.\n\nWłącz tylko, jeśli rozumiesz, co instalujesz.</string>
     <string name="PluginsUnsafeModeEnable">Włącz mimo to</string>
     <string name="PluginsUnsafeModeOn">Tryb bez zabezpieczeń jest włączony</string>
+    <string name="PluginsUnsafeModeActive">Dopóki tryb bez zabezpieczeń jest włączony, te przełączniki niczego nie decydują: wtyczka i tak ma wszystko. Wyłącz ten tryb w ustawieniach wtyczek, aby znów działały.</string>
     <string name="PluginsDeveloperMode">Tryb dewelopera</string>
     <string name="PluginsInstallFromFile">Zainstaluj z pliku</string>
     <string name="PluginsInstalling">Instalowanie wtyczki…</string>
