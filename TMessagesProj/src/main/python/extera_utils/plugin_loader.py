@@ -1893,6 +1893,9 @@ def _build_custom_view(item, context):
     factory = getattr(item, "factory", None)
     if factory is None:
         return None
+    build = getattr(factory, "build_view", None)
+    if callable(build):
+        return build(context, False)
     create = getattr(factory, "create_view", None)
     if not callable(create):
         return None

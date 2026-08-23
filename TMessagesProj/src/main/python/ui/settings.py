@@ -96,8 +96,9 @@ class SimpleSettingFactory:
     """Declarative factory for Custom settings items.
 
     ``create_view(context)`` and ``bind_view(view, item, divider)`` are called
-    by the settings renderer when the row is drawn; ``java``/``instance`` still
-    require the class-proxy subsystem, which this build does not have.
+    by the settings renderer when the row is drawn. ``java``/``instance`` give
+    the shared Java peer (app.exteraless.plugins.models.PluginItemFactory),
+    which delegates back to this object instead of generating a subclass.
     """
 
     def __init__(self, create_view=None, bind_view=None, is_clickable: bool = False,
@@ -115,17 +116,40 @@ class SimpleSettingFactory:
         self.equals = equals
         self.content_equals = content_equals
 
+    def build_view(self, context, divider=False):
+        if not callable(self.create_view):
+            return None
+        try:
+            view = self.create_view(context)
+        except TypeError:
+            view = self.create_view()
+        if view is None:
+            return None
+        if callable(self.bind_view):
+            item = self.create_item() if callable(self.create_item) else None
+            try:
+                self.bind_view(view, item, divider)
+            except TypeError:
+                try:
+                    self.bind_view(view)
+                except TypeError:
+                    pass
+        return view
+
     @property
     def instance(self):
-        """The bridged Java peer of this factory (unavailable in this build)."""
-        return self
+        """The bridged Java peer of this factory."""
+        return self.java
 
     @property
     def java(self):
-        raise RuntimeError(
-            "Custom setting factories require the class-proxy subsystem, "
-            "not available in this build"
-        )
+        from java import jclass
+        return jclass("app.exteraless.plugins.models.PluginItemFactory").getInstance()
+
+    def to_item(self, *factory_args):
+        from java import jclass
+        return jclass("app.exteraless.plugins.models.PluginItemFactory").create(
+            self, factory_args or None)
 
     def __call__(self, *factory_args, link_alias: Optional[str] = None) -> Custom:
         """Factory(link_alias="x") or Factory(*factory_args) -> Custom(...)."""
