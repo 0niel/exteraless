@@ -1263,12 +1263,30 @@ def _import_module(path: str, plugin_id: str):
     return module, module_name
 
 
-def _find_plugin_class(module, path: str):
-    """The plugin class: a BasePlugin subclass defined in the plugin module itself."""
+def _class_owner(obj) -> Optional[str]:
+    source = sys.modules.get(getattr(obj, "__module__", "") or "")
+    path = getattr(source, "__file__", None)
+    if not path:
+        return None
+    try:
+        return _resolve_owner(path)
+    except Exception:
+        return None
+
+
+def _find_plugin_class(module, path: str, plugin_id: Optional[str] = None):
+    fallback = None
     for obj in vars(module).values():
-        if isinstance(obj, type) and issubclass(obj, BasePlugin) \
-                and obj is not BasePlugin and obj.__module__ == module.__name__:
+        if not isinstance(obj, type) or not issubclass(obj, BasePlugin) or obj is BasePlugin:
+            continue
+        if obj.__module__ == module.__name__:
             return obj
+        if fallback is None:
+            owner = _class_owner(obj)
+            if owner is None or owner == plugin_id:
+                fallback = obj
+    if fallback is not None:
+        return fallback
     raise RuntimeError(f"no BasePlugin subclass defined in {path!r}")
 
 
@@ -1334,7 +1352,7 @@ def load_plugin(path: str, plugin_id: str) -> str:
             _ensure_requirements(plugin_id, meta["requirements"])
 
         module, module_name = _import_module(path, plugin_id)
-        plugin_class = _find_plugin_class(module, path)
+        plugin_class = _find_plugin_class(module, path, plugin_id)
         instance = plugin_class()
         instance._attach(plugin_id)
         plugins[plugin_id] = PluginRecord(module=module, instance=instance, path=path,
