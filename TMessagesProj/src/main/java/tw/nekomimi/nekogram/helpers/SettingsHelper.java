@@ -8,11 +8,13 @@ import android.net.Uri;
 import android.text.TextUtils;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,18 @@ public class SettingsHelper {
 
     private static final String HOST_NAGRAM = "nasettings";
     private static final String HOST_EXTERALESS = "exteraless";
+
+    private static final Map<String, String> SEARCH_TITLE_ALIASES = new HashMap<>();
+
+    static {
+        SEARCH_TITLE_ALIASES.put("OEGeneral:translateChatButton", "OEGeneralTranslateWholeChat");
+        SEARCH_TITLE_ALIASES.put("OEGeneral:translateToLang", "OEGeneralTranslationTarget");
+        SEARCH_TITLE_ALIASES.put("OEGeneral:lastfm", "OEGeneralLastFm");
+        SEARCH_TITLE_ALIASES.put("OEGeneral:ayuGhost", "GhostMode");
+        SEARCH_TITLE_ALIASES.put("OEAppearance:appNavigation", "OEAppearanceNavigation");
+        SEARCH_TITLE_ALIASES.put("OEChats:disableGreeting", "OEChatsDisableGreetingSticker");
+        SEARCH_TITLE_ALIASES.put("OEChats:hideKeyboardOnScroll", "HideKeyboardOnChatScroll");
+    }
 
     private static final Set<String> EXTERALESS_SCREENS = new HashSet<>(Arrays.asList(
             "settings", "general", "appearance", "chats", "plugins", "pillstack", "other"));
@@ -209,6 +223,40 @@ public class SettingsHelper {
         }
     }
 
+    private static String rowTitle(BaseNekoSettingsActivity fragment, String key) {
+        String title = getString(key);
+        if (title != null && !title.isEmpty() && !title.equals(key)) {
+            return title;
+        }
+        if (key.isEmpty()) {
+            return null;
+        }
+        String capitalized = Character.toUpperCase(key.charAt(0)) + key.substring(1);
+        String prefix = fragment.getSearchPrefix();
+        if (prefix != null) {
+            String alias = SEARCH_TITLE_ALIASES.get(prefix + ":" + key);
+            if (alias != null) {
+                title = resolved(alias);
+                if (title != null) {
+                    return title;
+                }
+            }
+            title = resolved(prefix + capitalized);
+            if (title != null) {
+                return title;
+            }
+        }
+        return resolved(capitalized);
+    }
+
+    private static String resolved(String name) {
+        if (LocaleController.getStringResId(name) == 0) {
+            return null;
+        }
+        String value = getString(name);
+        return value == null || value.isEmpty() ? null : value;
+    }
+
     public interface Callback {
         void presentFragment(BaseFragment fragment);
     }
@@ -220,6 +268,42 @@ public class SettingsHelper {
         fragments.add(new NekoChatSettingsActivity());
         fragments.add(new NekoExperimentalSettingsActivity());
         fragments.add(new NekoTranslatorSettingsActivity());
+
+        ArrayList<BaseNekoSettingsActivity> exteralessFragments = new ArrayList<>();
+        exteralessFragments.add(new OpenExteraSettingsActivity());
+        exteralessFragments.add(new OpenExteraGeneralActivity());
+        exteralessFragments.add(new OpenExteraAppearanceActivity());
+        exteralessFragments.add(new OpenExteraChatsActivity());
+        exteralessFragments.add(new OpenExteraOtherActivity());
+        exteralessFragments.add(new PillStackSettingsActivity());
+
+        String e_title = getString(R.string.OpenExtera);
+        for (BaseNekoSettingsActivity fragment : exteralessFragments) {
+            try {
+                fragment.buildRowsForSearch();
+            } catch (Exception e) {
+                continue;
+            }
+            int uid = fragment.getSearchGuid();
+            int drawable = fragment.getSearchIcon();
+            String f_title = fragment.getSearchTitle();
+            for (Map.Entry<Integer, String> entry : fragment.getRowMapReverse().entrySet()) {
+                String key = entry.getValue();
+                if (key == null || key.endsWith("Header") || key.equals(String.valueOf(entry.getKey()))) {
+                    continue;
+                }
+                String title = rowTitle(fragment, key);
+                if (title == null || title.isEmpty()) {
+                    continue;
+                }
+                Runnable open = () -> {
+                    callback.presentFragment(fragment);
+                    AndroidUtilities.runOnUIThread(() -> fragment.scrollToRow(key, null));
+                };
+                items.add(new SettingsSearchResult(
+                        uid + entry.getKey(), title, e_title, f_title, drawable, open));
+            }
+        }
 
         String n_title = getString(R.string.NekoSettings);
         for (BaseNekoXSettingsActivity fragment: fragments) {

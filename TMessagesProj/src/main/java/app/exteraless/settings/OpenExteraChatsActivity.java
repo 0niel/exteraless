@@ -433,6 +433,21 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
+    public int getSearchGuid() {
+        return 22000;
+    }
+
+    @Override
+    public int getSearchIcon() {
+        return R.drawable.msg_discussion;
+    }
+
+    @Override
+    public String getSearchPrefix() {
+        return "OEChats";
+    }
+
+    @Override
     protected String getKey() {
         return "exteraless_chats";
     }

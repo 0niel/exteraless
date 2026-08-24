@@ -234,6 +234,21 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
+    public int getSearchGuid() {
+        return 21000;
+    }
+
+    @Override
+    public int getSearchIcon() {
+        return R.drawable.msg_theme;
+    }
+
+    @Override
+    public String getSearchPrefix() {
+        return "OEAppearance";
+    }
+
+    @Override
     protected String getKey() {
         return "exteraless_appearance";
     }

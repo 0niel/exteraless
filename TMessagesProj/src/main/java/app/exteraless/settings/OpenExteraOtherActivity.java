@@ -210,6 +210,21 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     }
 
     @Override
+    public int getSearchGuid() {
+        return 23000;
+    }
+
+    @Override
+    public int getSearchIcon() {
+        return R.drawable.msg_fave;
+    }
+
+    @Override
+    public String getSearchPrefix() {
+        return "OEGeneral";
+    }
+
+    @Override
     protected String getKey() {
         return "exteraless_other";
     }

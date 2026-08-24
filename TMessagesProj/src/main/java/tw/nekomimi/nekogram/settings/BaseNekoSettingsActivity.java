@@ -284,6 +284,30 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         rowMap.clear();
     }
 
+    public HashMap<Integer, String> getRowMapReverse() {
+        return rowMapReverse;
+    }
+
+    public void buildRowsForSearch() {
+        updateRows();
+    }
+
+    public int getSearchGuid() {
+        return 0;
+    }
+
+    public int getSearchIcon() {
+        return 0;
+    }
+
+    public String getSearchPrefix() {
+        return null;
+    }
+
+    public String getSearchTitle() {
+        return getActionBarTitle();
+    }
+
     @Override
     public Theme.ResourcesProvider getResourceProvider() {
         return resourcesProvider;
