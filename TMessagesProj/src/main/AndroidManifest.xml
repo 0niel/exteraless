@@ -625,6 +625,7 @@
             android:name=".NotificationsService"
             android:enabled="true"
             android:exported="true"
+            android:stopWithTask="false"
             android:foregroundServiceType="remoteMessaging"
         />
         <service
