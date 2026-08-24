@@ -14,6 +14,12 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import java.util.ArrayList;
 import java.util.Map;
 
+import app.exteraless.pillstack.PillStackSettingsActivity;
+import app.exteraless.settings.OpenExteraAppearanceActivity;
+import app.exteraless.settings.OpenExteraChatsActivity;
+import app.exteraless.settings.OpenExteraGeneralActivity;
+import app.exteraless.settings.OpenExteraOtherActivity;
+import app.exteraless.settings.OpenExteraSettingsActivity;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.settings.BaseNekoXSettingsActivity;
 import tw.nekomimi.nekogram.settings.NekoAboutActivity;
@@ -69,6 +75,24 @@ public class SettingsHelper {
                 case "translate":
                 case "t":
                     fragment = nekox_fragment = new NekoTranslatorSettingsActivity();
+                    break;
+                case "exteraless":
+                    fragment = neko_fragment = new OpenExteraSettingsActivity();
+                    break;
+                case "exteraless_general":
+                    fragment = neko_fragment = new OpenExteraGeneralActivity();
+                    break;
+                case "exteraless_appearance":
+                    fragment = neko_fragment = new OpenExteraAppearanceActivity();
+                    break;
+                case "exteraless_chats":
+                    fragment = neko_fragment = new OpenExteraChatsActivity();
+                    break;
+                case "exteraless_other":
+                    fragment = neko_fragment = new OpenExteraOtherActivity();
+                    break;
+                case "pillstack":
+                    fragment = neko_fragment = new PillStackSettingsActivity();
                     break;
                 case "send_logs":
                     sendLogs(activity, false);
