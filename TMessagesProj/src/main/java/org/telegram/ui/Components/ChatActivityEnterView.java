@@ -34,6 +34,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -6257,10 +6258,72 @@ public class ChatActivityEnterView extends FrameLayout implements
         if (mime != null && mime.equalsIgnoreCase("image/gif")) {
             SendMessagesHelper.prepareSendingDocument(accountInstance, null, null, uri, null, "image/gif", dialog_id, replyingMessageObject, getThreadMessage(), null, replyingQuote, null, notify, 0, null, parentFragment != null ? parentFragment.getMessageChatSendParams() : null, false);
         } else {
-            SendMessagesHelper.prepareSendingPhoto(accountInstance, null, uri, dialog_id, replyingMessageObject, getThreadMessage(), replyingQuote, null, null, null, null, 0, null, notify, 0, parentFragment == null ? 0 : parentFragment.getChatMode(), parentFragment != null ? parentFragment.getMessageChatSendParams() : null);
+            final MessageObject reply = replyingMessageObject;
+            final MessageObject thread = getThreadMessage();
+            final ChatActivity.ReplyQuote quote = replyingQuote;
+            Utilities.globalQueue.postRunnable(() -> {
+                final String stickerPath = keyboardStickerPath(uri);
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (stickerPath != null) {
+                        SendMessagesHelper.prepareSendingDocument(accountInstance, stickerPath, stickerPath, null, null, "image/webp", dialog_id, reply, thread, null, quote, null, notify, 0, null, parentFragment != null ? parentFragment.getMessageChatSendParams() : null, false);
+                    } else {
+                        SendMessagesHelper.prepareSendingPhoto(accountInstance, null, uri, dialog_id, reply, thread, quote, null, null, null, null, 0, null, notify, 0, parentFragment == null ? 0 : parentFragment.getChatMode(), parentFragment != null ? parentFragment.getMessageChatSendParams() : null);
+                    }
+                });
+            });
         }
         if (delegate != null) {
             delegate.onMessageSend(null, true, scheduleDate, scheduleRepeatPeriod, 0);
+        }
+    }
+
+    private static String keyboardStickerPath(Uri uri) {
+        if (uri == null) {
+            return null;
+        }
+        Bitmap bitmap = null;
+        try {
+            try (InputStream stream = ApplicationLoader.applicationContext.getContentResolver().openInputStream(uri)) {
+                bitmap = BitmapFactory.decodeStream(stream);
+            }
+            if (bitmap == null || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) {
+                FileLog.d("keyboard sticker: cannot decode " + uri);
+                return null;
+            }
+            final int width = bitmap.getWidth();
+            final int height = bitmap.getHeight();
+            if (width > 512 || height > 512) {
+                final float scale = 512f / Math.max(width, height);
+                Bitmap scaled = Bitmap.createScaledBitmap(bitmap,
+                        Math.max(1, Math.round(width * scale)),
+                        Math.max(1, Math.round(height * scale)), true);
+                if (scaled != bitmap) {
+                    bitmap.recycle();
+                    bitmap = scaled;
+                }
+            }
+            File file = new File(FileLoader.getDirectory(FileLoader.MEDIA_DIR_CACHE),
+                    Utilities.generateRandomString(12) + ".webp");
+            Bitmap.CompressFormat format = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? Bitmap.CompressFormat.WEBP_LOSSLESS : Bitmap.CompressFormat.WEBP;
+            boolean written;
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                written = bitmap.compress(format, 100, out);
+            }
+            FileLog.d("keyboard sticker: " + width + "x" + height
+                    + " alpha=" + bitmap.hasAlpha() + " written=" + written
+                    + " size=" + file.length());
+            if (!written || file.length() <= 0) {
+                return null;
+            }
+            return file.getAbsolutePath();
+        } catch (Throwable e) {
+            FileLog.e(e);
+            return null;
+        } finally {
+            if (bitmap != null) {
+                bitmap.recycle();
+            }
         }
     }
 
