@@ -4,16 +4,28 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.PushListenerController;
+import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.UserConfig;
+import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
@@ -67,6 +79,11 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private static final String ZALGO_SAMPLE =
             "Z\u0334\u034d\u030c\u0301a\u0308\u0325\u0347\u0303l\u0302\u031e\u0356\u0300"
                     + "g\u0300\u035d\u0345\u0330o\u0304\u0353\u0359\u0306";
+
+    private int notificationsHeaderRow;
+    private int pushStatusRow;
+    private int batteryOptimizationRow;
+    private int notificationsDividerRow;
 
     private int translateHeaderRow;
     private int translateButtonRow;
@@ -122,6 +139,11 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     @Override
     protected void updateRows() {
         super.updateRows();
+
+        notificationsHeaderRow = addRow("notificationsHeader");
+        pushStatusRow = addRow("pushStatus");
+        batteryOptimizationRow = addRow("batteryOptimization");
+        notificationsDividerRow = addRow();
 
         translateHeaderRow = addRow("translateHeader");
         translateButtonRow = addRow("translateButton");
@@ -187,6 +209,16 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
+        if (position == pushStatusRow) {
+            copyPushStatus();
+            return;
+        }
+
+        if (position == batteryOptimizationRow) {
+            openBatteryOptimizationSettings();
+            return;
+        }
+
         if (position == translationProviderRow) {
             Translator.showProviderSelect(view, provider -> {
                 NekoConfig.translationProvider.setConfigInt(provider);
@@ -563,6 +595,121 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 : LocaleController.formatString(R.string.OEGeneralSavePathInfoFolder, path);
     }
 
+    private boolean osNotificationsEnabled() {
+        try {
+            return NotificationManagerCompat.from(ApplicationLoader.applicationContext).areNotificationsEnabled();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private boolean batteryUnrestricted() {
+        try {
+            PowerManager pm = (PowerManager) ApplicationLoader.applicationContext.getSystemService(Context.POWER_SERVICE);
+            return pm == null || pm.isIgnoringBatteryOptimizations(ApplicationLoader.applicationContext.getPackageName());
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private String standbyBucket() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return "n/a";
+        }
+        try {
+            android.app.usage.UsageStatsManager usm = (android.app.usage.UsageStatsManager)
+                    ApplicationLoader.applicationContext.getSystemService(Context.USAGE_STATS_SERVICE);
+            if (usm == null) {
+                return "n/a";
+            }
+            int bucket = usm.getAppStandbyBucket();
+            if (bucket <= 10) return "exempted";
+            if (bucket <= 20) return "active";
+            if (bucket <= 30) return "working_set";
+            if (bucket <= 40) return "frequent";
+            if (bucket <= 45) return "rare";
+            return "restricted";
+        } catch (Exception e) {
+            return "n/a";
+        }
+    }
+
+    private String formatPushStatus() {
+        final int type = NaConfig.INSTANCE.getPushServiceType().Int();
+        final String name = type == 0 ? "In-App" : type == 2 ? "UnifiedPush" : "FCM";
+        if (!osNotificationsEnabled()) {
+            return name + " \u00b7 " + getString(R.string.OEGeneralPushStatusBlocked);
+        }
+        if (TextUtils.isEmpty(SharedConfig.pushString)) {
+            return name + " \u00b7 " + getString(R.string.OEGeneralPushStatusNoToken);
+        }
+        if (!UserConfig.getInstance(UserConfig.selectedAccount).registeredForPush) {
+            return name + " \u00b7 " + getString(R.string.OEGeneralPushStatusNotRegistered);
+        }
+        if (SharedConfig.pushLastReceivedTime <= 0) {
+            return name + " \u00b7 " + getString(R.string.OEGeneralPushStatusNothing);
+        }
+        return name + " \u00b7 " + LocaleController.formatDateTime(
+                SharedConfig.pushLastReceivedTime / 1000L, true);
+    }
+
+    private void copyPushStatus() {
+        final StringBuilder text = new StringBuilder();
+        final boolean hasToken = !TextUtils.isEmpty(SharedConfig.pushString);
+        text.append("push type: ").append(NaConfig.INSTANCE.getPushServiceType().Int()).append('\n');
+        text.append("token: ").append(hasToken
+                ? SharedConfig.pushString.length() + " chars" : "none").append('\n');
+        if (!hasToken) {
+            text.append("token status: ").append(SharedConfig.pushStringStatus).append('\n');
+        }
+        text.append("token fetch ms: ").append(
+                SharedConfig.pushStringGetTimeEnd - SharedConfig.pushStringGetTimeStart).append('\n');
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            UserConfig config = UserConfig.getInstance(a);
+            if (config.getClientUserId() != 0) {
+                text.append("account ").append(a).append(" registered: ")
+                        .append(config.registeredForPush).append('\n');
+            }
+        }
+        text.append("last push: ").append(SharedConfig.pushLastReceivedTime <= 0 ? "never"
+                : LocaleController.formatDateTime(SharedConfig.pushLastReceivedTime / 1000L, true)).append('\n');
+        text.append("play services: ")
+                .append(PushListenerController.getProvider().hasServices()).append('\n');
+        text.append("keep alive: ").append(MessagesController
+                .getNotificationsSettings(UserConfig.selectedAccount)
+                .getBoolean("pushService", false)).append('\n');
+        text.append("push connection: ").append(ConnectionsManager
+                .getInstance(UserConfig.selectedAccount).isPushConnectionEnabled()).append('\n');
+        text.append("os notifications: ").append(osNotificationsEnabled()).append('\n');
+        text.append("battery unrestricted: ").append(batteryUnrestricted()).append('\n');
+        text.append("standby bucket: ").append(standbyBucket());
+        AndroidUtilities.addToClipboard(text.toString());
+        BulletinFactory.of(this).createCopyBulletin(getString(R.string.TextCopied)).show();
+    }
+
+    private void openBatteryOptimizationSettings() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        final String pkg = ApplicationLoader.applicationContext.getPackageName();
+        if (!batteryUnrestricted()) {
+            try {
+                getParentActivity().startActivity(new Intent(
+                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Uri.parse("package:" + pkg)));
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        try {
+            getParentActivity().startActivity(
+                    new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+        } catch (Exception e) {
+            BulletinFactory.of(this).createErrorBulletin(
+                    getString(R.string.OEGeneralBatteryOptimizationUnavailable)).show();
+        }
+    }
+
     private class ListAdapter extends BaseListAdapter {
 
         public ListAdapter(Context context) {
@@ -586,7 +733,9 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             switch (holder.getItemViewType()) {
                 case TYPE_HEADER: {
                     HeaderCell cell = (HeaderCell) holder.itemView;
-                    if (position == translateHeaderRow) {
+                    if (position == notificationsHeaderRow) {
+                        cell.setText(getString(R.string.OEGeneralNotificationsHeader));
+                    } else if (position == translateHeaderRow) {
                         cell.setText(getString(R.string.OEGeneralTranslateHeader));
                     } else if (position == generalHeaderRow) {
                         cell.setText(getString(R.string.OEGeneralSectionHeader));
@@ -657,7 +806,15 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_SETTINGS: {
                     TextSettingsCell cell = (TextSettingsCell) holder.itemView;
-                    if (position == translationProviderRow) {
+                    if (position == pushStatusRow) {
+                        cell.setTextAndValue(getString(R.string.OEGeneralPushStatus),
+                                formatPushStatus(), true);
+                    } else if (position == batteryOptimizationRow) {
+                        cell.setTextAndValue(getString(R.string.OEGeneralBatteryOptimization),
+                                getString(batteryUnrestricted()
+                                        ? R.string.OEGeneralBatteryOptimizationOff
+                                        : R.string.OEGeneralBatteryOptimizationOn), false);
+                    } else if (position == translationProviderRow) {
                         cell.setTextAndValue(getString(R.string.OEGeneralTranslationProvider),
                                 getProviderName(NekoConfig.translationProvider.Int()), true);
                     } else if (position == translateToLangRow) {
@@ -694,7 +851,9 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     boolean bottom = position == archiveDividerRow;
-                    if (position == translateDividerRow) {
+                    if (position == notificationsDividerRow) {
+                        cell.setText(getString(R.string.OEGeneralNotificationsInfo));
+                    } else if (position == translateDividerRow) {
                         cell.setText(getString(R.string.OEGeneralTranslateInfo));
                     } else if (position == generalDividerRow) {
                         cell.setText(LocaleController.formatString(R.string.OEGeneralFilterZalgoInfo,

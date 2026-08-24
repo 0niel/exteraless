@@ -65,7 +65,6 @@
     <string name="PushServiceType">Loại Dịch vụ Đẩy</string>
     <string name="PushServiceTypeInApp">Trong ứng dụng</string>
     <string name="PushServiceTypeInAppDialog">Hiển thị thông báo hệ thống</string>
-    <string name="PushStatus">Trạng thái push</string>
     <string name="SendMp4DocumentAsVideo">Gửi tệp MP4 dưới dạng video</string>
     <string name="StickersChooseShortNameForStickerPack">Chọn một tên ngắn cho gói của bạn.</string>
     <string name="StickersCopyStickerSet">Sao chép Bộ nhãn dán</string>

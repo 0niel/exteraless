@@ -71,4 +71,15 @@
     <string name="OEGeneralLastFmNoFile">Nie udało się pobrać utworu</string>
     <string name="OEGeneralLastFmNoUpload">Przekroczono czas wysyłania</string>
     <string name="OEGeneralLastFmAbout">Ta funkcja opiera się na muzyce profilu: zapisuje ukryte bajty z Twoją nazwą użytkownika Last.fm w najnowszym utworze profilu. Po ustawieniu nazwy utwór jest wysyłany ponownie ze zmianą.\n\nPo wyłączeniu funkcji utwór wraca do pierwotnej postaci.</string>
+    <string name="OEGeneralNotificationsHeader">Powiadomienia</string>
+    <string name="OEGeneralPushStatus">Stan powiadomień push</string>
+    <string name="OEGeneralPushStatusBlocked">zablokowane przez system</string>
+    <string name="OEGeneralPushStatusNoToken">brak tokenu</string>
+    <string name="OEGeneralPushStatusNotRegistered">niezarejestrowany</string>
+    <string name="OEGeneralPushStatusNothing">nic nie otrzymano</string>
+    <string name="OEGeneralBatteryOptimization">Optymalizacja baterii</string>
+    <string name="OEGeneralBatteryOptimizationOn">Włączona — powiadomienia mogą się opóźniać</string>
+    <string name="OEGeneralBatteryOptimizationOff">Wyłączona</string>
+    <string name="OEGeneralBatteryOptimizationUnavailable">Ustawienia baterii są niedostępne na tym urządzeniu</string>
+    <string name="OEGeneralNotificationsInfo">Dotknij stanu powiadomień, aby skopiować diagnostykę do schowka — dołącz ją do zgłoszenia problemu. Gdy optymalizacja baterii jest włączona, Android może opóźniać lub gubić powiadomienia w tle.</string>
 </resources>

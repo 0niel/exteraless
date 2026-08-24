@@ -18,18 +18,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ContactsController;
-import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.PushListenerController;
 import org.telegram.messenger.R;
-import org.telegram.messenger.MessagesController;
-import org.telegram.tgnet.ConnectionsManager;
-import org.telegram.ui.Components.BulletinFactory;
-
-import android.os.PowerManager;
-
-import androidx.core.app.NotificationManagerCompat;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UnifiedPushService;
 import org.telegram.messenger.UserConfig;
@@ -51,7 +43,6 @@ import tw.nekomimi.nekogram.config.cell.AbstractConfigCell;
 import tw.nekomimi.nekogram.config.cell.ConfigCellDivider;
 import tw.nekomimi.nekogram.config.cell.ConfigCellHeader;
 import tw.nekomimi.nekogram.config.cell.ConfigCellSelectBox;
-import tw.nekomimi.nekogram.config.cell.ConfigCellText;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextCheck;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextDetail;
 import tw.nekomimi.nekogram.config.cell.ConfigCellTextInput;
@@ -213,8 +204,6 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
     }, null));
     private final AbstractConfigCell pushServiceTypeUnifiedGatewayRow = cellGroup.appendCell(new ConfigCellTextInput(null, NaConfig.INSTANCE.getPushServiceTypeUnifiedGateway(), UnifiedPushService.UP_GATEWAY_DEFAULT, null, (input) -> input.isEmpty() ? (String) NaConfig.INSTANCE.getPushServiceTypeUnifiedGateway().defaultValue : input));
     private final AbstractConfigCell pushServiceTypeInAppDialogRow = cellGroup.appendCell(new ConfigCellTextCheck(NaConfig.INSTANCE.getPushServiceTypeInAppDialog()));
-    private final AbstractConfigCell pushStatusRow = cellGroup.appendCell(new ConfigCellText(
-            "PushStatus", this::formatPushStatus, this::copyPushStatus));
     private final AbstractConfigCell disableNotificationBubblesRow = cellGroup.appendCell(new ConfigCellTextCheck(NekoConfig.disableNotificationBubbles));
     private final AbstractConfigCell dividerNotifications = cellGroup.appendCell(new ConfigCellDivider());
 
@@ -482,82 +471,6 @@ public class NekoGeneralSettingsActivity extends BaseNekoXSettingsActivity {
             }
         }
         addRowsToMap(cellGroup);
-    }
-
-    private boolean osNotificationsEnabled() {
-        try {
-            return NotificationManagerCompat.from(ApplicationLoader.applicationContext).areNotificationsEnabled();
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    private boolean batteryUnrestricted() {
-        try {
-            PowerManager pm = (PowerManager) ApplicationLoader.applicationContext.getSystemService(Context.POWER_SERVICE);
-            return pm == null || pm.isIgnoringBatteryOptimizations(ApplicationLoader.applicationContext.getPackageName());
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    private String formatPushStatus() {
-        final int type = NaConfig.INSTANCE.getPushServiceType().Int();
-        final String name = type == 0 ? "In-App" : type == 2 ? "UnifiedPush" : "FCM";
-        if (!osNotificationsEnabled()) {
-            return name + " \u00b7 blocked by system";
-        }
-        if (SharedConfig.pushString == null || SharedConfig.pushString.isEmpty()) {
-            return name + " · no token";
-        }
-        final boolean registered = UserConfig.getInstance(UserConfig.selectedAccount).registeredForPush;
-        if (!registered) {
-            return name + " · not registered";
-        }
-        if (SharedConfig.pushLastReceivedTime <= 0) {
-            return name + " · nothing received";
-        }
-        final long minutes = (System.currentTimeMillis() - SharedConfig.pushLastReceivedTime) / 60000L;
-        if (minutes < 1) {
-            return name + " · just now";
-        }
-        if (minutes < 60) {
-            return name + " · " + minutes + "m ago";
-        }
-        if (minutes < 60 * 24) {
-            return name + " · " + (minutes / 60) + "h ago";
-        }
-        return name + " · " + (minutes / (60 * 24)) + "d ago";
-    }
-
-    private void copyPushStatus() {
-        final StringBuilder text = new StringBuilder();
-        text.append("push type: ").append(NaConfig.INSTANCE.getPushServiceType().Int()).append('\n');
-        text.append("token: ").append(SharedConfig.pushString == null || SharedConfig.pushString.isEmpty()
-                ? "none" : SharedConfig.pushString.length() + " chars").append('\n');
-        text.append("token status: ").append(SharedConfig.pushStringStatus).append('\n');
-        text.append("token fetch ms: ").append(
-                SharedConfig.pushStringGetTimeEnd - SharedConfig.pushStringGetTimeStart).append('\n');
-        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
-            UserConfig config = UserConfig.getInstance(a);
-            if (config.getClientUserId() != 0) {
-                text.append("account ").append(a).append(" registered: ")
-                        .append(config.registeredForPush).append('\n');
-            }
-        }
-        text.append("last push: ").append(SharedConfig.pushLastReceivedTime <= 0 ? "never"
-                : LocaleController.formatDateTime(SharedConfig.pushLastReceivedTime / 1000L, true)).append('\n');
-        text.append("play services: ")
-                .append(PushListenerController.getProvider().hasServices()).append('\n');
-        text.append("keep alive: ").append(MessagesController
-                .getNotificationsSettings(UserConfig.selectedAccount)
-                .getBoolean("pushService", false)).append('\n');
-        text.append("push connection: ").append(ConnectionsManager
-                .getInstance(UserConfig.selectedAccount).isPushConnectionEnabled()).append('\n');
-        text.append("os notifications: ").append(osNotificationsEnabled()).append('\n');
-        text.append("battery unrestricted: ").append(batteryUnrestricted());
-        AndroidUtilities.addToClipboard(text.toString());
-        BulletinFactory.of(this).createCopyBulletin(getString(R.string.TextCopied)).show();
     }
 
     private void checkPushServiceTypeRows() {

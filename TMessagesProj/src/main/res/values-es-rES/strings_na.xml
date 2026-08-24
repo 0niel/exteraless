@@ -66,7 +66,6 @@
     <string name="PushServiceType">Tipo de servicio Push</string>
     <string name="PushServiceTypeInApp">En App</string>
     <string name="PushServiceTypeInAppDialog">Mostrar notificaciones a residentes</string>
-    <string name="PushStatus">Estado de push</string>
     <string name="SendMp4DocumentAsVideo">Enviar documento MP4 como vídeo</string>
     <string name="StickersChooseShortNameForStickerPack">Elige un nombre corto para tu pack.</string>
     <string name="StickersCopyStickerSet">Copiar conjunto de stickers</string>

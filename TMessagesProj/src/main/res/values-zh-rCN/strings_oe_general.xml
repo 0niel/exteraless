@@ -71,4 +71,15 @@
     <string name="OEGeneralLastFmNoFile">无法下载该曲目</string>
     <string name="OEGeneralLastFmNoUpload">上传超时</string>
     <string name="OEGeneralLastFmAbout">此功能基于资料音乐实现：它会把你的 Last.fm 用户名以隐藏字节写入你最新的资料曲目中。设置用户名后，该曲目会带着改动重新上传。\n\n关闭此功能后，曲目会恢复原样。</string>
+    <string name="OEGeneralNotificationsHeader">通知</string>
+    <string name="OEGeneralPushStatus">推送状态</string>
+    <string name="OEGeneralPushStatusBlocked">被系统阻止</string>
+    <string name="OEGeneralPushStatusNoToken">无令牌</string>
+    <string name="OEGeneralPushStatusNotRegistered">未注册</string>
+    <string name="OEGeneralPushStatusNothing">从未收到</string>
+    <string name="OEGeneralBatteryOptimization">电池优化</string>
+    <string name="OEGeneralBatteryOptimizationOn">已启用 — 推送可能延迟</string>
+    <string name="OEGeneralBatteryOptimizationOff">已关闭</string>
+    <string name="OEGeneralBatteryOptimizationUnavailable">此设备不支持电池设置</string>
+    <string name="OEGeneralNotificationsInfo">点按推送状态可将诊断信息复制到剪贴板，反馈通知问题时请附上。若启用电池优化，Android 可能在后台延迟或丢弃推送。</string>
 </resources>

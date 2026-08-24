@@ -15,24 +15,14 @@ public class ConfigCellText extends AbstractConfigCell implements WithKey, WithO
     private boolean enabled = true;
     private TextSettingsCell cell;
 
-    private final java.util.function.Supplier<String> valueSupplier;
-
     public ConfigCellText(String key, String customValue, Runnable onClick) {
         this.key = key;
         this.value = (customValue == null) ? "" : customValue;
-        this.valueSupplier = null;
-        this.onClick = onClick;
-    }
-
-    public ConfigCellText(String key, java.util.function.Supplier<String> valueSupplier, Runnable onClick) {
-        this.key = key;
-        this.value = "";
-        this.valueSupplier = valueSupplier;
         this.onClick = onClick;
     }
 
     public ConfigCellText(String key, Runnable onClick) {
-        this(key, (String) null, onClick);
+        this(key, null, onClick);
     }
 
     public int getType() {
@@ -56,14 +46,7 @@ public class ConfigCellText extends AbstractConfigCell implements WithKey, WithO
         TextSettingsCell cell = (TextSettingsCell) holder.itemView;
         this.cell = cell;
         String title = getString(key);
-        String shown = value;
-        if (valueSupplier != null) {
-            try {
-                shown = valueSupplier.get();
-            } catch (Exception ignored) {
-            }
-        }
-        cell.setTextAndValue(title, shown == null ? "" : shown, cellGroup.needSetDivider(this));
+        cell.setTextAndValue(title, value, cellGroup.needSetDivider(this));
         cell.setEnabled(enabled);
     }
 

@@ -66,7 +66,6 @@
     <string name="PushServiceType">推送服务类型</string>
     <string name="PushServiceTypeInApp">内置</string>
     <string name="PushServiceTypeInAppDialog">显示常驻通知</string>
-    <string name="PushStatus">推送状态</string>
     <string name="PushServiceTypeUnifiedGateway">Unified Push 网关</string>
     <string name="SendMp4DocumentAsVideo">MP4 视频作为文件发送时可预览</string>
     <string name="StickersChooseShortNameForStickerPack">为您的包选择一个简短的名称。</string>
