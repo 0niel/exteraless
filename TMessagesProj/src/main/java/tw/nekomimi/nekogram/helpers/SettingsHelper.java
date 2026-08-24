@@ -12,9 +12,13 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import app.exteraless.pillstack.PillStackSettingsActivity;
+import app.exteraless.plugins.ui.PluginsActivity;
 import app.exteraless.settings.OpenExteraAppearanceActivity;
 import app.exteraless.settings.OpenExteraChatsActivity;
 import app.exteraless.settings.OpenExteraGeneralActivity;
@@ -33,20 +37,97 @@ import tw.nekomimi.nekogram.settings.NekoTranslatorSettingsActivity;
 
 public class SettingsHelper {
 
+    private static final String HOST_NAGRAM = "nasettings";
+    private static final String HOST_EXTERALESS = "exteraless";
+
+    private static final Set<String> EXTERALESS_SCREENS = new HashSet<>(Arrays.asList(
+            "settings", "general", "appearance", "chats", "plugins", "pillstack", "other"));
+
+    public static boolean isDeepLink(String path) {
+        if (path == null) {
+            return false;
+        }
+        if (path.startsWith(HOST_NAGRAM + "/")) {
+            return true;
+        }
+        if (!path.startsWith(HOST_EXTERALESS + "/")) {
+            return false;
+        }
+        return EXTERALESS_SCREENS.contains(path.substring(HOST_EXTERALESS.length() + 1));
+    }
+
+    public static String linkPathFor(String key) {
+        if (key == null) {
+            return null;
+        }
+        switch (key) {
+            case "exteraless":
+                return HOST_EXTERALESS + "/settings";
+            case "exteraless_general":
+                return HOST_EXTERALESS + "/general";
+            case "exteraless_appearance":
+                return HOST_EXTERALESS + "/appearance";
+            case "exteraless_chats":
+                return HOST_EXTERALESS + "/chats";
+            case "exteraless_other":
+                return HOST_EXTERALESS + "/other";
+            case "pillstack":
+                return HOST_EXTERALESS + "/pillstack";
+            default:
+                return HOST_NAGRAM + "/" + key;
+        }
+    }
+
     public static void processDeepLink(Activity activity, Uri uri, Callback callback, Runnable unknown) {
         if (uri == null) {
             unknown.run();
             return;
         }
         var segments = uri.getPathSegments();
-        if (segments.isEmpty() || segments.size() > 2 || !"nasettings".equals(segments.get(0))) {
+        if (segments.isEmpty() || segments.size() > 2) {
+            unknown.run();
+            return;
+        }
+        final boolean exteraless = HOST_EXTERALESS.equals(segments.get(0));
+        if (!exteraless && !HOST_NAGRAM.equals(segments.get(0))) {
+            unknown.run();
+            return;
+        }
+        if (exteraless && segments.size() < 2) {
             unknown.run();
             return;
         }
         BaseFragment fragment;
         BaseNekoSettingsActivity neko_fragment = null;
         BaseNekoXSettingsActivity nekox_fragment = null;
-        if (segments.size() == 1) {
+        if (exteraless) {
+            switch (segments.get(1)) {
+                case "settings":
+                    fragment = neko_fragment = new OpenExteraSettingsActivity();
+                    break;
+                case "general":
+                    fragment = neko_fragment = new OpenExteraGeneralActivity();
+                    break;
+                case "appearance":
+                    fragment = neko_fragment = new OpenExteraAppearanceActivity();
+                    break;
+                case "chats":
+                    fragment = neko_fragment = new OpenExteraChatsActivity();
+                    break;
+                case "other":
+                    fragment = neko_fragment = new OpenExteraOtherActivity();
+                    break;
+                case "pillstack":
+                    fragment = neko_fragment = new PillStackSettingsActivity();
+                    break;
+                case "plugins":
+                    fragment = new PluginsActivity();
+                    break;
+                default:
+                    unknown.run();
+                    return;
+            }
+        } else if (segments.size() == 1) {
             fragment = new NekoSettingsActivity();
         } else if (PasscodeHelper.getSettingsKey().equals(segments.get(1))) {
             fragment = neko_fragment = new NekoPasscodeSettingsActivity();
