@@ -490,9 +490,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         } else if (position == tabCounterRow) {
             showSelector(position, getString(R.string.OEAppearanceTabCounter), new CharSequence[]{
-                    getString(R.string.Disable),
-                    getString(R.string.FilterMuted),
-                    getString(R.string.FilterAllChatsShort)
+                    getString(R.string.OEAppearanceTabCounterAll),
+                    getString(R.string.OEAppearanceTabCounterUnmuted),
+                    getString(R.string.OEAppearanceTabCounterOff)
             }, NaConfig.INSTANCE.getIgnoreUnreadCount(), () -> {
                 if (foldersPreviewCell != null) {
                     foldersPreviewCell.updateTabCounter(true);
@@ -845,7 +845,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
                         CharSequence[] v = tabTitleOptions();
                         cell.setTextAndValue(getString(R.string.OEAppearanceTabTitleStyle), v[tabTitleIndex(NekoConfig.tabsTitleType.Int())], true);
                     } else if (position == tabCounterRow) {
-                        String[] v = {getString(R.string.Disable), getString(R.string.FilterMuted), getString(R.string.FilterAllChatsShort)};
+                        String[] v = {getString(R.string.OEAppearanceTabCounterAll),
+                                getString(R.string.OEAppearanceTabCounterUnmuted),
+                                getString(R.string.OEAppearanceTabCounterOff)};
                         cell.setTextAndValue(getString(R.string.OEAppearanceTabCounter), v[clamp(NaConfig.INSTANCE.getIgnoreUnreadCount().Int(), v.length)], true);
                     } else if (position == titleTextRow) {
                         String[] v = {getString(R.string.OEAppearanceTitleTextApp), getString(R.string.OEAppearanceTitleTextUsername), getString(R.string.OEAppearanceTitleTextName), getString(R.string.FilterChats)};

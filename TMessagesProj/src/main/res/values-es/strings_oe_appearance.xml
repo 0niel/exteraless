@@ -100,4 +100,7 @@
     <string name="MonetStyleHeader">Paleta Monet</string>
     <string name="MonetStyleTelemone">Telemone</string>
     <string name="MonetStyleClassic">Clásica</string>
+    <string name="OEAppearanceTabCounterAll">Todos los chats</string>
+    <string name="OEAppearanceTabCounterUnmuted">Excepto silenciados</string>
+    <string name="OEAppearanceTabCounterOff">Desactivado</string>
 </resources>

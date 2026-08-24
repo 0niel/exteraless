@@ -100,4 +100,7 @@
     <string name="MonetStyleHeader">Monet 配色</string>
     <string name="MonetStyleTelemone">Telemone</string>
     <string name="MonetStyleClassic">经典</string>
+    <string name="OEAppearanceTabCounterAll">所有对话</string>
+    <string name="OEAppearanceTabCounterUnmuted">不含免打扰</string>
+    <string name="OEAppearanceTabCounterOff">关闭</string>
 </resources>

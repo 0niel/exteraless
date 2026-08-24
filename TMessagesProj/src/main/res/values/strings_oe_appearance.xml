@@ -118,4 +118,7 @@
     <string name="MonetStyleHeader">Monet palette</string>
     <string name="MonetStyleTelemone">Telemone</string>
     <string name="MonetStyleClassic">Classic</string>
+    <string name="OEAppearanceTabCounterAll">All chats</string>
+    <string name="OEAppearanceTabCounterUnmuted">Except muted</string>
+    <string name="OEAppearanceTabCounterOff">Off</string>
 </resources>

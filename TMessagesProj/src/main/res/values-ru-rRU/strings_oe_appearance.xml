@@ -106,4 +106,7 @@
     <string name="OEAppearanceHideAiEditor">Кнопка AI-редактора</string>
     <string name="OEAppearanceHideAiSummary">Кнопка саммари сообщения</string>
     <string name="OEAppearanceHideAiIv">Саммари в Instant View</string>
+    <string name="OEAppearanceTabCounterAll">Все чаты</string>
+    <string name="OEAppearanceTabCounterUnmuted">Кроме чатов без звука</string>
+    <string name="OEAppearanceTabCounterOff">Выключен</string>
 </resources>

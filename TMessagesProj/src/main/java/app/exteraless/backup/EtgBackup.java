@@ -383,8 +383,14 @@ public final class EtgBackup {
 
         // Инверсия: у exteraGram тумблер «включено», у NagramX — «выключено».
         boolInverted(list, "inAppVibration", NekoConfig.disableVibration);
-        boolInverted(list, "tabCounter", NaConfig.INSTANCE.getIgnoreUnreadCount());
         boolInverted(list, "useGoogleCrashlytics", NaConfig.INSTANCE.getDisableCrashlyticsCollection());
+
+        list.add(new Entry(SECTION_EXTERA, "tabCounter", KIND_BOOL, 0, 0, null,
+                () -> new JsonPrimitive(NaConfig.INSTANCE.getIgnoreUnreadCount().Int()
+                        != NekoConfig.DIALOG_FILTER_EXCLUDE_ALL),
+                value -> NaConfig.INSTANCE.getIgnoreUnreadCount().setConfigInt(value.getAsBoolean()
+                        ? NekoConfig.DIALOG_FILTER_EXCLUDE_NONE
+                        : NekoConfig.DIALOG_FILTER_EXCLUDE_ALL)));
 
         integer(list, "titleText", AppearanceConfig.titleText, 0, 3);
         integer(list, "downloadSpeedBoost", GeneralConfig.downloadSpeedBoost, 0, 2);
