@@ -15,12 +15,15 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Защита от плагина, который вешает или роняет приложение. Перенос
@@ -84,12 +87,18 @@ public class PluginsWatchdog {
     /** Столько раз процесс должен умереть на плагине, прежде чем его выключат. */
     private static final int CRASH_STRIKES_BEFORE_DISABLE = 2;
 
+    private static final long MAIN_BUDGET_WINDOW_MS = 1000L;
+    private static final long MAIN_BUDGET_NANOS = 250L * 1_000_000L;
+    private static final int SLOW_WINDOWS_BEFORE_ALERT = 3;
+
     /** Один заход в код плагина. Сравнивается по ссылке — так проверка узнаёт «тот же самый». */
     public static final class ExecutionInfo {
         final String pluginId;
+        final long mainEnterNanos;
 
-        ExecutionInfo(String pluginId) {
+        ExecutionInfo(String pluginId, long mainEnterNanos) {
             this.pluginId = pluginId;
+            this.mainEnterNanos = mainEnterNanos;
         }
 
         public String getPluginId() {
@@ -106,7 +115,14 @@ public class PluginsWatchdog {
     /** Поток -> его отложенная проверка на зависание. */
     private final ConcurrentHashMap<Thread, ScheduledFuture<?>> scheduledChecks = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<String, AtomicLong> mainThreadNanos = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicInteger> overBudgetWindows = new ConcurrentHashMap<>();
+    private final Set<String> loggedSlow = ConcurrentHashMap.newKeySet();
+    private final Set<String> alertedSlow = ConcurrentHashMap.newKeySet();
+
     private volatile ScheduledExecutorService scheduler;
+    private volatile ScheduledFuture<?> budgetSweep;
+    private final Thread mainThread = android.os.Looper.getMainLooper().getThread();
 
     /** Файл-маркер и его текущее содержимое (чтобы не писать одно и то же). */
     private volatile RandomAccessFile markerFile;
@@ -133,6 +149,14 @@ public class PluginsWatchdog {
             executor.setRemoveOnCancelPolicy(true);
             scheduler = executor;
         }
+        ScheduledExecutorService active = scheduler;
+        if (active != null && budgetSweep == null) {
+            try {
+                budgetSweep = active.scheduleWithFixedDelay(this::sweepMainThreadBudget,
+                        MAIN_BUDGET_WINDOW_MS, MAIN_BUDGET_WINDOW_MS, TimeUnit.MILLISECONDS);
+            } catch (RejectedExecutionException ignored) {
+            }
+        }
     }
 
     /** Остановить планировщик и снять все пометки «не отвечает». */
@@ -141,6 +165,15 @@ public class PluginsWatchdog {
             check.cancel(false);
         }
         scheduledChecks.clear();
+        ScheduledFuture<?> sweep = budgetSweep;
+        if (sweep != null) {
+            sweep.cancel(false);
+        }
+        budgetSweep = null;
+        mainThreadNanos.clear();
+        overBudgetWindows.clear();
+        loggedSlow.clear();
+        alertedSlow.clear();
         ScheduledExecutorService existing = scheduler;
         if (existing != null) {
             existing.shutdownNow();
@@ -173,7 +206,8 @@ public class PluginsWatchdog {
             return;
         }
         Thread thread = Thread.currentThread();
-        ExecutionInfo info = new ExecutionInfo(pluginId);
+        ExecutionInfo info = new ExecutionInfo(pluginId,
+                thread == mainThread ? System.nanoTime() : 0L);
         executingPlugins.put(thread, info);
 
         // Этот поток раньше висел — значит, отвис.
@@ -251,6 +285,10 @@ public class PluginsWatchdog {
         if (!executingPlugins.remove(thread, info)) {
             return;
         }
+        if (info.mainEnterNanos != 0L) {
+            mainThreadNanos.computeIfAbsent(pluginId, id -> new AtomicLong())
+                    .addAndGet(System.nanoTime() - info.mainEnterNanos);
+        }
         ScheduledFuture<?> check = scheduledChecks.remove(thread);
         if (check != null) {
             check.cancel(false);
@@ -260,6 +298,31 @@ public class PluginsWatchdog {
             notifyRecoveredIfLastFrozen(wasFrozen.pluginId);
         }
         scheduleMarkerClear();
+    }
+
+    private void sweepMainThreadBudget() {
+        for (Map.Entry<String, AtomicLong> entry : mainThreadNanos.entrySet()) {
+            final String pluginId = entry.getKey();
+            final long spent = entry.getValue().getAndSet(0L);
+            AtomicInteger streak = overBudgetWindows.computeIfAbsent(pluginId, id -> new AtomicInteger());
+            if (spent < MAIN_BUDGET_NANOS) {
+                streak.set(0);
+                continue;
+            }
+            if (streak.incrementAndGet() < SLOW_WINDOWS_BEFORE_ALERT) {
+                continue;
+            }
+            streak.set(0);
+            final long millis = spent / 1_000_000L;
+            if (loggedSlow.add(pluginId)) {
+                FileLog.e("PluginsWatchdog: plugin " + pluginId + " is holding the main thread for "
+                        + millis + "ms per second");
+            }
+            Activity activity = currentActivity();
+            if (activity != null && alertedSlow.add(pluginId)) {
+                showSlowingDownAlert(pluginId, activity, millis);
+            }
+        }
     }
 
     /** Проверка «не вернулся за {@value #FREEZE_TIMEOUT_SECONDS} с». Идёт в потоке планировщика. */
@@ -530,6 +593,39 @@ public class PluginsWatchdog {
                 FileLog.e("PluginsWatchdog: cannot show not-responding alert", t);
             }
         });
+    }
+
+    public void showSlowingDownAlert(String pluginId, Activity activity, long millisPerSecond) {
+        if (activity == null || pluginId == null) {
+            return;
+        }
+        String name = pluginId;
+        for (Plugin plugin : PluginsController.getInstance().getPluginsSnapshot()) {
+            if (pluginId.equals(plugin.id)) {
+                name = plugin.getDisplayName();
+                break;
+            }
+        }
+        final String displayName = name;
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                new AlertDialog.Builder(activity)
+                        .setTitle(LocaleController.getString(R.string.PluginSlowingDownTitle))
+                        .setMessage(LocaleController.formatString(
+                                R.string.PluginSlowingDownMessage, displayName, millisPerSecond))
+                        .setPositiveButton(LocaleController.getString(R.string.PluginDisable),
+                                (dialog, which) -> forceDisablePlugin(pluginId, activity))
+                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                        .show();
+            } catch (Throwable t) {
+                FileLog.e("PluginsWatchdog: cannot show slowing-down alert", t);
+            }
+        });
+    }
+
+    public long getMainThreadMillis(String pluginId) {
+        AtomicLong counter = pluginId == null ? null : mainThreadNanos.get(pluginId);
+        return counter == null ? 0L : counter.get() / 1_000_000L;
     }
 
     /** id плагина, отключённого после падения (однократное чтение для UI, потом очистить). */

@@ -146,4 +146,6 @@
     <string name="PluginsShare">Поделиться</string>
     <string name="PluginsPinned">Закреплён</string>
     <string name="PluginsUnpinned">Откреплён</string>
+    <string name="PluginSlowingDownTitle">Плагин тормозит интерфейс</string>
+    <string name="PluginSlowingDownMessage">%1$s занимает главный поток примерно на %2$d мс каждую секунду. Из-за этого приложение перестаёт отвечать на нажатия. Отключить плагин и перезапустить?</string>
 </resources>

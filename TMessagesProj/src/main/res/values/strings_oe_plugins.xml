@@ -151,4 +151,6 @@
     <string name="PluginsShare">Share</string>
     <string name="PluginsPinned">Pinned</string>
     <string name="PluginsUnpinned">Unpinned</string>
+    <string name="PluginSlowingDownTitle">Plugin is slowing down the interface</string>
+    <string name="PluginSlowingDownMessage">%1$s is holding the main thread for about %2$d ms every second. The app stops responding to taps because of it. Disable the plugin and restart?</string>
 </resources>

@@ -143,4 +143,6 @@
     <string name="PluginsShare">Compartir</string>
     <string name="PluginsPinned">Fijado</string>
     <string name="PluginsUnpinned">Dejado de fijar</string>
+    <string name="PluginSlowingDownTitle">El plugin ralentiza la interfaz</string>
+    <string name="PluginSlowingDownMessage">%1$s ocupa el hilo principal unos %2$d ms cada segundo. Por eso la aplicación deja de responder a los toques. ¿Desactivar el plugin y reiniciar?</string>
 </resources>

@@ -143,4 +143,6 @@
     <string name="PluginsShare">分享</string>
     <string name="PluginsPinned">已置顶</string>
     <string name="PluginsUnpinned">已取消置顶</string>
+    <string name="PluginSlowingDownTitle">插件正在拖慢界面</string>
+    <string name="PluginSlowingDownMessage">%1$s 每秒占用主线程约 %2$d 毫秒，导致应用无法响应触摸。是否禁用该插件并重启？</string>
 </resources>

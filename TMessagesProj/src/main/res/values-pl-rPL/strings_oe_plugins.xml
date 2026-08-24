@@ -143,4 +143,6 @@
     <string name="PluginsShare">Udostępnij</string>
     <string name="PluginsPinned">Przypięto</string>
     <string name="PluginsUnpinned">Odpięto</string>
+    <string name="PluginSlowingDownTitle">Wtyczka spowalnia interfejs</string>
+    <string name="PluginSlowingDownMessage">%1$s zajmuje główny wątek na około %2$d ms na sekundę. Przez to aplikacja przestaje reagować na dotknięcia. Wyłączyć wtyczkę i uruchomić ponownie?</string>
 </resources>
