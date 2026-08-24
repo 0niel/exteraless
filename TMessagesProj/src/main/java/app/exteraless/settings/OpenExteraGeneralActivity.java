@@ -80,11 +80,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
             "Z\u0334\u034d\u030c\u0301a\u0308\u0325\u0347\u0303l\u0302\u031e\u0356\u0300"
                     + "g\u0300\u035d\u0345\u0330o\u0304\u0353\u0359\u0306";
 
-    private int notificationsHeaderRow;
-    private int pushStatusRow;
-    private int batteryOptimizationRow;
-    private int notificationsDividerRow;
-
     private int translateHeaderRow;
     private int translateButtonRow;
     private int translateChatButtonRow;
@@ -122,6 +117,11 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     private int disableUnarchiveSwipeRow;
     private int archiveDividerRow;
 
+    private int notificationsHeaderRow;
+    private int pushStatusRow;
+    private int batteryOptimizationRow;
+    private int notificationsDividerRow;
+
     /** Момент «пять минут назад» для живого примера в строке Relative Last Seen. */
     private int fiveMinutesAgo;
 
@@ -139,11 +139,6 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
     @Override
     protected void updateRows() {
         super.updateRows();
-
-        notificationsHeaderRow = addRow("notificationsHeader");
-        pushStatusRow = addRow("pushStatus");
-        batteryOptimizationRow = addRow("batteryOptimization");
-        notificationsDividerRow = addRow();
 
         translateHeaderRow = addRow("translateHeader");
         translateButtonRow = addRow("translateButton");
@@ -183,6 +178,11 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
         archiveOnPullRow = NaConfig.INSTANCE.getHideArchive().Bool() ? -1 : addRow("archiveOnPull");
         disableUnarchiveSwipeRow = addRow("disableUnarchiveSwipe");
         archiveDividerRow = addRow();
+
+        notificationsHeaderRow = addRow("notificationsHeader");
+        pushStatusRow = addRow("pushStatus");
+        batteryOptimizationRow = addRow("batteryOptimization");
+        notificationsDividerRow = addRow();
     }
 
     @Override
@@ -850,7 +850,7 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
                 }
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                    boolean bottom = position == archiveDividerRow;
+                    boolean bottom = position == notificationsDividerRow;
                     if (position == notificationsDividerRow) {
                         cell.setText(getString(R.string.OEGeneralNotificationsInfo));
                     } else if (position == translateDividerRow) {
