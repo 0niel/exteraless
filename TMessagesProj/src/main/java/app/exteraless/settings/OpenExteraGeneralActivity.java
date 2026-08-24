@@ -877,19 +877,22 @@ public class OpenExteraGeneralActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == translateHeaderRow || position == generalHeaderRow
+            if (position == notificationsHeaderRow || position == translateHeaderRow
+                    || position == generalHeaderRow
                     || position == speedHeaderRow
                     || position == storageHeaderRow || position == profileHeaderRow
                     || position == archiveHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == translateDividerRow || position == generalDividerRow
+            } else if (position == notificationsDividerRow || position == translateDividerRow
+                    || position == generalDividerRow
                     || position == speedDividerRow
                     || position == storageDividerRow || position == profileDividerRow
                     || position == archiveDividerRow) {
                 return TYPE_INFO_PRIVACY;
             } else if (position == downloadSpeedRow) {
                 return TYPE_SLIDE;
-            } else if (position == translationProviderRow || position == translateToLangRow
+            } else if (position == pushStatusRow || position == batteryOptimizationRow
+                    || position == translationProviderRow || position == translateToLangRow
                     || position == doNotTranslateRow || position == savePathRow
                     || position == showIdAndDcRow || position == lastfmRow) {
                 return TYPE_SETTINGS;
