@@ -66,6 +66,7 @@
     <string name="PushServiceType">Тип сервиса уведомлений</string>
     <string name="PushServiceTypeInApp">В приложении</string>
     <string name="PushServiceTypeInAppDialog">Показывать постоянное уведомление</string>
+    <string name="PushStatus">Состояние пушей</string>
     <string name="PushServiceTypeUnifiedGateway">Шлюз UnifiedPush</string>
     <string name="SendMp4DocumentAsVideo">Отправлять MP4 «без сжатия» как видео</string>
     <string name="StickersChooseShortNameForStickerPack">Выберите короткое имя для вашего набора.</string>

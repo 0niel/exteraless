@@ -71,6 +71,7 @@
     <string name="PushServiceTypeUnified" translatable="false">UnifiedPush</string>
     <string name="PushServiceTypeMicroG" translatable="false">microG</string>
     <string name="PushServiceTypeInAppDialog">Show Resident Notifications</string>
+    <string name="PushStatus">Push Status</string>
     <string name="PushServiceTypeUnifiedGateway">Unified Push Gateway</string>
     <string name="SendMp4DocumentAsVideo">Send MP4 Document as Video</string>
     <string name="StickersChooseShortNameForStickerPack">Choose a short name for your pack.</string>

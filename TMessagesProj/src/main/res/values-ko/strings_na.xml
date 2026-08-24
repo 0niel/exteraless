@@ -66,6 +66,7 @@
     <string name="PushServiceType">푸시 서비스 유형</string>
     <string name="PushServiceTypeInApp">앱 내</string>
     <string name="PushServiceTypeInAppDialog">상주 알림 표시</string>
+    <string name="PushStatus">푸시 상태</string>
     <string name="SendMp4DocumentAsVideo">MP4 문서를 동영상으로 보내기</string>
     <string name="StickersChooseShortNameForStickerPack">팩의 짧은 이름을 선택하세요.</string>
     <string name="StickersCopyStickerSet">스티커 세트 복사</string>
