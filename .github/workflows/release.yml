@@ -101,7 +101,7 @@ jobs:
           path: |
             TMessagesProj/build/outputs/apk/release/*.apk
       - name: Send APK to Telegram
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish) && !contains(github.event.head_commit.message, '[skip publish]') }}
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_API_ID: ${{ secrets.TG_API_ID }}
