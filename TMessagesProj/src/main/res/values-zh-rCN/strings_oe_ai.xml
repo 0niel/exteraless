@@ -28,6 +28,7 @@
     <string name="OEAiSaveHistory">保存对话历史</string>
     <string name="OEAiClearHistory">清除历史</string>
     <string name="OEAiHistoryCleared">历史已清除</string>
+    <string name="OEAiClearHistoryInfo">清除与助手的全部对话记录？</string>
     <string name="OEAiGenerationInfo">温度越低回答越稳定，越高越多样。</string>
     <string name="OEAiAsk">询问 AI</string>
     <string name="OEAiThinking">思考中…</string>

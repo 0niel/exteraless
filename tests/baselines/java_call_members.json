@@ -1,5 +1,7 @@
 {
   "known": [
+    "app.exteraless.ai.AiConfig#insertAsQuote",
+    "app.exteraless.ai.AiConfig#showResponseOnly",
     "app.exteraless.plugins.PluginsController#engines",
     "app.exteraless.plugins.PluginsController#getMethod",
     "app.exteraless.plugins.PluginsController#isPlugin",
@@ -11,6 +13,7 @@
     "app.exteraless.plugins.ui.components.templates.UniversalView#setWillNotDraw",
     "com.exteragram.messenger.ExteraConfig#editor",
     "com.exteragram.messenger.ExteraConfig#pluginsEngine",
+    "com.exteragram.messenger.plugins.ui.components.InstallPluginBottomSheet#class_",
     "org.telegram.messenger.AndroidUtilities#TYPEFACE_ROBOTO_REGULAR",
     "org.telegram.messenger.AndroidUtilities#getApplicationContext",
     "org.telegram.messenger.AndroidUtilities#getDeclaredMethods",
