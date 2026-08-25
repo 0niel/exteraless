@@ -21,6 +21,8 @@ ROOT = "com.exteragram.messenger"
 _EXACT = {
     "com.exteragram.messenger.utils.chats.ChatUtils":
         "com.exteragram.messenger.utils.chats.ChatUtils",
+    "com.exteragram.messenger.utils.ChatUtils":
+        "com.exteragram.messenger.utils.chats.ChatUtils",
     "com.exteragram.messenger.utils.text.LocaleUtils":
         "com.exteragram.messenger.utils.text.LocaleUtils",
     "com.exteragram.messenger.utils.AppUtils":
