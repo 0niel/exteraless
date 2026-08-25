@@ -280,6 +280,12 @@ public class AndroidUtilities {
     }
 
     private static final Hashtable<String, Typeface> typefaceCache = new Hashtable<>();
+
+    public static void clearTypefaceCache() {
+        typefaceCache.clear();
+        mediumTypeface = null;
+    }
+
     public static float touchSlop;
     private static int prevOrientation = -10;
     private static boolean waitingForSms = false;

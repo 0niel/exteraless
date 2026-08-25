@@ -133,6 +133,25 @@ public class PagePreviewRulesHelper extends BaseRemoteHelper {
             } catch (RuntimeException ignored) {}
             data.cleanup();
         }
+        if (domains.isEmpty()) {
+            applyBuiltInRules();
+        }
+    }
+
+    private void applyBuiltInRules() {
+        addBuiltInRule("(?i)https?://(?:www\\.|mobile\\.)?x\\.com/", "https://fixupx.com/");
+        addBuiltInRule("(?i)https?://(?:www\\.|mobile\\.)?twitter\\.com/", "https://fxtwitter.com/");
+        addBuiltInRule("(?i)https?://([a-z0-9-]+\\.)?tiktok\\.com/", "https://$1vxtiktok.com/");
+        addBuiltInRule("(?i)https?://(?:www\\.|old\\.|new\\.)?reddit\\.com/", "https://rxddit.com/");
+        addBuiltInRule("(?i)https?://(?:www\\.)?pixiv\\.net/", "https://phixiv.net/");
+    }
+
+    private void addBuiltInRule(String pattern, String replace) {
+        ArrayList<DomainRule> rules = new ArrayList<>();
+        rules.add(new DomainRule(pattern, replace));
+        DomainInfo info = new DomainInfo(pattern, rules, true);
+        domains.add(info);
+        domainsRegex.add(info);
     }
 
     public void savePagePreviewRules() {
@@ -173,6 +192,9 @@ public class PagePreviewRulesHelper extends BaseRemoteHelper {
     }
 
     public String doRegex(CharSequence textToCheck) {
+        if (domains.isEmpty()) {
+            loadPagePreviewRules();
+        }
         String oldUrl;
         if (textToCheck instanceof String) {
             oldUrl = (String) textToCheck;

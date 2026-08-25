@@ -38,6 +38,7 @@
     <string name="OEAppearanceForceBlur">强制模糊</string>
     <string name="OEAppearanceDisableAvatarBlur">关闭头像模糊</string>
     <string name="OEAppearanceBlurInfo">模糊效果将应用于所有主题，并覆盖它们的默认设置。</string>
+    <string name="OEAppearanceRestartNow">重启</string>
     <string name="OEAppearanceNeedRestart">重启应用后此设置才会生效。</string>
     <string name="OEAppearanceGooeyAvatar">「黏滞」头像动画</string>
     <string name="OEAppearanceCustomThemes">对话内使用专属主题</string>

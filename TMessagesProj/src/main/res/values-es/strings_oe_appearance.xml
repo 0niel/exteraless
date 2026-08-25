@@ -38,6 +38,7 @@
     <string name="OEAppearanceForceBlur">Forzar el desenfoque</string>
     <string name="OEAppearanceDisableAvatarBlur">Desactivar el desenfoque de los avatares</string>
     <string name="OEAppearanceBlurInfo">Los efectos de desenfoque se aplicarán a todos los temas y anularán sus ajustes predeterminados.</string>
+    <string name="OEAppearanceRestartNow">Reiniciar</string>
     <string name="OEAppearanceNeedRestart">Reinicia la app para aplicar este ajuste.</string>
     <string name="OEAppearanceGooeyAvatar">Animación «gelatinosa» del avatar</string>
     <string name="OEAppearanceCustomThemes">Temas propios en los chats</string>

@@ -2,7 +2,9 @@ package app.exteraless.settings;
 
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -22,6 +24,7 @@ import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.LaunchActivity;
 
 import app.exteraless.appearance.AppearanceConfig;
 import app.exteraless.appearance.AvatarCornersPreviewCell;
@@ -33,6 +36,7 @@ import app.exteraless.icons.IconPacksActivity;
 import app.exteraless.pillstack.PillStackSettingsActivity;
 import tw.nekomimi.nekogram.NekoConfig;
 import tw.nekomimi.nekogram.config.ConfigItem;
+import tw.nekomimi.nekogram.helpers.AppRestartHelper;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 import xyz.nextalone.nagram.NaConfig;
@@ -304,7 +308,15 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
             return;
         }
         BulletinFactory.of(this)
-                .createSimpleBulletin(R.raw.info, getString(R.string.OEAppearanceNeedRestart))
+                .createSimpleBulletin(R.raw.info, getString(R.string.OEAppearanceNeedRestart),
+                        getString(R.string.OEAppearanceRestartNow),
+                        () -> {
+                            Activity activity = getParentActivity();
+                            if (activity != null) {
+                                AppRestartHelper.triggerRebirth(activity,
+                                        new Intent(activity, LaunchActivity.class));
+                            }
+                        })
                 .show();
     }
 
@@ -596,10 +608,12 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         ConfigItem item = null;
         boolean rebuild = false;
         boolean restart = false;
+        boolean clearTypefaces = false;
 
         if (position == useSystemFontsRow) {
             item = NekoConfig.typeface;
             restart = true;
+            clearTypefaces = true;
         } else if (position == useSystemEmojiRow) {
             item = NekoConfig.useSystemEmoji;
             rebuild = true;
@@ -636,6 +650,9 @@ public class OpenExteraAppearanceActivity extends BaseNekoSettingsActivity {
         }
 
         boolean value = item.toggleConfigBool();
+        if (clearTypefaces) {
+            AndroidUtilities.clearTypefaceCache();
+        }
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
         }

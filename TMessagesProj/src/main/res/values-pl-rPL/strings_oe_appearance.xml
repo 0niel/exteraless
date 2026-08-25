@@ -38,6 +38,7 @@
     <string name="OEAppearanceForceBlur">Wymuś rozmycie</string>
     <string name="OEAppearanceDisableAvatarBlur">Wyłącz rozmycie awatarów</string>
     <string name="OEAppearanceBlurInfo">Efekty rozmycia zostaną zastosowane we wszystkich motywach, nadpisując ich domyślne ustawienia.</string>
+    <string name="OEAppearanceRestartNow">Uruchom ponownie</string>
     <string name="OEAppearanceNeedRestart">Uruchom aplikację ponownie, aby zastosować to ustawienie.</string>
     <string name="OEAppearanceGooeyAvatar">Animacja „kleistego” awatara</string>
     <string name="OEAppearanceCustomThemes">Własne motywy w czatach</string>
