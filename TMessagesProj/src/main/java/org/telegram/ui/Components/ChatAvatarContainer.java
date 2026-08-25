@@ -1559,6 +1559,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         avatarDrawable.setInfo(currentAccount, chat);
         if (avatarImageView != null) {
             avatarImageView.setForUserOrChat(chat, avatarDrawable);
+            avatarImageView.getImageReceiver().setAvatarCornersApplied(true);
             avatarImageView.setRoundRadius(ChatHeaderUiHelper.getChatAvatarRadius(avatarSizeInDp, ChatObject.isForum(chat), ChatObject.hasStories(chat)));
         }
     }
@@ -1667,6 +1668,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                 avatarImageView.setAnimatedEmojiDrawable(null);
                 ForumUtilities.setMonoForumAvatar(currentAccount, chat, avatarDrawable, avatarImageView);
             }
+            avatarImageView.getImageReceiver().setAvatarCornersApplied(true);
             avatarImageView.setRoundRadius(ChatHeaderUiHelper.getChatAvatarRadius(avatarSizeInDp, false, false));
         } else if (chat != null) {
             avatarDrawable.setScaleSize(1f);
@@ -1675,6 +1677,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             if (avatarImageView != null) {
                 avatarImageView.setAnimatedEmojiDrawable(null);
                 avatarImageView.setForUserOrChat(chat, avatarDrawable);
+                avatarImageView.getImageReceiver().setAvatarCornersApplied(true);
                 avatarImageView.setRoundRadius(ChatHeaderUiHelper.getChatAvatarRadius(avatarSizeInDp, chat.forum, ChatObject.hasStories(chat)));
             }
         }
