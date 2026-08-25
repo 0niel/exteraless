@@ -31,6 +31,8 @@ _EXACT = {
         "org.telegram.messenger.R",
     "com.exteragram.messenger.utils.system.VibratorUtils":
         "com.exteragram.messenger.utils.system.VibratorUtils",
+    "com.exteragram.messenger.plugins.ui.components.InstallPluginBottomSheet":
+        "com.exteragram.messenger.plugins.ui.components.InstallPluginBottomSheet",
     "com.exteragram.messenger.utils.system.SystemUtils":
         "com.exteragram.messenger.utils.system.SystemUtils",
     "com.exteragram.messenger.utils.SystemUtils":
