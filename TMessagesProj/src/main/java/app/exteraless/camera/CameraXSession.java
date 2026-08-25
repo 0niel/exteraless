@@ -47,9 +47,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
-import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.SharedConfig;
-import org.telegram.messenger.UserConfig;
 import org.telegram.ui.Stories.recorder.DualCameraView;
 
 import java.util.ArrayList;
@@ -62,7 +60,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import app.exteraless.chats.ChatsConfig;
-import app.exteraless.utils.AppUtils;
 
 /**
  * Камера круглых видеосообщений на CameraX.
@@ -467,8 +464,8 @@ public class CameraXSession {
      */
     private static List<Size> sortRoundPreviewSizes(List<Size> sizes, Size sensorAspect, Set<Size> capable60) {
         List<Size> sorted = new ArrayList<>(sizes);
-        final int target = AppUtils.getRoundVideoResolution(
-                MessagesController.getInstance(UserConfig.selectedAccount).roundVideoSize);
+        final int target = com.exteragram.messenger.utils.system.SystemUtils
+                .getRoundVideoResolution();
         final int comfortable = target * 2;
         final int sensorShort = Math.min(sensorAspect.getWidth(), sensorAspect.getHeight());
         final int sensorLong = Math.max(sensorAspect.getWidth(), sensorAspect.getHeight());
