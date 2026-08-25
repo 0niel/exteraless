@@ -20,11 +20,13 @@ import androidx.core.graphics.ColorUtils;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.CheckBox2;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LinkSpanDrawable;
+import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 
 import java.io.File;
@@ -35,6 +37,8 @@ import java.util.Map;
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginCapabilityScan;
 import app.exteraless.plugins.PluginPermissions;
+import app.exteraless.plugins.ui.components.PluginAiReview;
+import app.exteraless.plugins.ui.components.PluginFileViewer;
 
 /**
  * Лист установки плагина.
@@ -159,9 +163,58 @@ public class PluginInstallSheet extends BottomSheet {
                 LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT,
                         Gravity.CENTER_HORIZONTAL, 0, 0, 0, 16));
 
+        if (PluginAiReview.canReview(file)) {
+            content.addView(createAiReview(context, file, plugin, capabilities),
+                    LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT,
+                            LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 16));
+        }
+
         ScrollView scroll = new ScrollView(context);
         scroll.addView(content);
-        setCustomView(scroll);
+
+        FrameLayout root = new FrameLayout(context);
+        root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT,
+                LayoutHelper.WRAP_CONTENT));
+        if (PluginFileViewer.canOpen(file)) {
+            root.addView(createSourceButton(context, file, plugin),
+                    LayoutHelper.createFrame(40, 40, Gravity.RIGHT | Gravity.TOP, 0, 10, 10, 0));
+        }
+        setCustomView(root);
+    }
+
+    private android.view.View createAiReview(Context context, File file, Plugin plugin,
+                                             Map<String, List<String>> capabilities) {
+        TextView view = new TextView(context);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        view.setTypeface(AndroidUtilities.bold());
+        view.setTextColor(Theme.getColor(Theme.key_dialogTextBlue));
+        view.setGravity(Gravity.CENTER);
+        view.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(7),
+                AndroidUtilities.dp(14), AndroidUtilities.dp(7));
+        view.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(14),
+                Theme.multAlpha(Theme.getColor(Theme.key_dialogTextBlue), 0.10f)));
+        view.setText("\u2726  " + getString(R.string.PluginsAiReview));
+        view.setOnClickListener(v ->
+                PluginAiReview.review(context, resourcesProvider, file, plugin, capabilities));
+        return view;
+    }
+
+    private android.view.View createSourceButton(Context context, File file, Plugin plugin) {
+        ImageView button = new ImageView(context);
+        button.setScaleType(ImageView.ScaleType.CENTER);
+        button.setImageResource(R.drawable.msg_view_file);
+        button.setColorFilter(new PorterDuffColorFilter(
+                Theme.getColor(Theme.key_dialogTextGray2), PorterDuff.Mode.SRC_IN));
+        button.setBackground(Theme.createSelectorDrawable(
+                Theme.getColor(Theme.key_listSelector), 1));
+        button.setContentDescription(getString(R.string.PluginsViewSource));
+        button.setOnClickListener(v -> {
+            BaseFragment fragment = LaunchActivity.getLastFragment();
+            if (fragment != null) {
+                PluginFileViewer.open(fragment, file, plugin == null ? null : plugin.name);
+            }
+        });
+        return button;
     }
 
     /**

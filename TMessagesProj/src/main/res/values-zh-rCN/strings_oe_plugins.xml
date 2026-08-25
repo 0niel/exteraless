@@ -146,4 +146,17 @@
     <string name="PluginsUnpinned">已取消置顶</string>
     <string name="PluginSlowingDownTitle">插件正在拖慢界面</string>
     <string name="PluginSlowingDownMessage">%1$s 每秒占用主线程约 %2$d 毫秒，导致应用无法响应触摸。是否禁用该插件并重启？</string>
+    <string name="PluginsViewSource">查看源码</string>
+    <string name="PluginsAiReview">AI 检查</string>
+    <string name="PluginsAiReviewRole">你在审查第三方 Telegram 客户端插件的代码。回答格式固定。第一行：用一个词给出结论——安全、可疑或危险——并用一句话说明原因。然后逐条列出发现，每条只用一行短句：代码做了什么，在哪里。每条发现之后，把详细内容放进 &lt;details&gt;&lt;summary&gt;简短标题&lt;/summary&gt; 解释、引用的代码行和推理 &lt;/details&gt;。标签之外的内容都要一眼能读完。如果没有发现，用一行说明。不要复述代码，不要给泛泛的建议，不要编造源码中没有的内容。</string>
+    <string name="PluginsAiReviewPrompt">请检查这个 Telegram 客户端插件中可能危害用户的地方：隐蔽的数据收集、把消息或文件发往第三方、窃取密钥和密码、运行时下载代码。
+
+请用 %2$s 回答。
+
+插件：%1$s
+
+源码：
+```python
+%3$s
+```</string>
 </resources>

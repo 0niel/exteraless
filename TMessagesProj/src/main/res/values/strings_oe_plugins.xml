@@ -154,4 +154,17 @@
     <string name="PluginsUnpinned">Unpinned</string>
     <string name="PluginSlowingDownTitle">Plugin is slowing down the interface</string>
     <string name="PluginSlowingDownMessage">%1$s is holding the main thread for about %2$d ms every second. The app stops responding to taps because of it. Disable the plugin and restart?</string>
+    <string name="PluginsViewSource">View the source</string>
+    <string name="PluginsAiReview">AI review</string>
+    <string name="PluginsAiReviewRole">You review third-party plugin code for a Telegram client. Keep the answer in this shape. First line: the verdict in one word — SAFE, SUSPICIOUS or DANGEROUS — and one sentence saying why. Then the findings, one per item: a single short line each — what the code does and where. Right after each finding put the long part inside &lt;details&gt;&lt;summary&gt;short title&lt;/summary&gt; the explanation, the quoted line and the reasoning &lt;/details&gt;. Keep everything outside those tags short enough to read at a glance. If there are no findings, say so in a single line. Do not retell the code, do not give general advice, do not invent what is not in the source.</string>
+    <string name="PluginsAiReviewPrompt">Review this Telegram client plugin for anything that could harm the user: hidden data collection, sending messages or files to third parties, credential theft, code downloaded at runtime.
+
+Write the answer in %2$s.
+
+Plugin: %1$s
+
+Source:
+```python
+%3$s
+```</string>
 </resources>

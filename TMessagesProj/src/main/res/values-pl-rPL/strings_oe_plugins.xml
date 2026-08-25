@@ -146,4 +146,17 @@
     <string name="PluginsUnpinned">Odpięto</string>
     <string name="PluginSlowingDownTitle">Wtyczka spowalnia interfejs</string>
     <string name="PluginSlowingDownMessage">%1$s zajmuje główny wątek na około %2$d ms na sekundę. Przez to aplikacja przestaje reagować na dotknięcia. Wyłączyć wtyczkę i uruchomić ponownie?</string>
+    <string name="PluginsViewSource">Zobacz kod</string>
+    <string name="PluginsAiReview">Sprawdzenie AI</string>
+    <string name="PluginsAiReviewRole">Sprawdzasz kod wtyczki innej firmy dla klienta Telegrama. Format odpowiedzi jest ścisły. Pierwsza linia: werdykt jednym słowem — BEZPIECZNE, PODEJRZANE albo NIEBEZPIECZNE — i jedno zdanie dlaczego. Dalej znaleziska, po jednej krótkiej linii na punkt: co robi kod i gdzie. Zaraz po każdym znalezisku dłuższą część schowaj w &lt;details&gt;&lt;summary&gt;krótki tytuł&lt;/summary&gt; wyjaśnienie, cytat linii i uzasadnienie &lt;/details&gt;. Wszystko poza tymi znacznikami ma dać się przeczytać jednym spojrzeniem. Jeśli nic nie ma, napisz to jedną linią. Nie streszczaj kodu, nie dawaj ogólnych rad, nie zmyślaj tego, czego nie ma w źródle.</string>
+    <string name="PluginsAiReviewPrompt">Sprawdź tę wtyczkę klienta Telegrama pod kątem tego, co może zaszkodzić użytkownikowi: ukryte zbieranie danych, wysyłanie wiadomości lub plików na zewnątrz, kradzież kluczy i haseł, pobieranie kodu w trakcie działania.
+
+Odpowiedz w języku: %2$s.
+
+Wtyczka: %1$s
+
+Źródło:
+```python
+%3$s
+```</string>
 </resources>
