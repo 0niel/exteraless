@@ -57,6 +57,7 @@
     <string name="PluginPermissionsNothing">Nic poza własnymi menu i ekranem ustawień.</string>
     <string name="PluginPermissionsUnenforcedInfo">Zadeklarowano również: %1$s — aplikacja nie potrafi tego jeszcze wyegzekwować.</string>
     <string name="PluginPermissionsHooksWarning">Hooki i biblioteki natywne omijają powyższe przełączniki. Przyznawaj je tylko autorom, którym ufasz.</string>
+    <string name="PluginPermissionsEnableFirst">Włącz wtyczkę, aby uprawnienie zaczęło działać.</string>
     <string name="PluginPermissionsApplied">Wtyczka została uruchomiona ponownie, zmiana obowiązuje.</string>
     <string name="PluginPermissionsGone">Ta wtyczka nie jest już zainstalowana.</string>
     <string name="PluginPermUi">Własne menu i ustawienia</string>

@@ -156,3 +156,6 @@ class SimpleSettingFactory:
         return Custom(factory=self,
                       factory_args=factory_args or None,
                       link_alias=link_alias)
+
+
+PluginItemFactory = SimpleSettingFactory

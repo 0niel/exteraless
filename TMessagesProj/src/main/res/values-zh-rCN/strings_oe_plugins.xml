@@ -57,6 +57,7 @@
     <string name="PluginPermissionsNothing">除了自己的菜单和设置界面，什么都做不了。</string>
     <string name="PluginPermissionsUnenforcedInfo">还声明了：%1$s —— 应用目前还无法对其加以限制。</string>
     <string name="PluginPermissionsHooksWarning">挂钩和原生库会绕过上面的开关。只把它们授予你信任的作者。</string>
+    <string name="PluginPermissionsEnableFirst">启用插件后权限才会生效。</string>
     <string name="PluginPermissionsApplied">插件已重启，更改已生效。</string>
     <string name="PluginPermissionsGone">该插件已不再安装。</string>
     <string name="PluginPermUi">自有菜单和设置</string>

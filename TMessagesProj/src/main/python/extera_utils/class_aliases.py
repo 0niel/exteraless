@@ -29,6 +29,14 @@ _EXACT = {
         "org.telegram.messenger.R",
     "com.exteragram.messenger.utils.system.VibratorUtils":
         "com.exteragram.messenger.utils.system.VibratorUtils",
+    "com.exteragram.messenger.preferences.BasePreferencesActivity":
+        "com.exteragram.messenger.preferences.BasePreferencesActivity",
+    "com.exteragram.messenger.utils.chats.MainMenuHelper":
+        "app.exteraless.drawer.MainMenuHelper",
+    "com.exteragram.messenger.icons.ui.IconPacksActivity":
+        "app.exteraless.icons.IconPacksActivity",
+    "com.exteragram.messenger.pillstack.ui.pills.crypto.utils.ColoredBackground":
+        "app.exteraless.pillstack.pills.ColoredBackground",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill":
         "app.exteraless.pillstack.pills.WeatherPill",
     "com.exteragram.messenger.pillstack.ui.PillStackPreferencesActivity":
@@ -133,6 +141,9 @@ def adapt(name, obj):
     """Обёртка над классом, форма которого у нас разошлась с эталоном."""
     if obj is None or isinstance(obj, _FieldShapedClass):
         return obj
+    replacement = substitute(name)
+    if replacement is not None:
+        return replacement
     fields = _field_shape(name)
     if fields is None:
         return obj
@@ -140,6 +151,30 @@ def adapt(name, obj):
         return _FieldShapedClass(obj, fields)
     except Exception:
         return obj
+
+
+_PYTHON_SUBSTITUTES = {
+    "com.exteragram.messenger.plugins.models.PluginItemFactory":
+        ("ui.settings", "SimpleSettingFactory"),
+}
+
+
+def substitute(name):
+    if not isinstance(name, str):
+        return None
+    target = _PYTHON_SUBSTITUTES.get(name)
+    if target is None:
+        for source, value in _PYTHON_SUBSTITUTES.items():
+            if resolve(source) == name:
+                target = value
+                break
+    if target is None:
+        return None
+    module, attr = target
+    try:
+        return getattr(_importlib.import_module(module), attr, None)
+    except Exception:
+        return None
 
 
 def is_alias(name):
@@ -162,6 +197,9 @@ class _AliasModule(_types.ModuleType):
         if attr.startswith("__"):
             raise AttributeError(attr)
         full = self.__name__ + "." + attr
+        replacement = substitute(full)
+        if replacement is not None:
+            return replacement
         found = _find_class(full)
         if found is not None:
             return found

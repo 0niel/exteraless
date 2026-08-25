@@ -525,7 +525,16 @@ public class PluginPermissionsActivity extends BaseFragment {
         // происходило, приходилось жать «Перезагрузить» вручную.
         // reloadPlugin умеет и то и другое: снимет хуки, если загружен, и
         // загрузит заново в любом случае.
-        if (plugin == null || !plugin.enabled) {
+        if (plugin == null) {
+            return;
+        }
+        if (!plugin.enabled) {
+            if (getContext() != null) {
+                BulletinFactory.of(this)
+                        .createSimpleBulletin(R.raw.info,
+                                getString(R.string.PluginPermissionsEnableFirst))
+                        .show();
+            }
             return;
         }
         controller.reloadPlugin(pluginId);

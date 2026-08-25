@@ -337,6 +337,7 @@
     "com.exteragram.messenger.pillstack.ui.PillStackPreferencesActivity|app.exteraless.pillstack.PillStackSettingsActivity|missing_method|updateConfigFromReorder",
     "com.exteragram.messenger.pillstack.ui.PillStackPreferencesActivity|app.exteraless.pillstack.PillStackSettingsActivity|missing_method|updateResetButtonVisibility",
     "com.exteragram.messenger.pillstack.ui.PillStackPreferencesActivity|app.exteraless.pillstack.PillStackSettingsActivity|missing_nested|ItemInfo",
+    "com.exteragram.messenger.pillstack.ui.pills.crypto.utils.ColoredBackground|app.exteraless.pillstack.pills.ColoredBackground|missing_field|paint",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill|app.exteraless.pillstack.pills.WeatherPill|missing_method|didReceivedNotification",
     "com.exteragram.messenger.pillstack.ui.pills.weather.WeatherPill|app.exteraless.pillstack.pills.WeatherPill|missing_method|requestLocationAndUpdate",
     "com.exteragram.messenger.plugins.PluginsConstants|app.exteraless.plugins.PluginsConstants|missing_field|APP_PAUSE",

@@ -109,13 +109,6 @@ public class PythonPluginsEngine extends com.exteragram.messenger.plugins.Python
                 }
                 loader = Python.getInstance().getModule("extera_utils.plugin_loader");
                 started = true;
-                // Гейт на Java-стоках. Ставится после старта интерпретатора и
-                // до загрузки плагинов: хуки должны стоять раньше их кода.
-                try {
-                    PluginSinkGate.install();
-                } catch (Throwable t) {
-                    FileLog.e("PluginsEngine: sink gate install failed", t);
-                }
                 // Dev-сервер (порт 42690) — только в developer mode; реализован в plugin_loader.
                 if (PluginsController.getInstance().isDeveloperMode()) {
                     try {
@@ -226,6 +219,11 @@ public class PythonPluginsEngine extends com.exteragram.messenger.plugins.Python
     public String loadPlugin(Plugin plugin) {
         if (!started) {
             return "{\"ok\":false,\"error\":\"engine not started\"}";
+        }
+        try {
+            PluginSinkGate.install();
+        } catch (Throwable t) {
+            FileLog.e("PluginsEngine: sink gate install failed", t);
         }
         PluginsWatchdog watchdog = PluginsController.getInstance().getWatchdog();
         // Загрузка — единственный заход, который пишется в маркер сразу.

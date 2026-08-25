@@ -58,6 +58,7 @@
     <string name="PluginPermissionsNothing">Ничего, кроме своих меню и экрана настроек.</string>
     <string name="PluginPermissionsUnenforcedInfo">Ещё объявлено: %1$s — это приложение пока не может ограничить.</string>
     <string name="PluginPermissionsHooksWarning">Хуки и нативные библиотеки перекрывают переключатели выше. Давайте их только авторам, которым доверяете.</string>
+    <string name="PluginPermissionsEnableFirst">Включите плагин, чтобы разрешение подействовало.</string>
     <string name="PluginPermissionsApplied">Плагин перезапущен, изменение действует.</string>
     <string name="PluginPermissionsGone">Этот плагин больше не установлен.</string>
     <string name="PluginPermUi">Свои меню и настройки</string>

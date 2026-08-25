@@ -57,6 +57,7 @@
     <string name="PluginPermissionsNothing">Nada más allá de sus propios menús y su pantalla de ajustes.</string>
     <string name="PluginPermissionsUnenforcedInfo">También declara: %1$s; la app todavía no puede hacerlo cumplir.</string>
     <string name="PluginPermissionsHooksWarning">Los hooks y las bibliotecas nativas se saltan los interruptores de arriba. Concédelos solo a autores en los que confíes.</string>
+    <string name="PluginPermissionsEnableFirst">Activa el plugin para que el permiso surta efecto.</string>
     <string name="PluginPermissionsApplied">El plugin se reinició; el cambio ya está activo.</string>
     <string name="PluginPermissionsGone">Este plugin ya no está instalado.</string>
     <string name="PluginPermUi">Menús y ajustes propios</string>

@@ -43,6 +43,10 @@ public final class PluginsConstants {
     public static final String KEY_WATCHDOG_LOADING_LEGACY = "watchdog_loading_plugin";
     /** Watchdog: id плагина, отключённого после падения (для бюллетеня). */
     public static final String KEY_WATCHDOG_CRASHED = "watchdog_crashed_plugin";
+
+    public static final String KEY_NATIVE_HOOKS_PENDING = "native_hooks_init_pending";
+
+    public static final String KEY_NATIVE_HOOKS_BROKEN = "native_hooks_unsupported";
     /** Сколько раз процесс уже умирал на этом плагине. */
     public static final String KEY_WATCHDOG_STRIKES_PREFIX = "watchdog_strikes_";
 

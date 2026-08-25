@@ -335,6 +335,17 @@ public final class PluginInstallHelper {
                         return;
                     }
                     if (!ok) {
+                        Plugin registered = plugin;
+                        if (registered == null && consentedId != null) {
+                            registered = PluginsController.getInstance().getPlugin(consentedId);
+                        }
+                        if (enableAfterInstall && isPermissionDenial(error)
+                                && registered != null && registered.id != null) {
+                            PluginsController.getInstance().setPluginEnabled(registered.id, true);
+                            showError(activity, humanError(error, consentedId),
+                                    plugin == null ? null : plugin.loadDebug);
+                            return;
+                        }
                         // Установка сорвалась — согласие, записанное авансом, ни к чему
                         // не относится. Стираем, но только если плагина и правда нет:
                         // при перезаписи существующего файл мог уже подмениться.
@@ -365,14 +376,22 @@ public final class PluginInstallHelper {
      * Остальные ошибки оставляем как есть: там текст обычно и есть суть
      * (битый архив, нет метаданных), а прятать её было бы хуже.
      */
+    private static boolean isPermissionDenial(CharSequence error) {
+        if (error == null) {
+            return false;
+        }
+        String text = error.toString();
+        return text.contains("PermissionError") || text.contains("missing the");
+    }
+
     private static CharSequence humanError(CharSequence error, String pluginId) {
         if (error == null) {
             return LocaleController.getString(R.string.PluginsInstallError);
         }
-        String text = error.toString();
-        if (!text.contains("PermissionError") && !text.contains("missing the")) {
+        if (!isPermissionDenial(error)) {
             return error;
         }
+        String text = error.toString();
         String permission = null;
         for (String candidate : PluginPermissions.ALL) {
             if (text.contains("'" + candidate + "'")) {

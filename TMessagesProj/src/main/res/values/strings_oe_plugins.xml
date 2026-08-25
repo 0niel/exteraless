@@ -60,6 +60,7 @@
     <string name="PluginPermissionsNothing">Nothing beyond its own menus and settings screen.</string>
     <string name="PluginPermissionsUnenforcedInfo">Also declared: %1$s — the app cannot enforce that yet.</string>
     <string name="PluginPermissionsHooksWarning">Hooks and native libraries override the switches above. Grant them only to authors you trust.</string>
+    <string name="PluginPermissionsEnableFirst">Turn the plugin on so the permission takes effect.</string>
     <string name="PluginPermissionsApplied">Plugin restarted, the change is in effect.</string>
     <string name="PluginPermissionsGone">This plugin is no longer installed.</string>
 

@@ -149,7 +149,10 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
     }
 
     public void setEngineEnabled(boolean enabled) {
-        preferences.edit().putBoolean(PluginsConstants.KEY_ENGINE_ENABLED, enabled).apply();
+        preferences.edit()
+                .putBoolean(PluginsConstants.KEY_ENGINE_ENABLED, enabled)
+                .remove(PluginsConstants.KEY_NATIVE_HOOKS_BROKEN)
+                .apply();
         if (enabled && initialized) {
             PythonPluginsEngine.getInstance().ensureStarted(appContext, ok -> {
                 if (ok) {

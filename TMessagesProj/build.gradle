@@ -24,7 +24,8 @@ idea {
 
 def buildTimestamp = System.getenv('BUILD_TIMESTAMP') ?: '0'
 def commitId = System.getenv('COMMIT_ID')
-def verName = "${APP_VERSION_NAME}${commitId?.take(7) ? "-${commitId.take(7)}" : ''}"
+def shortCommit = commitId?.take(7) ?: ''
+def verName = "${APP_VERSION_NAME}${shortCommit ? "-${shortCommit}" : ''}"
 def verCode = 1261
 
 def officialVer = APP_VERSION_NAME
@@ -171,7 +172,8 @@ android {
 
         manifestPlaceholders += [MAPS_API_KEY: mapsKey]
 
-        buildConfigField 'String', 'BUILD_VERSION_STRING', '"' + verName + '"'
+        buildConfigField 'String', 'BUILD_VERSION_STRING', '"' + APP_VERSION_NAME + '"'
+        buildConfigField 'String', 'BUILD_COMMIT_ID', '"' + shortCommit + '"'
         buildConfigField 'String', 'OFFICIAL_VERSION', '"' + officialVer + '"'
         buildConfigField 'int', 'OFFICIAL_VERSION_CODE', officialCode + ''
         buildConfigField 'int', 'APP_ID', appId
