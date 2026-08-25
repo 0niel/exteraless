@@ -989,6 +989,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             foregroundImageReceiver = new ImageReceiver(this);
             placeholderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             placeholderPaint.setColor(Color.BLACK);
+            getImageReceiver().setAvatarCornersApplied(true);
+            foregroundImageReceiver.setAvatarCornersApplied(true);
         }
 
         public void setAnimateFromImageReceiver(ImageReceiver imageReceiver) {
@@ -6715,13 +6717,31 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (isTopic) {
             return 0;
         }
+        boolean hasStories = needInsetForStories();
+        float size;
+        int cornerType = app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_DEFAULT;
         if (chatId != 0) {
             TLRPC.Chat chatLocal = getMessagesController().getChat(chatId);
-            if (ChatObject.isForum(chatLocal)) {
-                return dp(needInsetForStories() ? 24 : 38);
+            if (chatLocal != null) {
+                if (chatLocal.monoforum) {
+                    return 0;
+                }
+                if (ChatObject.isForum(chatLocal)) {
+                    size = dp(hasStories ? 48 : 76);
+                    cornerType = app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_FORUM;
+                } else if (ChatObject.isCommunity(chatLocal)) {
+                    size = dp(100);
+                    cornerType = app.exteraless.appearance.AppearanceConfig.CORNER_TYPE_COMMUNITY;
+                } else {
+                    size = dp(100);
+                }
+            } else {
+                size = dp(100);
             }
+        } else {
+            size = dp(100);
         }
-        return dp(50);
+        return app.exteraless.appearance.AppearanceConfig.getAvatarCorners(size, cornerType, hasStories);
     }
 
     private void updateTtlIcon() {
