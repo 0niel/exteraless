@@ -478,6 +478,15 @@ public class ChatActivity extends BaseFragment implements
 
     // chat click menu buttons
     private final static int nkbtn_detail = 2012;
+    private final static int oebtn_ask_ai = 2040;
+
+    private static String getMessageContent(MessageObject message) {
+        if (message == null) {
+            return null;
+        }
+        CharSequence text = message.caption != null ? message.caption : message.messageText;
+        return text == null ? null : text.toString();
+    }
     private final static int nkbtn_deldlcache = 2013;
     private final static int nkbtn_view_history = 2014;
     private final static int nkbtn_repeat = 2015;
@@ -35137,6 +35146,20 @@ public class ChatActivity extends BaseFragment implements
             return;
         }
         // exteraless plugins: id пунктов плагинов живут в своём диапазоне (MenuInjector).
+        if (option == oebtn_ask_ai) {
+            MessageObject target = selectedObject;
+            String content = getMessageContent(target);
+            if (!TextUtils.isEmpty(content)) {
+                app.exteraless.ai.ui.AiResponseSheet.show(getParentActivity(), themeDelegate,
+                        content, true, text -> {
+                            if (chatActivityEnterView != null) {
+                                chatActivityEnterView.setFieldText(text);
+                            }
+                        });
+            }
+            closeMenu();
+            return;
+        }
         if (app.exteraless.plugins.menus.MenuInjector.handleMessageMenuOption(option)) {
             return;
         }
@@ -50446,6 +50469,13 @@ public class ChatActivity extends BaseFragment implements
             items.add(LocaleController.getString(R.string.MessageDetails));
             options.add(nkbtn_detail);
             icons.add(R.drawable.msg_info);
+        }
+
+        if (app.exteraless.ai.AiController.canUseAI()
+                && !TextUtils.isEmpty(getMessageContent(message))) {
+            items.add(LocaleController.getString(R.string.OEAiAsk));
+            options.add(oebtn_ask_ai);
+            icons.add(R.drawable.msg_discussion);
         }
         // exteraless plugins: пункты плагинов в конце контекстного меню сообщения.
         app.exteraless.plugins.menus.MenuInjector.fillMessageMenu(getParentActivity(), message, currentChat, dialog_id, currentAccount, icons, items, options);

@@ -1071,7 +1071,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
             presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC));
             return;
         } else if (position == aiChatRow) {
-            // Экрана AI в форке нет: подсистемы AiController тоже, переход подключать некуда.
+            presentFragment(new app.exteraless.ai.ui.AiSettingsActivity());
             return;
         }
 
