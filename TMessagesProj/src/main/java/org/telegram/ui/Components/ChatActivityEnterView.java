@@ -227,6 +227,7 @@ import org.telegram.ui.iv.RichHtml;
 import org.telegram.ui.iv.RichMessageConvert;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -6262,7 +6263,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             final MessageObject thread = getThreadMessage();
             final ChatActivity.ReplyQuote quote = replyingQuote;
             Utilities.globalQueue.postRunnable(() -> {
-                final String stickerPath = keyboardStickerPath(uri);
+                final String stickerPath = isSimpleWebp(uri) ? null : keyboardStickerPath(uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     if (stickerPath != null) {
                         SendMessagesHelper.prepareSendingDocument(accountInstance, stickerPath, stickerPath, null, null, "image/webp", dialog_id, reply, thread, null, quote, null, notify, 0, null, parentFragment != null ? parentFragment.getMessageChatSendParams() : null, false);
@@ -6292,11 +6293,11 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
             final int width = bitmap.getWidth();
             final int height = bitmap.getHeight();
-            if (width > 512 || height > 512) {
+            if (Math.max(width, height) != 512) {
                 final float scale = 512f / Math.max(width, height);
                 Bitmap scaled = Bitmap.createScaledBitmap(bitmap,
-                        Math.max(1, Math.round(width * scale)),
-                        Math.max(1, Math.round(height * scale)), true);
+                        Math.max(1, Math.min(512, Math.round(width * scale))),
+                        Math.max(1, Math.min(512, Math.round(height * scale))), true);
                 if (scaled != bitmap) {
                     bitmap.recycle();
                     bitmap = scaled;
@@ -6311,11 +6312,13 @@ public class ChatActivityEnterView extends FrameLayout implements
                 written = bitmap.compress(format, 100, out);
             }
             FileLog.d("keyboard sticker: " + width + "x" + height
+                    + " -> " + bitmap.getWidth() + "x" + bitmap.getHeight()
                     + " alpha=" + bitmap.hasAlpha() + " written=" + written
                     + " size=" + file.length());
             if (!written || file.length() <= 0) {
                 return null;
             }
+            simplifyWebp(file);
             return file.getAbsolutePath();
         } catch (Throwable e) {
             FileLog.e(e);
@@ -6325,6 +6328,117 @@ public class ChatActivityEnterView extends FrameLayout implements
                 bitmap.recycle();
             }
         }
+    }
+
+    private static boolean isSimpleWebp(Uri uri) {
+        if (uri == null) {
+            return false;
+        }
+        byte[] header = new byte[16];
+        try (InputStream stream = ApplicationLoader.applicationContext.getContentResolver().openInputStream(uri)) {
+            if (stream == null) {
+                return false;
+            }
+            int read = 0;
+            while (read < header.length) {
+                int count = stream.read(header, read, header.length - read);
+                if (count <= 0) {
+                    break;
+                }
+                read += count;
+            }
+            if (read < header.length) {
+                return false;
+            }
+        } catch (Throwable e) {
+            return false;
+        }
+        if (!isTag(header, 0, "RIFF") || !isTag(header, 8, "WEBP")) {
+            return false;
+        }
+        return isTag(header, 12, "VP8L") || isTag(header, 12, "VP8 ");
+    }
+
+    private static boolean isTag(byte[] data, int offset, String tag) {
+        if (data.length < offset + 4) {
+            return false;
+        }
+        for (int a = 0; a < 4; a++) {
+            if (data[offset + a] != (byte) tag.charAt(a)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void simplifyWebp(File file) {
+        try {
+            long length = file.length();
+            if (length <= 20 || length > 8 * 1024 * 1024) {
+                return;
+            }
+            byte[] data = new byte[(int) length];
+            try (FileInputStream stream = new FileInputStream(file)) {
+                int read = 0;
+                while (read < data.length) {
+                    int count = stream.read(data, read, data.length - read);
+                    if (count <= 0) {
+                        break;
+                    }
+                    read += count;
+                }
+                if (read < data.length) {
+                    return;
+                }
+            }
+            if (!isTag(data, 0, "RIFF") || !isTag(data, 8, "WEBP") || !isTag(data, 12, "VP8X")) {
+                return;
+            }
+            int offset = 12;
+            int losslessAt = -1;
+            int losslessSize = 0;
+            while (offset + 8 <= data.length) {
+                int size = (data[offset + 4] & 0xff) | ((data[offset + 5] & 0xff) << 8)
+                        | ((data[offset + 6] & 0xff) << 16) | ((data[offset + 7] & 0xff) << 24);
+                if (size < 0 || offset + 8 + size > data.length) {
+                    return;
+                }
+                if (isTag(data, offset, "ANIM") || isTag(data, offset, "ANMF")
+                        || isTag(data, offset, "ALPH") || isTag(data, offset, "VP8 ")) {
+                    return;
+                }
+                if (isTag(data, offset, "VP8L")) {
+                    losslessAt = offset + 8;
+                    losslessSize = size;
+                }
+                offset += 8 + size + (size & 1);
+            }
+            if (losslessAt < 0 || losslessSize <= 0) {
+                return;
+            }
+            int pad = losslessSize & 1;
+            int riffSize = 4 + 8 + losslessSize + pad;
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                out.write(new byte[]{'R', 'I', 'F', 'F'});
+                writeInt(out, riffSize);
+                out.write(new byte[]{'W', 'E', 'B', 'P', 'V', 'P', '8', 'L'});
+                writeInt(out, losslessSize);
+                out.write(data, losslessAt, losslessSize);
+                if (pad != 0) {
+                    out.write(0);
+                }
+            }
+            FileLog.d("keyboard sticker: simplified webp, size=" + file.length());
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    private static void writeInt(FileOutputStream out, int value) throws java.io.IOException {
+        out.write(value & 0xff);
+        out.write((value >> 8) & 0xff);
+        out.write((value >> 16) & 0xff);
+        out.write((value >> 24) & 0xff);
     }
 
     private View mCustomWindowView;
