@@ -325,7 +325,7 @@ public final class PluginInstallHelper {
         progress.setMessage(LocaleController.getString(R.string.PluginsInstalling));
         progress.setCanCancel(false);
         progress.show();
-        PluginsController.getInstance().installPlugin(file, (ok, error, plugin) ->
+        PluginsController.getInstance().installPlugin(file, enableAfterInstall, (ok, error, plugin) ->
                 AndroidUtilities.runOnUIThread(() -> {
                     try {
                         progress.dismiss();

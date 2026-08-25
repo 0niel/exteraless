@@ -713,6 +713,10 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
      * Валидация метаданных — до копирования; при совпадении id — перезапись.
      */
     public void installPlugin(File source, InstallCallback callback) {
+        installPlugin(source, true, callback);
+    }
+
+    public void installPlugin(File source, boolean enable, InstallCallback callback) {
         fileExecutor.execute(() -> {
             PythonPluginsEngine engine = PythonPluginsEngine.getInstance();
             if (!awaitEngineStarted()) {
@@ -753,8 +757,8 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
                     deliver(callback, false, "metadata parse error", null);
                     return;
                 }
-                p.enabled = true;
-                preferences.edit().putBoolean(PluginsConstants.KEY_PLUGIN_ENABLED_PREFIX + id, true).apply();
+                p.enabled = enable;
+                preferences.edit().putBoolean(PluginsConstants.KEY_PLUGIN_ENABLED_PREFIX + id, enable).apply();
                 // Согласие пользователя записывает диалог установки (PluginPermissions.setGranted).
                 // Если он этого не сделал, запись всё равно должна появиться: без неё
                 // свежепоставленный плагин уедет в режим совместимости, где ему дают всё.
@@ -766,7 +770,7 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
                 synchronized (this) {
                     plugins.put(id, p);
                 }
-                if (!isSafeMode()) {
+                if (enable && !isSafeMode()) {
                     loadPluginInternal(p);
                 }
                 if (p.loadError != null) {
