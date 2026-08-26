@@ -262,6 +262,16 @@ object AppearanceConfig {
         return iosInputPanel.Bool()
     }
 
+    @JvmField
+    val iosBackCounter =
+        addConfig("OEAppearanceIosBackCounter", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun iosBackCounter(): Boolean {
+        ensureLoaded()
+        return iosBackCounter.Bool()
+    }
+
     // ---- AI-функции Telegram ----
 
     /** Прячет кнопку AI-редактора в поле ввода, вложениях и подписи к медиа. */
