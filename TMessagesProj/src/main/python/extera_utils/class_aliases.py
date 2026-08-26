@@ -106,6 +106,7 @@ _FIELD_SHAPED = {
         "editor": "getEditor",
         "pluginsEngine": "getPluginsEngine",
         "centerTitle": "getCenterTitle",
+        "forceSnow": ("getForceSnow", "setForceSnow"),
     },
     "com.exteragram.messenger.plugins.PluginsController": {
         "engines": "getEngines",
