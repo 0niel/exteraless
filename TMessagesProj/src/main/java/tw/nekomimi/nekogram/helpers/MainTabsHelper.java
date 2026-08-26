@@ -37,6 +37,14 @@ public final class MainTabsHelper {
         return NaConfig.INSTANCE.getMainTabsHideContacts().Bool();
     }
 
+    public static boolean isCallsOrSettingsTabHidden() {
+        return NaConfig.INSTANCE.getMainTabsHideCallsSettings().Bool();
+    }
+
+    public static boolean isProfileTabHidden() {
+        return NaConfig.INSTANCE.getMainTabsHideProfile().Bool();
+    }
+
     public static boolean isFeedTabShown() {
         return AppearanceConfig.showFeedTab();
     }
@@ -54,15 +62,32 @@ public final class MainTabsHelper {
     }
 
     public static int getCallsOrSettingsPosition() {
+        if (isCallsOrSettingsTabHidden()) {
+            return -1;
+        }
         return hasContactsOrFeedTab() ? 2 : 1;
     }
 
     public static int getProfilePosition() {
-        return hasContactsOrFeedTab() ? 3 : 2;
+        if (isProfileTabHidden()) {
+            return -1;
+        }
+        int position = hasContactsOrFeedTab() ? 3 : 2;
+        return isCallsOrSettingsTabHidden() ? position - 1 : position;
     }
 
     public static int getFragmentsCount() {
-        return hasContactsOrFeedTab() ? MainTabsActivity.TABS_COUNT : MainTabsActivity.TABS_COUNT - 1;
+        int count = MainTabsActivity.TABS_COUNT;
+        if (!hasContactsOrFeedTab()) {
+            count--;
+        }
+        if (isCallsOrSettingsTabHidden()) {
+            count--;
+        }
+        if (isProfileTabHidden()) {
+            count--;
+        }
+        return count;
     }
 
     public static int getTabsViewWidth() {

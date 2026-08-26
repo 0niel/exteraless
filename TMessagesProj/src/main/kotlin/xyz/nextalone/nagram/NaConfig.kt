@@ -1395,6 +1395,18 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val mainTabsHideCallsSettings =
+        addConfig(
+            "MainTabsHideCallsSettings",
+            ConfigItem.configTypeBool,
+            false
+        )
+    val mainTabsHideProfile =
+        addConfig(
+            "MainTabsHideProfile",
+            ConfigItem.configTypeBool,
+            false
+        )
     val mainTabsHideContacts =
         addConfig(
             "MainTabsHideContacts",
