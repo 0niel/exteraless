@@ -82,4 +82,7 @@
     <string name="OEGeneralBatteryOptimizationOff">Wyłączona</string>
     <string name="OEGeneralBatteryOptimizationUnavailable">Ustawienia baterii są niedostępne na tym urządzeniu</string>
     <string name="OEGeneralNotificationsInfo">Dotknij stanu powiadomień, aby skopiować diagnostykę do schowka — dołącz ją do zgłoszenia problemu. Gdy optymalizacja baterii jest włączona, Android może opóźniać lub gubić powiadomienia w tle.</string>
+    <string name="OEGeneralGoogleHeader">Google</string>
+    <string name="OEGeneralCrashReports">Raporty awarii</string>
+    <string name="OEGeneralCrashReportsInfo">Wysyła ślady stosu awarii do Firebase Crashlytics, aby dało się je naprawić bez ręcznego zgłoszenia. Domyślnie wyłączone; dopóki jest wyłączone, nic nie opuszcza urządzenia.</string>
 </resources>

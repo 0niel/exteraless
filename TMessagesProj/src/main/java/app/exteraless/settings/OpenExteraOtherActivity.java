@@ -57,6 +57,8 @@ import app.exteraless.drawer.MainMenuItem;
 import app.exteraless.drawer.MainMenuLayout;
 import app.exteraless.general.GeneralConfig;
 import app.exteraless.pillstack.PillStackConfig;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
 import app.exteraless.pillstack.PillType;
 import app.exteraless.general.GeneralHelper;
 import tw.nekomimi.nekogram.NekoConfig;
@@ -67,6 +69,7 @@ import tw.nekomimi.nekogram.settings.GhostModeActivity;
 import xyz.nextalone.nagram.NaConfig;
 import tw.nekomimi.nekogram.ui.cells.HeaderCell;
 import tw.nekomimi.nekogram.utils.AlertUtil;
+import tw.nekomimi.nekogram.utils.AndroidUtil;
 
 /**
  * Экран «Other» раздела openExtera — повторяет Other из exteraGram
@@ -96,6 +99,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             NaConfig.INSTANCE.getUseDeletedIcon(),
     };
 
+    private int googleHeaderRow;
+    private int crashReportsRow;
+    private int googleDividerRow;
     private int nagramHeaderRow;
     private int nagramSettingsRow;
     private int ayuMomentsRow;
@@ -156,6 +162,10 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         // «nu.gpu.nagram», а у нас com.exteraless.app — переключатель стоял
         // мёртвым. На его месте вход в настройки NagramX, выключенный по
         // умолчанию.
+        googleHeaderRow = addRow("googleHeader");
+        crashReportsRow = addRow("crashReports");
+        googleDividerRow = addRow();
+
         nagramHeaderRow = addRow("nagramHeader");
         nagramSettingsRow = addRow("nagramSettings");
         ayuMomentsRow = addRow("ayuMoments");
@@ -236,7 +246,14 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected void onItemClick(View view, int position, float x, float y) {
-        if (position == nagramSettingsRow) {
+        if (position == crashReportsRow) {
+            boolean enabled = GeneralConfig.crashReports.toggleConfigBool();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(enabled);
+            }
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(
+                    AndroidUtil.shouldEnableCrashlytics());
+        } else if (position == nagramSettingsRow) {
             boolean enabled = GeneralConfig.showNagramSettings.toggleConfigBool();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(enabled);
@@ -823,12 +840,18 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     HeaderCell cell = (HeaderCell) holder.itemView;
                     if (position == nagramHeaderRow) {
                         cell.setText(getString(R.string.OEGeneralNagramHeader));
+                    } else if (position == googleHeaderRow) {
+                        cell.setText(getString(R.string.OEGeneralGoogleHeader));
                     }
                     break;
                 }
                 case TYPE_CHECK: {
                     TextCheckCell cell = (TextCheckCell) holder.itemView;
-                    if (position == nagramSettingsRow) {
+                    if (position == crashReportsRow) {
+                        cell.setTextAndCheck(getString(R.string.OEGeneralCrashReports),
+                                GeneralConfig.crashReports(), false);
+                        cell.setIcon(R.drawable.msg_report);
+                    } else if (position == nagramSettingsRow) {
                         cell.setTextAndCheck(getString(R.string.OEGeneralNagramSettings),
                                 GeneralConfig.showNagramSettings(), true);
                         // setIcon после setTextAndCheck — тот сбрасывает отступы текста.
@@ -898,7 +921,9 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                 case TYPE_INFO_PRIVACY: {
                     TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                     boolean bottom = position == bottomDividerRow;
-                    if (position == nagramDividerRow) {
+                    if (position == googleDividerRow) {
+                        cell.setText(getString(R.string.OEGeneralCrashReportsInfo));
+                    } else if (position == nagramDividerRow) {
                         cell.setText(getString(R.string.OEGeneralNagramSettingsInfo));
                     } else if (position == etgDividerRow) {
                         cell.setText(getString(R.string.OEGeneralEtgSettingsInfo));
@@ -915,10 +940,10 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == nagramHeaderRow) {
+            if (position == nagramHeaderRow || position == googleHeaderRow) {
                 return TYPE_HEADER;
             } else if (position == nagramDividerRow || position == etgDividerRow
-                    || position == bottomDividerRow) {
+                    || position == googleDividerRow || position == bottomDividerRow) {
                 return TYPE_INFO_PRIVACY;
             } else if (position == exportEtgRow || position == importEtgRow
                     || position == resetSettingsRow || position == deleteAccountRow

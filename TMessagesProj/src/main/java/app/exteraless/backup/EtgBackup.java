@@ -381,9 +381,10 @@ public final class EtgBackup {
         bool(list, "useSystemIconShape", IconPacksConfig.useSystemIconShape);
         bool(list, "infiniteScrolling", PillStackConfig.infiniteScrolling);
 
+        bool(list, "useGoogleCrashlytics", GeneralConfig.crashReports);
+
         // Инверсия: у exteraGram тумблер «включено», у NagramX — «выключено».
         boolInverted(list, "inAppVibration", NekoConfig.disableVibration);
-        boolInverted(list, "useGoogleCrashlytics", NaConfig.INSTANCE.getDisableCrashlyticsCollection());
 
         list.add(new Entry(SECTION_EXTERA, "tabCounter", KIND_BOOL, 0, 0, null,
                 () -> new JsonPrimitive(NaConfig.INSTANCE.getIgnoreUnreadCount().Int()

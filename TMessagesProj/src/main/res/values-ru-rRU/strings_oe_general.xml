@@ -99,4 +99,7 @@
     <string name="OEGeneralBatteryOptimizationOff">Отключена</string>
     <string name="OEGeneralBatteryOptimizationUnavailable">Настройки батареи недоступны на этом устройстве</string>
     <string name="OEGeneralNotificationsInfo">Нажмите на состояние пушей, чтобы скопировать диагностику в буфер — прикладывайте её к сообщению о проблеме с уведомлениями. Если оптимизация батареи включена, Android может задерживать или терять пуши, пока приложение в фоне.</string>
+    <string name="OEGeneralGoogleHeader">Google</string>
+    <string name="OEGeneralCrashReports">Отчёты о сбоях</string>
+    <string name="OEGeneralCrashReportsInfo">Отправляет стек падений в Firebase Crashlytics, чтобы их чинили без ручных баг-репортов. По умолчанию выключено, и пока выключено, с устройства ничего не уходит.</string>
 </resources>
