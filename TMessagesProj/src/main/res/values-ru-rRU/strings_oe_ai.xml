@@ -38,9 +38,9 @@
     <string name="OEAiInsert">Вставить</string>
     <string name="OEAiRetry">Повторить</string>
     <string name="OEAiFailed">Запрос не прошёл</string>
-    <string name="OEAiPresets">Сохранённые связки</string>
-    <string name="OEAiPresetSave">Сохранить текущую</string>
-    <string name="OEAiPresetName">Название связки</string>
+    <string name="OEAiPresets">Эндпоинт и модель</string>
+    <string name="OEAiPresetSave">Сохранить текущую пару</string>
+    <string name="OEAiPresetName">Название пары</string>
     <string name="OEAiRoleAdd">Добавить свою</string>
     <string name="OEAiRoleName">Название</string>
     <string name="OEAiRolePrompt">Указание для модели</string>

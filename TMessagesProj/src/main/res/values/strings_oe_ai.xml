@@ -38,9 +38,9 @@
     <string name="OEAiInsert">Insert</string>
     <string name="OEAiRetry">Retry</string>
     <string name="OEAiFailed">Request failed</string>
-    <string name="OEAiPresets">Saved setups</string>
-    <string name="OEAiPresetSave">Save the current one</string>
-    <string name="OEAiPresetName">Setup name</string>
+    <string name="OEAiPresets">Endpoint + model</string>
+    <string name="OEAiPresetSave">Save the current pair</string>
+    <string name="OEAiPresetName">Name for this pair</string>
     <string name="OEAiRoleAdd">Add your own</string>
     <string name="OEAiRoleName">Name</string>
     <string name="OEAiRolePrompt">Instruction for the model</string>

@@ -38,9 +38,9 @@
     <string name="OEAiInsert">Insertar</string>
     <string name="OEAiRetry">Reintentar</string>
     <string name="OEAiFailed">La solicitud falló</string>
-    <string name="OEAiPresets">Configuraciones guardadas</string>
-    <string name="OEAiPresetSave">Guardar la actual</string>
-    <string name="OEAiPresetName">Nombre de la configuración</string>
+    <string name="OEAiPresets">Endpoint y modelo</string>
+    <string name="OEAiPresetSave">Guardar el par actual</string>
+    <string name="OEAiPresetName">Nombre del par</string>
     <string name="OEAiRoleAdd">Añadir la tuya</string>
     <string name="OEAiRoleName">Nombre</string>
     <string name="OEAiRolePrompt">Instrucción para el modelo</string>

@@ -38,9 +38,9 @@
     <string name="OEAiInsert">插入</string>
     <string name="OEAiRetry">重试</string>
     <string name="OEAiFailed">请求失败</string>
-    <string name="OEAiPresets">已保存的配置</string>
-    <string name="OEAiPresetSave">保存当前配置</string>
-    <string name="OEAiPresetName">配置名称</string>
+    <string name="OEAiPresets">接口地址与模型</string>
+    <string name="OEAiPresetSave">保存当前组合</string>
+    <string name="OEAiPresetName">组合名称</string>
     <string name="OEAiRoleAdd">添加自定义</string>
     <string name="OEAiRoleName">名称</string>
     <string name="OEAiRolePrompt">给模型的指令</string>
