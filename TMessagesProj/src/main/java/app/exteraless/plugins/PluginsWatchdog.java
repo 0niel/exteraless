@@ -10,6 +10,9 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
+import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.LaunchActivity;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -566,19 +569,39 @@ public class PluginsWatchdog {
         });
     }
 
-    /** Диалог «плагин не отвечает» с предложением его отключить. */
-    public void showNotRespondingAlert(String pluginId, Activity activity) {
-        if (activity == null || pluginId == null) {
+    public boolean isWarningMuted(String pluginId) {
+        return pluginId != null
+                && preferences.getBoolean(PluginsConstants.KEY_WATCHDOG_MUTED_PREFIX + pluginId, false);
+    }
+
+    public void setWarningMuted(String pluginId, boolean muted) {
+        if (pluginId == null) {
             return;
         }
-        String name = pluginId;
+        String key = PluginsConstants.KEY_WATCHDOG_MUTED_PREFIX + pluginId;
+        if (muted) {
+            preferences.edit().putBoolean(key, true).apply();
+        } else {
+            preferences.edit().remove(key).apply();
+            alertedSlow.remove(pluginId);
+        }
+    }
+
+    private String displayNameOf(String pluginId) {
         for (Plugin plugin : PluginsController.getInstance().getPluginsSnapshot()) {
             if (pluginId.equals(plugin.id)) {
-                name = plugin.getDisplayName();
-                break;
+                return plugin.getDisplayName();
             }
         }
-        final String displayName = name;
+        return pluginId;
+    }
+
+    /** Диалог «плагин не отвечает» с предложением его отключить. */
+    public void showNotRespondingAlert(String pluginId, Activity activity) {
+        if (activity == null || pluginId == null || isWarningMuted(pluginId)) {
+            return;
+        }
+        final String displayName = displayNameOf(pluginId);
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 new AlertDialog.Builder(activity)
@@ -587,6 +610,8 @@ public class PluginsWatchdog {
                                 R.string.PluginNotRespondingMessage, displayName))
                         .setPositiveButton(LocaleController.getString(R.string.PluginDisable),
                                 (dialog, which) -> forceDisablePlugin(pluginId, activity))
+                        .setNeutralButton(LocaleController.getString(R.string.PluginWatchdogMute),
+                                (dialog, which) -> muteFromDialog(pluginId, displayName))
                         .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                         .show();
             } catch (Throwable t) {
@@ -596,17 +621,10 @@ public class PluginsWatchdog {
     }
 
     public void showSlowingDownAlert(String pluginId, Activity activity, long millisPerSecond) {
-        if (activity == null || pluginId == null) {
+        if (activity == null || pluginId == null || isWarningMuted(pluginId)) {
             return;
         }
-        String name = pluginId;
-        for (Plugin plugin : PluginsController.getInstance().getPluginsSnapshot()) {
-            if (pluginId.equals(plugin.id)) {
-                name = plugin.getDisplayName();
-                break;
-            }
-        }
-        final String displayName = name;
+        final String displayName = displayNameOf(pluginId);
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 new AlertDialog.Builder(activity)
@@ -615,12 +633,24 @@ public class PluginsWatchdog {
                                 R.string.PluginSlowingDownMessage, displayName, millisPerSecond))
                         .setPositiveButton(LocaleController.getString(R.string.PluginDisable),
                                 (dialog, which) -> forceDisablePlugin(pluginId, activity))
+                        .setNeutralButton(LocaleController.getString(R.string.PluginWatchdogMute),
+                                (dialog, which) -> muteFromDialog(pluginId, displayName))
                         .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                         .show();
             } catch (Throwable t) {
                 FileLog.e("PluginsWatchdog: cannot show slowing-down alert", t);
             }
         });
+    }
+
+    private void muteFromDialog(String pluginId, String displayName) {
+        setWarningMuted(pluginId, true);
+        BaseFragment fragment = LaunchActivity.getLastFragment();
+        if (fragment == null) {
+            return;
+        }
+        BulletinFactory.of(fragment).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.PluginWatchdogMuted, displayName)).show();
     }
 
     public long getMainThreadMillis(String pluginId) {
