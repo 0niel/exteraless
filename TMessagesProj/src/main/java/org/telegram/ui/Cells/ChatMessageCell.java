@@ -2121,7 +2121,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         onlineStatusPaint.setColor(onlineColor);
         onlineStatusPath.rewind();
         onlineStatusPath.addCircle(x - offset, y - offset, radius, Path.Direction.CW);
-        onlineStatusPath.toggleInverseFillType();
+        onlineStatusPath.setFillType(Path.FillType.INVERSE_WINDING);
 
         canvas.save();
         canvas.clipPath(onlineStatusPath);
