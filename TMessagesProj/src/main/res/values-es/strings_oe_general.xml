@@ -85,4 +85,9 @@
     <string name="OEGeneralGoogleHeader">Google</string>
     <string name="OEGeneralCrashReports">Informes de fallos</string>
     <string name="OEGeneralCrashReportsInfo">Envía las trazas de los fallos a Firebase Crashlytics para poder corregirlos sin un reporte manual. Desactivado por defecto; mientras lo esté, nada sale del dispositivo.</string>
+    <string name="OEGeneralMapsHeader">Mapas</string>
+    <string name="OEGeneralUseOsmMapInfo">El selector de ubicación y las ubicaciones en vivo se dibujan con teselas de OpenStreetMap en lugar de Google Maps. Las vistas previas en los mensajes siguen viniendo de los servidores de Telegram.</string>
+    <string name="OEGeneralMapProvider">Proveedor de mapas</string>
+    <string name="OEGeneralMapPreview">Vistas previas de ubicación</string>
+    <string name="OEGeneralMapDriftingFix">Corregir el desplazamiento del mapa</string>
 </resources>
