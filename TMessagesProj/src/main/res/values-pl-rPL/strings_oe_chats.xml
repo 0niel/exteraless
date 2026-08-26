@@ -97,4 +97,6 @@
     <string name="SaveDeletedInPrivateChats">Zapisuj usunięte w czatach prywatnych</string>
     <string name="SaveDeletedInGroups">Zapisuj usunięte w grupach</string>
     <string name="SaveDeletedInChannels">Zapisuj usunięte w kanałach</string>
+    <string name="ForwardProtectedAsCopy">Przekazywanie z chronionych czatów</string>
+    <string name="ForwardProtectedAsCopyInfo">Wysyła kopię zamiast przekazania. Media muszą być już pobrane, a kopia nie zawiera autora.</string>
 </resources>

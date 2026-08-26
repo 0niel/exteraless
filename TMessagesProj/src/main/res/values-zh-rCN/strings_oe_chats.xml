@@ -97,4 +97,6 @@
     <string name="SaveDeletedInPrivateChats">保存私聊中的已删除消息</string>
     <string name="SaveDeletedInGroups">保存群组中的已删除消息</string>
     <string name="SaveDeletedInChannels">保存频道中的已删除消息</string>
+    <string name="ForwardProtectedAsCopy">从受保护的聊天转发</string>
+    <string name="ForwardProtectedAsCopyInfo">以副本形式发送而非转发。媒体需已下载，副本不含原作者信息。</string>
 </resources>

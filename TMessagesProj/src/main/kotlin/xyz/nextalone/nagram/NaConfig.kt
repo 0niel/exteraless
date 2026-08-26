@@ -1395,6 +1395,12 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val forwardProtectedAsCopy =
+        addConfig(
+            "ForwardProtectedAsCopy",
+            ConfigItem.configTypeBool,
+            false
+        )
     val saveDeletedInPrivateChats =
         addConfig(
             "SaveDeletedInPrivateChats",

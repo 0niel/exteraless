@@ -107,4 +107,6 @@
     <string name="SaveDeletedInPrivateChats">Save deleted in private chats</string>
     <string name="SaveDeletedInGroups">Save deleted in groups</string>
     <string name="SaveDeletedInChannels">Save deleted in channels</string>
+    <string name="ForwardProtectedAsCopy">Forward from protected chats</string>
+    <string name="ForwardProtectedAsCopyInfo">Sends a copy instead of a forward. Media must already be downloaded, and the copy carries no author.</string>
 </resources>
