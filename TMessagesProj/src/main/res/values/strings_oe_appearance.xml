@@ -91,6 +91,7 @@
     <string name="OEBottomNavigationBarMode">Bottom Navigation Bar</string>
     <string name="OEBottomNavigationModeShow">Show</string>
     <string name="OEBottomNavigationModeHide">Hide</string>
+    <string name="OEBottomNavigationIosStyle">iOS-style Bar</string>
     <string name="OEBackAnimation">Back Animation</string>
     <string name="OEBackAnimationClassic">Classic</string>
     <string name="OEBackAnimationSpring">Spring</string>
