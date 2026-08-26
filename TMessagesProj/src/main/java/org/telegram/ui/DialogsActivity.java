@@ -14768,7 +14768,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // Как в Telegram для iOS: тап по вкладке «Чаты» сначала возвращает в первую папку,
         // и только потом крутит список наверх. switchToCurrentSelectedMode уже ставит
         // список нужной папки в начало, поэтому отдельный scrollToTop тут не нужен.
-        if (filterTabsView != null && filterTabsView.getVisibility() == View.VISIBLE
+        if (AppearanceConfig.iosFirstFolderOnTabTap()
+                && filterTabsView != null && filterTabsView.getVisibility() == View.VISIBLE
                 && !tabsAnimationInProgress && !filterTabsView.isAnimatingIndicator() && !startedTracking
                 && !filterTabsView.isFirstTabSelected()
                 && (rightSlidingDialogContainer == null || !rightSlidingDialogContainer.hasFragment())) {
