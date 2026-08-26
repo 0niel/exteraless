@@ -1395,6 +1395,24 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val saveDeletedInPrivateChats =
+        addConfig(
+            "SaveDeletedInPrivateChats",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val saveDeletedInGroups =
+        addConfig(
+            "SaveDeletedInGroups",
+            ConfigItem.configTypeBool,
+            true
+        )
+    val saveDeletedInChannels =
+        addConfig(
+            "SaveDeletedInChannels",
+            ConfigItem.configTypeBool,
+            true
+        )
     val mainTabsHideCallsSettings =
         addConfig(
             "MainTabsHideCallsSettings",

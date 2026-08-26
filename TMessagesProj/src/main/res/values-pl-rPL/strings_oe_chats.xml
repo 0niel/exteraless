@@ -94,4 +94,7 @@
     <string name="OEDetailsDatacenter">Centrum danych</string>
     <string name="ReplyToDeletedAsQuote">Odpowiedź na usunięte jako cytat</string>
     <string name="ReplyToDeletedAsQuoteInfo">Gdy wiadomość została już usunięta, jej tekst trafi do twojej wiadomości jako cytat — zwykła odpowiedź przepadnie.</string>
+    <string name="SaveDeletedInPrivateChats">Zapisuj usunięte w czatach prywatnych</string>
+    <string name="SaveDeletedInGroups">Zapisuj usunięte w grupach</string>
+    <string name="SaveDeletedInChannels">Zapisuj usunięte w kanałach</string>
 </resources>

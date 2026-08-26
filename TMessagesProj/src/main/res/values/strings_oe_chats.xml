@@ -104,4 +104,7 @@
     <string name="OEDetailsDatacenter">Datacenter</string>
     <string name="ReplyToDeletedAsQuote">Reply to deleted as a quote</string>
     <string name="ReplyToDeletedAsQuoteInfo">When the message you reply to is already deleted, its text goes into your message as a quote — the server would drop the reply.</string>
+    <string name="SaveDeletedInPrivateChats">Save deleted in private chats</string>
+    <string name="SaveDeletedInGroups">Save deleted in groups</string>
+    <string name="SaveDeletedInChannels">Save deleted in channels</string>
 </resources>

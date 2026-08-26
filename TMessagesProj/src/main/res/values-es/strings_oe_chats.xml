@@ -94,4 +94,7 @@
     <string name="OEDetailsDatacenter">Centro de datos</string>
     <string name="ReplyToDeletedAsQuote">Responder a eliminados con cita</string>
     <string name="ReplyToDeletedAsQuoteInfo">Si el mensaje ya está eliminado, su texto va dentro del tuyo como cita — el servidor perdería la respuesta.</string>
+    <string name="SaveDeletedInPrivateChats">Guardar eliminados en chats privados</string>
+    <string name="SaveDeletedInGroups">Guardar eliminados en grupos</string>
+    <string name="SaveDeletedInChannels">Guardar eliminados en canales</string>
 </resources>
