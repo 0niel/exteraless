@@ -56,6 +56,7 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
     private static final int ID_TABLET_MODE = -101;
     private static final int ID_BACK_ANIMATION = -102;
     private static final int ID_BOTTOM_NAVIGATION_BAR = -106;
+    private static final int ID_IOS_BOTTOM_BAR = -107;
     private static final int ID_PREDICTIVE_INTENSITY = -103;
     private static final int ID_DRAWER = -104;
     private static final int ID_IMMERSIVE = -105;
@@ -140,6 +141,10 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
                 tabletModes()[clamp(NekoConfig.tabletMode.Int(), 3)]));
         items.add(UItem.asButton(ID_BOTTOM_NAVIGATION_BAR, getString(R.string.OEBottomNavigationBarMode),
                 bottomNavigationModes()[MainTabsLayout.getBottomNavigationMode()]));
+        if (MainTabsLayout.isBottomNavigationVisible()) {
+            items.add(UItem.asCheck(ID_IOS_BOTTOM_BAR, getString(R.string.OEBottomNavigationIosStyle))
+                    .setChecked(AppearanceConfig.iosNavigationBarStyle()));
+        }
         // Вместо переключателя Spring Animations здесь трёхпозиционный
         // NaConfig.backAnimationStyle: он покрывает и Spring, и Classic.
         items.add(UItem.asButton(ID_BACK_ANIMATION, getString(R.string.OEBackAnimation),
@@ -259,6 +264,19 @@ public class OpenExteraAppNavigationActivity extends BaseFragment {
                             getParentLayout().rebuildAllFragmentViews(false, false);
                         }
                     });
+            return;
+        }
+        if (id == ID_IOS_BOTTOM_BAR) {
+            final boolean enable = !AppearanceConfig.iosNavigationBarStyle();
+            AppearanceConfig.iosNavigationBarStyle.setConfigBool(enable);
+            // M3-панель приоритетнее iOS-стиля, иначе тумблер не даст видимого эффекта.
+            if (enable) {
+                AppearanceConfig.newNavigationBarStyle.setConfigBool(false);
+            }
+            update();
+            if (getParentLayout() != null) {
+                getParentLayout().rebuildAllFragmentViews(false, false);
+            }
             return;
         }
         if (id == ID_BACK_ANIMATION) {

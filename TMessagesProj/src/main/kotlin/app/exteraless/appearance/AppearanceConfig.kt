@@ -231,6 +231,17 @@ object AppearanceConfig {
         return newNavigationBarStyle.Bool()
     }
 
+    /** Широкая нижняя панель как в Telegram iOS. Уступает M3-панели, если включены обе. */
+    @JvmField
+    val iosNavigationBarStyle =
+        addConfig("OEAppearanceIosNavigationBarStyle", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun iosNavigationBarStyle(): Boolean {
+        ensureLoaded()
+        return iosNavigationBarStyle.Bool()
+    }
+
     // ---- AI-функции Telegram ----
 
     /** Прячет кнопку AI-редактора в поле ввода, вложениях и подписи к медиа. */
