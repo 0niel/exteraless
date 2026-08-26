@@ -512,6 +512,10 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             args.putBoolean("needFinishFragment", false);
             presentFragment(new CallLogActivity(args));
         });
+        o.add(R.drawable.msg_archive_hide, getString(R.string.MainTabsHideContacts), () -> {
+            NaConfig.INSTANCE.getMainTabsHideContacts().setConfigBool(true);
+            AndroidUtilities.runOnUIThread(this::rebuildContactsSlot);
+        });
         o.setBlur(true);
         o.translate(0, -dp(4));
         o.setGravity(Gravity.LEFT);
@@ -1183,7 +1187,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                 tabs[INDEX_PROFILE].updateUserAvatar(currentAccount);
             }
         } else if (id == NotificationCenter.feedTabVisibleToggled) {
-            rebuildAfterFeedTabToggle();
+            rebuildContactsSlot();
         } else if (id == NotificationCenter.contactsPermissionBadgeCheck) {
             checkContactsTabBadge();
         }
@@ -1294,7 +1298,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
     }
 
-    private void rebuildAfterFeedTabToggle() {
+    private void rebuildContactsSlot() {
         checkUi_contactsOrFeedTabVisible(true);
         checkUnreadCount(false);
         if (viewPager == null) {
