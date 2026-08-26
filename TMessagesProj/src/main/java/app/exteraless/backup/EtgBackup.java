@@ -499,14 +499,9 @@ public final class EtgBackup {
 
         // Безлимит недавних стикеров — один тумблер поверх двух ключей NagramX.
         list.add(new Entry(SECTION_EXTERA, "unlimitedRecentStickers", KIND_BOOL, 0, 0, null,
-                () -> new JsonPrimitive(NekoConfig.maxRecentStickerCount.Int() > RECENT_STICKERS_DEFAULT
-                        || NekoConfig.unlimitedFavedStickers.Bool()),
-                value -> {
-                    boolean enabled = value.getAsBoolean();
-                    NekoConfig.maxRecentStickerCount.setConfigInt(
-                            enabled ? RECENT_STICKERS_MAX : RECENT_STICKERS_DEFAULT);
-                    NekoConfig.unlimitedFavedStickers.setConfigBool(enabled);
-                }));
+                () -> new JsonPrimitive(NekoConfig.maxRecentStickerCount.Int() > RECENT_STICKERS_DEFAULT),
+                value -> NekoConfig.maxRecentStickerCount.setConfigInt(
+                        value.getAsBoolean() ? RECENT_STICKERS_MAX : RECENT_STICKERS_DEFAULT)));
 
         // Быстрые действия администратора — поверх пяти пунктов меню чата и пункта меню сообщения.
         list.add(new Entry(SECTION_EXTERA, "quickAdminShortcuts", KIND_BOOL, 0, 0, null,
