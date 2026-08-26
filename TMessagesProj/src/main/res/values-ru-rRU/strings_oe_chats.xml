@@ -98,4 +98,6 @@
     <string name="OEDetailsMimeType">Тип MIME</string>
     <string name="OEDetailsPlatform">Платформа</string>
     <string name="OEDetailsResolution">Разрешение</string>
+    <string name="ReplyToDeletedAsQuote">Ответ на удалённое цитатой</string>
+    <string name="ReplyToDeletedAsQuoteInfo">Если сообщение уже удалено, его текст уйдёт в ваше сообщение цитатой — обычный ответ сервер потеряет.</string>
 </resources>

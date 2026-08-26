@@ -1447,6 +1447,13 @@ object NaConfig {
             0
         )
 
+    val replyToDeletedAsQuote =
+        addConfig(
+            "ReplyToDeletedAsQuote",
+            ConfigItem.configTypeBool,
+            true
+        )
+
     val preferredTranslateTargetLangList = ArrayList<String>()
     fun updatePreferredTranslateTargetLangList() {
         AndroidUtilities.runOnUIThread({

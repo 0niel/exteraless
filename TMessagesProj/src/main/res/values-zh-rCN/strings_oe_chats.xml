@@ -92,4 +92,6 @@
     <string name="OEDetailsBitrateValue">%1$d Kbps</string>
     <string name="OEDetailsDuration">时长</string>
     <string name="OEDetailsDatacenter">数据中心</string>
+    <string name="ReplyToDeletedAsQuote">以引用回复已删除消息</string>
+    <string name="ReplyToDeletedAsQuoteInfo">若被回复的消息已被删除，其内容会以引用形式放入你的消息，否则服务器会丢掉这条回复。</string>
 </resources>

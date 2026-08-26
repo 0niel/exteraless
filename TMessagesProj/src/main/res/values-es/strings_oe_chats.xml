@@ -92,4 +92,6 @@
     <string name="OEDetailsBitrateValue">%1$d kb/s</string>
     <string name="OEDetailsDuration">Duración</string>
     <string name="OEDetailsDatacenter">Centro de datos</string>
+    <string name="ReplyToDeletedAsQuote">Responder a eliminados con cita</string>
+    <string name="ReplyToDeletedAsQuoteInfo">Si el mensaje ya está eliminado, su texto va dentro del tuyo como cita — el servidor perdería la respuesta.</string>
 </resources>

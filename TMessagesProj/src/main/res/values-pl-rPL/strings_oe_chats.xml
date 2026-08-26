@@ -92,4 +92,6 @@
     <string name="OEDetailsBitrateValue">%1$d kb/s</string>
     <string name="OEDetailsDuration">Czas trwania</string>
     <string name="OEDetailsDatacenter">Centrum danych</string>
+    <string name="ReplyToDeletedAsQuote">Odpowiedź na usunięte jako cytat</string>
+    <string name="ReplyToDeletedAsQuoteInfo">Gdy wiadomość została już usunięta, jej tekst trafi do twojej wiadomości jako cytat — zwykła odpowiedź przepadnie.</string>
 </resources>
