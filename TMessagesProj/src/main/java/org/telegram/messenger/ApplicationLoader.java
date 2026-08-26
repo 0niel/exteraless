@@ -414,8 +414,13 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
 
     private static void startPushServiceInternal() {
         SharedPreferences preferences = MessagesController.getNotificationsSettings(UserConfig.selectedAccount);
+        final int pushServiceType = NaConfig.INSTANCE.getPushServiceType().Int();
+        final boolean remotePush = pushServiceType != 0
+                && (pushServiceType == 2 || PushListenerController.getProvider().hasServices());
         boolean enabled;
-        if (preferences.contains("pushService")) {
+        if (remotePush) {
+            enabled = false;
+        } else if (preferences.contains("pushService")) {
             enabled = preferences.getBoolean("pushService", true);
         } else if (PushListenerController.getProvider().hasServices()) {
             return;
