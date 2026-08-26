@@ -501,7 +501,7 @@ public class Camera2Session {
                     captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
                     recordingFrameRate = 60;
                 } else {
-                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 60));
+                    captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(30, 30));
                     captureRequestBuilder.set(CaptureRequest.CONTROL_CAPTURE_INTENT, CaptureRequest.CONTROL_CAPTURE_INTENT_VIDEO_RECORD);
                 }
                 if (app.exteraless.chats.ChatsConfig.cameraStabilization.Bool()) {
@@ -546,25 +546,15 @@ public class Camera2Session {
         return cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
     }
 
-    /**
-     * Ищет диапазон с верхней границей 60. Точный (60,60) выигрывает сразу; иначе берётся
-     * тот, у кого нижняя граница выше — чем уже диапазон, тем меньше шанс, что драйвер
-     * просядет до 30 при плохом свете.
-     */
     private Range<Integer> selectExtendedFpsRange() {
         final Range<Integer>[] ranges = getAvailableFpsRanges();
         if (ranges == null) return null;
-        Range<Integer> best = null;
         for (Range<Integer> r : ranges) {
-            if (r == null || r.getUpper() != 60 || r.getLower() > 60) continue;
-            if (r.getLower() == 60) return r;
-            if (best == null
-                    || r.getLower() > best.getLower()
-                    || (r.getLower().equals(best.getLower()) && r.getUpper() < best.getUpper())) {
-                best = r;
+            if (r != null && r.getLower() == 60 && r.getUpper() == 60) {
+                return r;
             }
         }
-        return best;
+        return null;
     }
 
     /** Оптическая стабилизация в приоритете над электронной, они взаимоисключающие. */
