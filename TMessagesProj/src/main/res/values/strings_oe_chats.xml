@@ -88,6 +88,11 @@
     <string name="OEChatsChatSettingsInfo">Media Settings, App Icon and other</string>
     <string name="OEStickerSizeSmall">Small</string>
     <string name="OEStickerSizeLarge">Large</string>
+    <string name="OEChatsChannelPosts">Channel posts</string>
+    <string name="OEChatsWideChannelPosts">Wide posts</string>
+    <string name="OEChatsWideChannelPostsPreviewText">News, photos and videos</string>
+    <string name="OEChatsWideChannelPostsPreviewReply">Forwarded channel post</string>
+    <string name="OEChatsWideChannelPostsFooter">Channel posts and forwards use the available width.</string>
 
     <string name="OEDetailsDate">Date</string>
     <string name="OEDetailsForwardedDate">Forward Date</string>

@@ -79,6 +79,11 @@
     <string name="OEChatsChatSettingsInfo">Ajustes multimedia, icono de la app y más</string>
     <string name="OEStickerSizeSmall">Pequeño</string>
     <string name="OEStickerSizeLarge">Grande</string>
+    <string name="OEChatsChannelPosts">Publicaciones de canales</string>
+    <string name="OEChatsWideChannelPosts">Publicaciones anchas</string>
+    <string name="OEChatsWideChannelPostsPreviewText">Noticias, fotos y vídeos</string>
+    <string name="OEChatsWideChannelPostsPreviewReply">Publicación reenviada</string>
+    <string name="OEChatsWideChannelPostsFooter">Las publicaciones y reenvíos usan el ancho disponible.</string>
     <string name="OEDetailsDate">Fecha</string>
     <string name="OEDetailsForwardedDate">Fecha de reenvío</string>
     <string name="OEDetailsEditedDate">Fecha de edición</string>

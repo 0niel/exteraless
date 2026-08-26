@@ -79,6 +79,11 @@
     <string name="OEChatsChatSettingsInfo">Ustawienia mediów, ikona aplikacji i inne</string>
     <string name="OEStickerSizeSmall">Małe</string>
     <string name="OEStickerSizeLarge">Duże</string>
+    <string name="OEChatsChannelPosts">Posty na kanałach</string>
+    <string name="OEChatsWideChannelPosts">Szerokie posty</string>
+    <string name="OEChatsWideChannelPostsPreviewText">Wiadomości, zdjęcia i filmy</string>
+    <string name="OEChatsWideChannelPostsPreviewReply">Przekazany post z kanału</string>
+    <string name="OEChatsWideChannelPostsFooter">Posty i przekazania używają dostępnej szerokości.</string>
     <string name="OEDetailsDate">Data</string>
     <string name="OEDetailsForwardedDate">Data przesłania dalej</string>
     <string name="OEDetailsEditedDate">Data edycji</string>
