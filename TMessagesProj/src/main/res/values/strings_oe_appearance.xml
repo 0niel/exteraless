@@ -114,6 +114,7 @@
     <string name="OEAppearanceNewNavigationBarStyle">Bottom Navigation Bar</string>
     <string name="OEAppearanceIosDesign" translatable="false">iOS Design</string>
     <string name="OEAppearanceIosNavigationBarStyle">Bottom Navigation Bar</string>
+    <string name="OEAppearanceIosInputPanel">Input Panel</string>
     <string name="OEAppearanceIosFirstFolderOnTabTap">Tab Tap Opens First Folder</string>
     <string name="OEAppearanceHideAi">Hide AI</string>
     <string name="OEAppearanceHideAiEditor">AI editor button</string>

@@ -252,6 +252,16 @@ object AppearanceConfig {
         return iosFirstFolderOnTabTap.Bool()
     }
 
+    @JvmField
+    val iosInputPanel =
+        addConfig("OEAppearanceIosInputPanel", ConfigItem.configTypeBool, false)
+
+    @JvmStatic
+    fun iosInputPanel(): Boolean {
+        ensureLoaded()
+        return iosInputPanel.Bool()
+    }
+
     // ---- AI-функции Telegram ----
 
     /** Прячет кнопку AI-редактора в поле ввода, вложениях и подписи к медиа. */
