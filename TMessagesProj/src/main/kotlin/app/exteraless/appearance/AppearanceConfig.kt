@@ -253,16 +253,6 @@ object AppearanceConfig {
     }
 
     @JvmField
-    val iosInputPanel =
-        addConfig("OEAppearanceIosInputPanel", ConfigItem.configTypeBool, false)
-
-    @JvmStatic
-    fun iosInputPanel(): Boolean {
-        ensureLoaded()
-        return iosInputPanel.Bool()
-    }
-
-    @JvmField
     val iosBackCounter =
         addConfig("OEAppearanceIosBackCounter", ConfigItem.configTypeBool, false)
 

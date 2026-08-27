@@ -95,7 +95,6 @@
     <string name="OEAppearanceNewChatHeaderStyle">Encabezado del chat</string>
     <string name="OEAppearanceNewNavigationBarStyle">Barra de navegación inferior</string>
     <string name="OEAppearanceIosNavigationBarStyle">Barra de navegación inferior</string>
-    <string name="OEAppearanceIosInputPanel">Panel de entrada</string>
     <string name="OEAppearanceIosBackCounter">Contador junto a la flecha atrás</string>
     <string name="OEAppearanceIosFirstFolderOnTabTap">Tocar la pestaña abre la primera carpeta</string>
     <string name="OEAppearanceHideAi">Ocultar la IA</string>

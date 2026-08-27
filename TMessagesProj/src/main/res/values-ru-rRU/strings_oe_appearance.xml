@@ -104,7 +104,6 @@
     <string name="OEAppearanceNewNavigationBarStyle">Нижняя панель навигации</string>
     <string name="OEAppearanceIosDesign" translatable="false">iOS Design</string>
     <string name="OEAppearanceIosNavigationBarStyle">Нижняя панель навигации</string>
-    <string name="OEAppearanceIosInputPanel">Панель ввода</string>
     <string name="OEAppearanceIosBackCounter">Счётчик рядом со стрелкой</string>
     <string name="OEAppearanceIosFirstFolderOnTabTap">Тап по вкладке — первая папка</string>
     <string name="OEAppearanceHideActionBarStatus">Скрыть статус</string>

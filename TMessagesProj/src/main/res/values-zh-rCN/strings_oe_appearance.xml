@@ -95,7 +95,6 @@
     <string name="OEAppearanceNewChatHeaderStyle">对话顶栏</string>
     <string name="OEAppearanceNewNavigationBarStyle">底部导航栏</string>
     <string name="OEAppearanceIosNavigationBarStyle">底部导航栏</string>
-    <string name="OEAppearanceIosInputPanel">输入面板</string>
     <string name="OEAppearanceIosBackCounter">返回箭头旁显示未读数</string>
     <string name="OEAppearanceIosFirstFolderOnTabTap">点按标签页返回首个文件夹</string>
     <string name="OEAppearanceHideAi">隐藏 AI</string>
