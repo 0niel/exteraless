@@ -20370,7 +20370,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public ImageReceiver getAvatarImage() {
-        return isAvatarVisible ? avatarImage : null;
+        return isAvatarVisible && !drawNameAvatar ? avatarImage : null;
     }
 
     public float getCheckBoxTranslation() {
@@ -29851,9 +29851,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public boolean needDrawAvatar() {
-        if (currentMessageObject != null && currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner()) {
-            return false;
-        }
         return (
             isChat && !isSavedPreviewChat && (!isThreadPost || isForum) && (
                 currentMessageObject != null && !currentMessageObject.isOutOwner() && currentMessageObject.needDrawAvatar()
