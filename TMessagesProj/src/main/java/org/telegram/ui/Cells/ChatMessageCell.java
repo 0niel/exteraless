@@ -354,7 +354,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (messageObject == null) {
             return;
         }
-        if (isAvatarVisible || messageObject.isWideChannelPost() && !messageObject.isOutOwner()) {
+        if (isAvatarVisible || messageObject.hasWideChannelPostHeader() && !messageObject.isOutOwner()) {
             if (messageObject.customAvatarDrawable != null) {
                 avatarImage.setImageBitmap(messageObject.customAvatarDrawable);
             } else if (currentUser != null) {
@@ -5331,7 +5331,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                                 int id;
                                 TLRPC.Chat chat = currentChat;
                                 if (currentMessageObject.messageOwner.fwd_from != null
-                                        && !(drawNameAvatar && currentMessageObject.isWideChannelPost())) {
+                                        && !(drawNameAvatar && currentMessageObject.hasWideChannelPostHeader())) {
                                     if ((currentMessageObject.messageOwner.fwd_from.flags & 16) != 0) {
                                         id = currentMessageObject.messageOwner.fwd_from.saved_from_msg_id;
                                     } else {
@@ -6355,7 +6355,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         updateCurrentUserAndChat();
         TLRPC.FileLocation newPhoto = null;
 
-        if (isAvatarVisible || currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner()) {
+        if (isAvatarVisible || currentMessageObject.hasWideChannelPostHeader() && !currentMessageObject.isOutOwner()) {
             if (currentUser != null && currentUser.photo != null) {
                 newPhoto = currentUser.photo.photo_small;
             } else if (currentChat != null && currentChat.photo != null) {
@@ -19319,10 +19319,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
 
         cachedIsBookmarked = BookmarksHelper.isBookmarked(currentAccount, messageObject.getDialogId(), messageObject.getId());
-        if (messageObject.isWideChannelPost() && !messageObject.isOutOwner()
-                && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0)
-                && !messageObject.isAnyKindOfSticker()
-                && messageObject.type != MessageObject.TYPE_ROUND_VIDEO) {
+        if (messageObject.hasWideChannelPostHeader() && !messageObject.isOutOwner()
+                && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0)) {
             drawName = true;
         }
         boolean needAuthorName = isNeedAuthorName();
@@ -19330,7 +19328,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         boolean viaGuestBot = messageObject.messageOwner.guestchat_via_from != null;
         if (!hasPsaHint && (needAuthorName || viaBot || viaGuestBot)) {
             drawNameLayout = true;
-            drawNameAvatar = !messageObject.isOutOwner() && ((isForum || isMonoForum) && isSideMenuEnabled || messageObject.isWideChannelPost()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0) && !(messageObject.type == MessageObject.TYPE_ROUND_VIDEO || messageObject.type == MessageObject.TYPE_STICKER || messageObject.type == MessageObject.TYPE_ANIMATED_STICKER);
+            drawNameAvatar = !messageObject.isOutOwner() && ((isForum || isMonoForum) && isSideMenuEnabled || messageObject.hasWideChannelPostHeader()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
             nameWidth = getMaxNameWidth();
             if (nameWidth < 0) {
                 nameWidth = dp(100);
@@ -20270,7 +20268,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return (
             isPinnedChat && currentMessageObject.type == MessageObject.TYPE_TEXT ||
             !pinnedTop && drawName && isChat && (!currentMessageObject.isOutOwner() || currentMessageObject.isSupergroup() && currentMessageObject.isFromGroup() || currentMessageObject.isRepostPreview) ||
-            drawName && currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner() ||
+            drawName && currentMessageObject.hasWideChannelPostHeader() && !currentMessageObject.isOutOwner() ||
             currentMessageObject.isImportedForward() && currentMessageObject.messageOwner.fwd_from.from_id == null
         );
     }

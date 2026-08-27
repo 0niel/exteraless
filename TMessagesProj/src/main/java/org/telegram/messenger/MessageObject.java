@@ -10082,6 +10082,10 @@ public class MessageObject {
     }
 
     public boolean isWideChannelPost() {
+        return hasWideChannelPostHeader() && !shouldDrawWithoutBackground();
+    }
+
+    public boolean hasWideChannelPostHeader() {
         final boolean inFeed = searchType == 4;
         if (!(inFeed ? app.exteraless.chats.ChatsConfig.wideFeedPosts() : app.exteraless.chats.ChatsConfig.wideChannelPosts())
                 || messageOwner == null
@@ -10093,8 +10097,7 @@ public class MessageObject {
                 || sendPreview
                 || previewForward
                 || isRepostPreview
-                || isSponsored()
-                || shouldDrawWithoutBackground()) {
+                || isSponsored()) {
             return false;
         }
         TLRPC.Chat chat = getChat(null, null, messageOwner.peer_id.channel_id);
