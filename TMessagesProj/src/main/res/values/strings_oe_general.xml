@@ -109,4 +109,5 @@
     <string name="OEGeneralMapProvider">Map provider</string>
     <string name="OEGeneralMapPreview">Location previews</string>
     <string name="OEGeneralMapDriftingFix">Fix map drifting</string>
+    <string name="OECrashTitle">exteraless crashed</string>
 </resources>

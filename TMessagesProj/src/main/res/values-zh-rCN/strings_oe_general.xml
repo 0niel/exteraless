@@ -90,4 +90,5 @@
     <string name="OEGeneralMapProvider">地图提供方</string>
     <string name="OEGeneralMapPreview">位置预览</string>
     <string name="OEGeneralMapDriftingFix">修正地图偏移</string>
+    <string name="OECrashTitle">exteraless 已崩溃</string>
 </resources>

@@ -90,4 +90,5 @@
     <string name="OEGeneralMapProvider">Dostawca map</string>
     <string name="OEGeneralMapPreview">Podglądy lokalizacji</string>
     <string name="OEGeneralMapDriftingFix">Popraw przesunięcie mapy</string>
+    <string name="OECrashTitle">exteraless uległ awarii</string>
 </resources>

@@ -107,4 +107,5 @@
     <string name="OEGeneralMapProvider">Провайдер карт</string>
     <string name="OEGeneralMapPreview">Превью локаций</string>
     <string name="OEGeneralMapDriftingFix">Исправлять смещение карты</string>
+    <string name="OECrashTitle">exteraless аварийно завершился</string>
 </resources>
