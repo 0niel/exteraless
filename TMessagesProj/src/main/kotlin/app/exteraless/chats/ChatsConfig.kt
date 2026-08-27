@@ -148,6 +148,9 @@ object ChatsConfig {
 
     // ---- Сообщения ----
 
+    @JvmField
+    val wideChannelPosts = addConfig("OEChatsWideChannelPosts", ConfigItem.configTypeBool, false)
+
     /** Убрать «хвостик» пузыря (только UI). */
     @JvmField
     val removeMessageTail = addConfig("OEChatsRemoveMessageTail", ConfigItem.configTypeBool, true)
@@ -238,6 +241,12 @@ object ChatsConfig {
     fun stickerShape(): Int {
         ensureLoaded()
         return stickerShape.Int()
+    }
+
+    @JvmStatic
+    fun wideChannelPosts(): Boolean {
+        ensureLoaded()
+        return wideChannelPosts.Bool()
     }
 
     @JvmStatic

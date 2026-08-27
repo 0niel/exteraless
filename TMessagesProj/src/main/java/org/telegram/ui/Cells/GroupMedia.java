@@ -93,17 +93,20 @@ public class GroupMedia {
         }
         layout.medias.clear();
         layout.medias.addAll(paidMedia.extended_media);
-        layout.calculate();
+        layout.calculate(messageObject.isWideChannelPost());
 
         if (overrideWidth > 0) {
             maxWidth = overrideWidth;
         } else {
-            if (AndroidUtilities.isTablet()) {
+            int wideChannelWidth = cell.getWideChannelPostMediaWidth(messageObject);
+            if (wideChannelWidth != 0) {
+                maxWidth = wideChannelWidth;
+            } else if (AndroidUtilities.isTablet()) {
                 maxWidth = AndroidUtilities.getMinTabletSide() - AndroidUtilities.dp(122);
             } else {
                 maxWidth = Math.min(cell.getParentWidth(), AndroidUtilities.displaySize.y) - AndroidUtilities.dp(64 + (cell.checkNeedDrawShareButton(messageObject) ? 10 : 0));
             }
-            if (cell.needDrawAvatar()) {
+            if (wideChannelWidth == 0 && cell.needDrawAvatar()) {
                 maxWidth -= dp(52);
             }
         }
@@ -210,12 +213,15 @@ public class GroupMedia {
             f = 1000f / layout.width;
             maxWidth = overrideWidth;
         } else {
-            if (AndroidUtilities.isTablet()) {
+            int wideChannelWidth = cell.getWideChannelPostMediaWidth(messageObject);
+            if (wideChannelWidth != 0) {
+                maxWidth = wideChannelWidth;
+            } else if (AndroidUtilities.isTablet()) {
                 maxWidth = AndroidUtilities.getMinTabletSide() - AndroidUtilities.dp(122);
             } else {
                 maxWidth = Math.min(cell.getParentWidth(), AndroidUtilities.displaySize.y) - AndroidUtilities.dp(64 + (cell.checkNeedDrawShareButton(messageObject) ? 10 : 0));
             }
-            if (cell.needDrawAvatar()) {
+            if (wideChannelWidth == 0 && cell.needDrawAvatar()) {
                 maxWidth -= dp(52);
             }
         }
@@ -906,6 +912,7 @@ public class GroupMedia {
 
         public int maxSizeWidth = 800;
         public float maxSizeHeight = 814;
+        private boolean wideChannelPost;
 
         public final GroupedMessages.TransitionParams transitionParams = new GroupedMessages.TransitionParams();
 
@@ -938,7 +945,8 @@ public class GroupMedia {
             return maxSizeWidth / sum;
         }
 
-        public void calculate() {
+        public void calculate(boolean wideChannelPost) {
+            this.wideChannelPost = wideChannelPost;
             posArray.clear();
             positions.clear();
 
@@ -950,8 +958,8 @@ public class GroupMedia {
                 maxY = 0;
                 return;
             }
-            maxSizeWidth = 800;
-            int firstSpanAdditionalSize = 200;
+            maxSizeWidth = wideChannelPost ? 1000 : 800;
+            int firstSpanAdditionalSize = 1000 - maxSizeWidth;
 
             StringBuilder proportions = new StringBuilder();
             float averageAspectRatio = 1.0f;
@@ -981,8 +989,23 @@ public class GroupMedia {
                     } else {
                         photoSize = null;
                     }
-                    position.photoWidth = photoSize == null ? 100 : photoSize.w;
-                    position.photoHeight = photoSize == null ? 100 : photoSize.h;
+                    if (photoSize != null && photoSize.w > 0 && photoSize.h > 0) {
+                        position.photoWidth = photoSize.w;
+                        position.photoHeight = photoSize.h;
+                    } else if (m.media instanceof TLRPC.TL_messageMediaDocument
+                            && ((TLRPC.TL_messageMediaDocument) m.media).document != null) {
+                        TLRPC.Document document = ((TLRPC.TL_messageMediaDocument) m.media).document;
+                        for (int i = 0; i < document.attributes.size(); i++) {
+                            TLRPC.DocumentAttribute attribute = document.attributes.get(i);
+                            if ((attribute instanceof TLRPC.TL_documentAttributeVideo
+                                    || attribute instanceof TLRPC.TL_documentAttributeImageSize)
+                                    && attribute.w > 0 && attribute.h > 0) {
+                                position.photoWidth = attribute.w;
+                                position.photoHeight = attribute.h;
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     position.photoWidth = 100;
                     position.photoHeight = 100;
@@ -1030,7 +1053,10 @@ public class GroupMedia {
             if (count == 1) {
                 GroupedMessagePosition position1 = posArray.get(0);
                 float w, h;
-                if (position1.aspectRatio >= 1) {
+                if (wideChannelPost) {
+                    w = maxSizeWidth;
+                    h = Math.min(maxSizeHeight, w / position1.aspectRatio);
+                } else if (position1.aspectRatio >= 1) {
                     w = maxSizeWidth;
                     h = w / position1.aspectRatio / maxSizeWidth * maxSizeHeight;
                 } else {
@@ -1304,7 +1330,7 @@ public class GroupMedia {
                     }
                 }
                 TLRPC.MessageExtendedMedia media = medias.get(a);
-                if (!isOut && true /* media.needDrawAvatarInternal()*/) {
+                if (!wideChannelPost && !isOut) {
                     if (pos.edge) {
                         if (pos.spanSize != 1000) {
                             pos.spanSize += avatarOffset;
@@ -1425,7 +1451,7 @@ public class GroupMedia {
 
         public TLRPC.MessageExtendedMedia findMediaWithFlags(int flags) {
             if (!medias.isEmpty() && positions.isEmpty()) {
-                calculate();
+                calculate(wideChannelPost);
             }
             for (int i = 0; i < medias.size(); i++) {
                 TLRPC.MessageExtendedMedia media = medias.get(i);

@@ -358,6 +358,7 @@ public final class EtgBackup {
         bool(list, "replaceEditedWithIcon", NaConfig.INSTANCE.getUseEditedIcon());
         bool(list, "showOnlineStatus", NaConfig.INSTANCE.getShowOnlineStatus());
         bool(list, "hideShareButton", NaConfig.INSTANCE.getHideShareButtonInChannel());
+        bool(list, "wideChannelPosts", ChatsConfig.wideChannelPosts);
         bool(list, "showResultsBeforeVoting", ChatsConfig.showResultsBeforeVoting);
         bool(list, "showCopyPhotoButton", NaConfig.INSTANCE.getShowCopyPhoto());
         bool(list, "showSaveMessageButton", NekoConfig.showAddToSavedMessages);

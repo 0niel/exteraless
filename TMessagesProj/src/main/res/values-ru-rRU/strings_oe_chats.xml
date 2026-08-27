@@ -82,6 +82,11 @@
     <string name="OEChatsChatSettingsInfo">Настройки медиа, значок приложения и другое</string>
     <string name="OEStickerSizeSmall">Маленький</string>
     <string name="OEStickerSizeLarge">Большой</string>
+    <string name="OEChatsChannelPosts">Посты в каналах</string>
+    <string name="OEChatsWideChannelPosts">Широкие посты</string>
+    <string name="OEChatsWideChannelPostsPreviewText">Новости, фото и видео</string>
+    <string name="OEChatsWideChannelPostsPreviewReply">Пересланный пост канала</string>
+    <string name="OEChatsWideChannelPostsFooter">Посты и пересылки в каналах займут доступную ширину.</string>
     <string name="OEChatsUnmuteWithVolumeButtonsInfo">Кнопки громкости включат звук у беззвучного видео вместо изменения громкости.</string>
     <string name="OEChatsShowResultsBeforeVotingInfo">Результаты публичных опросов видны, не отдавая голос.</string>
     <string name="OEChatsRememberLastUsedCameraInfo">Следующее видеосообщение начнётся с той камеры, которой вы снимали в прошлый раз.</string>
