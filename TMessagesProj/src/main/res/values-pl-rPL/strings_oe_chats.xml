@@ -81,6 +81,7 @@
     <string name="OEStickerSizeLarge">Duże</string>
     <string name="OEChatsChannelPosts">Posty na kanałach</string>
     <string name="OEChatsWideChannelPosts">Szerokie posty</string>
+    <string name="OEChatsWideFeedPosts">Szerokie posty w kanale</string>
     <string name="OEChatsWideChannelPostsPreviewText">Wiadomości, zdjęcia i filmy</string>
     <string name="OEChatsWideChannelPostsPreviewReply">Przekazany post z kanału</string>
     <string name="OEChatsWideChannelPostsFooter">Posty i przekazania używają dostępnej szerokości.</string>

@@ -10082,7 +10082,8 @@ public class MessageObject {
     }
 
     public boolean isWideChannelPost() {
-        if (!app.exteraless.chats.ChatsConfig.wideChannelPosts()
+        final boolean inFeed = searchType == 4;
+        if (!(inFeed ? app.exteraless.chats.ChatsConfig.wideFeedPosts() : app.exteraless.chats.ChatsConfig.wideChannelPosts())
                 || messageOwner == null
                 || messageOwner.action != null
                 || messageOwner.peer_id == null

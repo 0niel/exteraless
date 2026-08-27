@@ -81,6 +81,7 @@
     <string name="OEStickerSizeLarge">大</string>
     <string name="OEChatsChannelPosts">频道帖子</string>
     <string name="OEChatsWideChannelPosts">宽帖子</string>
+    <string name="OEChatsWideFeedPosts">信息流中的宽帖子</string>
     <string name="OEChatsWideChannelPostsPreviewText">新闻、照片和视频</string>
     <string name="OEChatsWideChannelPostsPreviewReply">转发的频道帖子</string>
     <string name="OEChatsWideChannelPostsFooter">频道帖子和转发内容将使用可用宽度。</string>

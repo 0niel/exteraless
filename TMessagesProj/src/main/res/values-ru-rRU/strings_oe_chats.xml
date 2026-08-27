@@ -84,6 +84,7 @@
     <string name="OEStickerSizeLarge">Большой</string>
     <string name="OEChatsChannelPosts">Посты в каналах</string>
     <string name="OEChatsWideChannelPosts">Широкие посты</string>
+    <string name="OEChatsWideFeedPosts">Широкие посты в ленте</string>
     <string name="OEChatsWideChannelPostsPreviewText">Новости, фото и видео</string>
     <string name="OEChatsWideChannelPostsPreviewReply">Пересланный пост канала</string>
     <string name="OEChatsWideChannelPostsFooter">Посты и пересылки в каналах займут доступную ширину.</string>

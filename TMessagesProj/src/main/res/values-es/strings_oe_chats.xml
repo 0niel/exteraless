@@ -81,6 +81,7 @@
     <string name="OEStickerSizeLarge">Grande</string>
     <string name="OEChatsChannelPosts">Publicaciones de canales</string>
     <string name="OEChatsWideChannelPosts">Publicaciones anchas</string>
+    <string name="OEChatsWideFeedPosts">Publicaciones anchas en el feed</string>
     <string name="OEChatsWideChannelPostsPreviewText">Noticias, fotos y vídeos</string>
     <string name="OEChatsWideChannelPostsPreviewReply">Publicación reenviada</string>
     <string name="OEChatsWideChannelPostsFooter">Las publicaciones y reenvíos usan el ancho disponible.</string>

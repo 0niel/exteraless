@@ -90,6 +90,7 @@
     <string name="OEStickerSizeLarge">Large</string>
     <string name="OEChatsChannelPosts">Channel posts</string>
     <string name="OEChatsWideChannelPosts">Wide posts</string>
+    <string name="OEChatsWideFeedPosts">Wide posts in Feed</string>
     <string name="OEChatsWideChannelPostsPreviewText">News, photos and videos</string>
     <string name="OEChatsWideChannelPostsPreviewReply">Forwarded channel post</string>
     <string name="OEChatsWideChannelPostsFooter">Channel posts and forwards use the available width.</string>
