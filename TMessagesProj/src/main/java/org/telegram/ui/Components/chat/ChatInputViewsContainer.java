@@ -17,6 +17,10 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 
+import java.util.ArrayList;
+
+import app.exteraless.appearance.IosInputPanel;
+
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
@@ -76,6 +80,42 @@ public class ChatInputViewsContainer extends FrameLayout {
     public boolean drawInputBackground = true;
     public BlurredBackgroundDrawable blurredBackgroundDrawable;
     private BlurredBackgroundDrawable underKeyboardBackgroundDrawable;
+    private final ArrayList<View> iosCircleAnchors = new ArrayList<>();
+    private final ArrayList<BlurredBackgroundDrawable> iosCircleDrawables = new ArrayList<>();
+    private View iosRightAnchor;
+
+    public void addIosCircle(View anchor, BlurredBackgroundDrawable drawable, boolean right) {
+        if (anchor == null || drawable == null) {
+            return;
+        }
+        drawable.setRadius(dp(IosInputPanel.SLOT / 2f));
+        iosCircleAnchors.add(anchor);
+        iosCircleDrawables.add(drawable);
+        if (right) {
+            iosRightAnchor = anchor;
+        }
+        invalidate();
+    }
+
+    private boolean iosPanelActive() {
+        return !iosCircleAnchors.isEmpty() && IosInputPanel.enabled();
+    }
+
+    private void measureIosCircle(View anchor, Rect out, Rect bubble) {
+        tmpDescendantRect.set(0, 0, anchor.getWidth(), anchor.getHeight());
+        offsetDescendantRectToMyCoords(anchor, tmpDescendantRect);
+        final int size = dp(IosInputPanel.SLOT);
+        final int bottom = bubble.bottom - dp(7);
+        final int dx = Math.round(anchor.getTranslationX());
+        if (anchor == iosRightAnchor) {
+            final int right = tmpDescendantRect.right + dx;
+            out.set(right - size, bottom - size, right, bottom);
+        } else {
+            final int centerX = tmpDescendantRect.centerX() + dx;
+            out.set(centerX - size / 2, bottom - size, centerX + size / 2, bottom);
+        }
+    }
+
     public void setInputIslandBubbleDrawable(BlurredBackgroundDrawable drawable) {
         blurredBackgroundDrawable = drawable;
         blurredBackgroundDrawable.setPadding(dp(7));
@@ -93,6 +133,9 @@ public class ChatInputViewsContainer extends FrameLayout {
     public void updateColors() {
         blurredBackgroundDrawable.updateColors();
         underKeyboardBackgroundDrawable.updateColors();
+        for (int a = 0; a < iosCircleDrawables.size(); a++) {
+            iosCircleDrawables.get(a).updateColors();
+        }
         invalidate();
     }
 
@@ -246,6 +289,8 @@ public class ChatInputViewsContainer extends FrameLayout {
     /* Render */
 
     private final Rect tmpRect = new Rect();
+    private final Rect tmpCircleRect = new Rect();
+    private final Rect tmpDescendantRect = new Rect();
     private final RectF tmpRectF = new RectF();
 
     @Override
@@ -268,15 +313,56 @@ public class ChatInputViewsContainer extends FrameLayout {
         tmpRect.inset(0, -dp(7));
         tmpRect.offset(0, blurTop + (int) bubbleInputTranlationY);
 
-        blurredBackgroundDrawable.setBounds(tmpRect);
-        if (drawInputBackground)
-            blurredBackgroundDrawable.draw(canvas);
+        if (iosPanelActive() && drawInputBackground) {
+            drawIosPanel(canvas);
+        } else {
+            blurredBackgroundDrawable.setBounds(tmpRect);
+            if (drawInputBackground)
+                blurredBackgroundDrawable.draw(canvas);
+        }
 
         if (needDrawInAppKeyboard) {
             underKeyboardBackgroundDrawable.draw(canvas);
         }
 
         super.dispatchDraw(canvas);
+    }
+
+    private void drawIosPanel(Canvas canvas) {
+        final int gap = dp(IosInputPanel.GAP);
+        int pillLeft = tmpRect.left;
+        int pillRight = tmpRect.right;
+
+        for (int a = 0; a < iosCircleAnchors.size(); a++) {
+            final View anchor = iosCircleAnchors.get(a);
+            if (!IosInputPanel.isCircleVisible(anchor)) {
+                continue;
+            }
+            measureIosCircle(anchor, tmpCircleRect, tmpRect);
+            if (anchor == iosRightAnchor) {
+                pillRight = Math.min(pillRight, tmpCircleRect.left - gap);
+            } else {
+                pillLeft = Math.max(pillLeft, tmpCircleRect.right + gap);
+            }
+        }
+
+        if (pillRight > pillLeft) {
+            blurredBackgroundDrawable.setBounds(pillLeft, tmpRect.top, pillRight, tmpRect.bottom);
+            blurredBackgroundDrawable.draw(canvas);
+        }
+
+        final int alpha = blurredBackgroundDrawable.getAlpha();
+        for (int a = 0; a < iosCircleAnchors.size(); a++) {
+            final View anchor = iosCircleAnchors.get(a);
+            if (!IosInputPanel.isCircleVisible(anchor)) {
+                continue;
+            }
+            measureIosCircle(anchor, tmpCircleRect, tmpRect);
+            final BlurredBackgroundDrawable drawable = iosCircleDrawables.get(a);
+            drawable.setBounds(tmpCircleRect);
+            drawable.setAlpha(alpha);
+            drawable.draw(canvas);
+        }
     }
 
     @Override

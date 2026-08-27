@@ -315,6 +315,7 @@ import org.telegram.ui.Components.chat.ChatActivityMessageMetricsView;
 import org.telegram.ui.Components.chat.ChatActivitySearchContainer;
 import org.telegram.ui.Components.chat.layouts.ChatActivityActionsButtonsLayout;
 import org.telegram.ui.Components.chat.layouts.ChatActivityChannelButtonsLayout;
+import app.exteraless.appearance.IosInputPanel;
 import org.telegram.ui.Components.chat.ChatInputViewsContainer;
 import org.telegram.ui.Components.chat.ChatListViewPaddingsAnimator;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
@@ -8712,6 +8713,14 @@ public class ChatActivity extends BaseFragment implements
         checkSendButtonBlockedByTyping(false);
 
         chatInputBubbleContainer.addView(chatActivityEnterView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.BOTTOM, 7, 0, 7, 0));
+        if (IosInputPanel.enabled()) {
+            chatInputViewsContainer.addIosCircle(chatActivityEnterView.getSenderSelectView(),
+                glassBackgroundDrawableFactory.create(chatInputViewsContainer, blurredBackgroundColorProvider), false);
+            chatInputViewsContainer.addIosCircle(chatActivityEnterView.getAttachButton(),
+                glassBackgroundDrawableFactory.create(chatInputViewsContainer, blurredBackgroundColorProvider), false);
+            chatInputViewsContainer.addIosCircle(chatActivityEnterView.sendButtonContainer,
+                glassBackgroundDrawableFactory.create(chatInputViewsContainer, blurredBackgroundColorProvider), true);
+        }
 
         int chatListIndex = contentView.indexOfChild(chatListView);
         chatListIndex = chatListIndex < 0 ? contentView.getChildCount() : (chatListIndex + 1);
