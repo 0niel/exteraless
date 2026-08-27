@@ -5330,7 +5330,8 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             } else if (currentChat != null) {
                                 int id;
                                 TLRPC.Chat chat = currentChat;
-                                if (currentMessageObject.messageOwner.fwd_from != null) {
+                                if (currentMessageObject.messageOwner.fwd_from != null
+                                        && !(drawNameAvatar && currentMessageObject.isWideChannelPost())) {
                                     if ((currentMessageObject.messageOwner.fwd_from.flags & 16) != 0) {
                                         id = currentMessageObject.messageOwner.fwd_from.saved_from_msg_id;
                                     } else {
@@ -20269,6 +20270,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return (
             isPinnedChat && currentMessageObject.type == MessageObject.TYPE_TEXT ||
             !pinnedTop && drawName && isChat && (!currentMessageObject.isOutOwner() || currentMessageObject.isSupergroup() && currentMessageObject.isFromGroup() || currentMessageObject.isRepostPreview) ||
+            drawName && currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner() ||
             currentMessageObject.isImportedForward() && currentMessageObject.messageOwner.fwd_from.from_id == null
         );
     }
