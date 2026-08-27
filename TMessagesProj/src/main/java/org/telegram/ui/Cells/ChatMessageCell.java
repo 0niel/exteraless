@@ -29851,6 +29851,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public boolean needDrawAvatar() {
+        if (currentMessageObject != null && currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner()) {
+            return false;
+        }
         return (
             isChat && !isSavedPreviewChat && (!isThreadPost || isForum) && (
                 currentMessageObject != null && !currentMessageObject.isOutOwner() && currentMessageObject.needDrawAvatar()
