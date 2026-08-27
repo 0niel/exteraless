@@ -19319,7 +19319,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
 
         cachedIsBookmarked = BookmarksHelper.isBookmarked(currentAccount, messageObject.getDialogId(), messageObject.getId());
-        if (messageObject.hasWideChannelPostHeader() && !messageObject.isOutOwner()
+        if (messageObject.isWideChannelPost() && !messageObject.isOutOwner()
                 && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0)) {
             drawName = true;
         }
@@ -19328,7 +19328,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         boolean viaGuestBot = messageObject.messageOwner.guestchat_via_from != null;
         if (!hasPsaHint && (needAuthorName || viaBot || viaGuestBot)) {
             drawNameLayout = true;
-            drawNameAvatar = !messageObject.isOutOwner() && ((isForum || isMonoForum) && isSideMenuEnabled || messageObject.hasWideChannelPostHeader()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
+            drawNameAvatar = !messageObject.isOutOwner() && ((isForum || isMonoForum) && isSideMenuEnabled || messageObject.isWideChannelPost()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
             nameWidth = getMaxNameWidth();
             if (nameWidth < 0) {
                 nameWidth = dp(100);
@@ -20268,7 +20268,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         return (
             isPinnedChat && currentMessageObject.type == MessageObject.TYPE_TEXT ||
             !pinnedTop && drawName && isChat && (!currentMessageObject.isOutOwner() || currentMessageObject.isSupergroup() && currentMessageObject.isFromGroup() || currentMessageObject.isRepostPreview) ||
-            drawName && currentMessageObject.hasWideChannelPostHeader() && !currentMessageObject.isOutOwner() ||
+            drawName && currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner() ||
             currentMessageObject.isImportedForward() && currentMessageObject.messageOwner.fwd_from.from_id == null
         );
     }
@@ -20376,7 +20376,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public ImageReceiver getAvatarImage() {
-        return isAvatarVisible && !drawNameAvatar ? avatarImage : null;
+        if (drawNameAvatar || currentMessageObject != null && currentMessageObject.hasWideChannelPostHeader()
+                && !currentMessageObject.isOutOwner()) {
+            return null;
+        }
+        return isAvatarVisible ? avatarImage : null;
     }
 
     public float getCheckBoxTranslation() {
