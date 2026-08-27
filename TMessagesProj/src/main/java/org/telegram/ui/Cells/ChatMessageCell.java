@@ -7055,9 +7055,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             hasNewLineForTime = false;
             flipImage = false;
             isThreadPost = isThreadChat && messageObject.messageOwner.fwd_from != null && messageObject.messageOwner.fwd_from.channel_post != 0 && messageObject.messageOwner.reply_to == null;
-            isAvatarVisible = needDrawAvatar() && (currentPosition == null || currentPosition.edge);
-            boolean drawAvatar = needDrawAvatar();
-            if (messageObject.customAvatarDrawable != null || messageObject.forceAvatar || messageObject.messageOwner.guestchat_via_from != null) {
+            final boolean wideChannelPostHeader = messageObject.hasWideChannelPostHeader() && !messageObject.isOutOwner();
+            isAvatarVisible = !wideChannelPostHeader && needDrawAvatar() && (currentPosition == null || currentPosition.edge);
+            boolean drawAvatar = !wideChannelPostHeader && needDrawAvatar();
+            if (!wideChannelPostHeader && (messageObject.customAvatarDrawable != null || messageObject.forceAvatar || messageObject.messageOwner.guestchat_via_from != null)) {
                 isAvatarVisible = true;
                 drawAvatar = true;
             }
