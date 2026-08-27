@@ -97,6 +97,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             NaConfig.INSTANCE.getSaveDeletedMessageForBot(),
             NaConfig.INSTANCE.getTranslucentDeletedMessages(),
             NaConfig.INSTANCE.getUseDeletedIcon(),
+            NaConfig.INSTANCE.getForwardProtectedAsCopy(),
     };
 
     private int googleHeaderRow;
@@ -122,6 +123,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
     private int ayuTranslucentRow;
     private int ayuDeletedIconRow;
     private int ayuDeletedMarkRow;
+    private int ayuForwardProtectedRow;
     private int ayuClearDbRow;
     private int nagramDividerRow;
 
@@ -173,7 +175,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
         ayuSaveMediaRow = ayuBotUserRow = ayuBotChatRow = ayuTranslucentRow = -1;
         saveMediaPrivateChatsRow = saveMediaPublicChannelsRow = saveMediaPrivateChannelsRow = -1;
         saveMediaPublicGroupsRow = saveMediaPrivateGroupsRow = -1;
-        ayuDeletedIconRow = ayuDeletedMarkRow = ayuClearDbRow = -1;
+        ayuDeletedIconRow = ayuDeletedMarkRow = ayuForwardProtectedRow = ayuClearDbRow = -1;
         if (GeneralConfig.showAyuMoments()) {
             ayuGhostRow = addRow("ayuGhost");
             ayuRegexRow = addRow(NaConfig.INSTANCE.getRegexFiltersEnabled().getKey());
@@ -201,6 +203,7 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                     ayuDeletedMarkRow = addRow(NaConfig.INSTANCE.getCustomDeletedMark().getKey());
                 }
             }
+            ayuForwardProtectedRow = addRow(NaConfig.INSTANCE.getForwardProtectedAsCopy().getKey());
             ayuClearDbRow = addRow("ayuClearDatabase");
         }
         nagramDividerRow = addRow();
@@ -317,6 +320,8 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
             toggleAyuConfig(view, NaConfig.INSTANCE.getUseDeletedIcon(), true);
         } else if (position == ayuDeletedMarkRow) {
             showDeletedMarkDialog();
+        } else if (position == ayuForwardProtectedRow) {
+            toggleAyuConfig(view, NaConfig.INSTANCE.getForwardProtectedAsCopy(), false);
         } else if (position == ayuClearDbRow) {
             showClearAyuDatabaseDialog();
         } else if (position == exportEtgRow) {
@@ -881,6 +886,11 @@ public class OpenExteraOtherActivity extends BaseNekoSettingsActivity {
                             bindAyuCheck(cell, NaConfig.INSTANCE.getTranslucentDeletedMessages(), true);
                         } else if (position == ayuDeletedIconRow) {
                             bindAyuCheck(cell, NaConfig.INSTANCE.getUseDeletedIcon(), true);
+                        } else if (position == ayuForwardProtectedRow) {
+                            cell.setTextAndValueAndCheck(
+                                    getString(R.string.ForwardProtectedAsCopy),
+                                    getString(R.string.ForwardProtectedAsCopyInfo),
+                                    NaConfig.INSTANCE.getForwardProtectedAsCopy().Bool(), true, true);
                         }
                     }
                     break;
