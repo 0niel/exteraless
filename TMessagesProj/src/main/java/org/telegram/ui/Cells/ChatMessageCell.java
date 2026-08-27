@@ -9454,7 +9454,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 drawForwardedName = (messageObject.messageOwner.fwd_from != null && !(messageObject.isAnyKindOfSticker() && messageObject.isDice())) || messageObject.type == MessageObject.TYPE_STORY;
                 if (!messageObject.isAnyKindOfSticker() && messageObject.type != MessageObject.TYPE_ROUND_VIDEO) {
-                    drawName = (isSavedChat && !messageObject.isOutOwner() && (messageObject.getSavedDialogId() < 0 || messageObject.getSavedDialogId() == UserObject.ANONYMOUS) || messageObject.isFromGroup() && messageObject.isSupergroup() || messageObject.isRepostPreview || messageObject.isImportedForward() && messageObject.messageOwner.fwd_from.from_id == null || isSideMenuEnabled && !messageObject.isOutOwner() && (isMonoForum && isAllChats || isForum)) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
+                    drawName = (isSavedChat && !messageObject.isOutOwner() && (messageObject.getSavedDialogId() < 0 || messageObject.getSavedDialogId() == UserObject.ANONYMOUS) || messageObject.isFromGroup() && messageObject.isSupergroup() || messageObject.isRepostPreview || messageObject.isImportedForward() && messageObject.messageOwner.fwd_from.from_id == null || isSideMenuEnabled && !messageObject.isOutOwner() && (isMonoForum && isAllChats || isForum) || messageObject.isWideChannelPost() && !messageObject.isOutOwner()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
                 }
                 mediaBackground = isMedia = messageObject.type != MessageObject.TYPE_FILE;
                 drawImageButton = true;
@@ -19323,7 +19323,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         boolean viaGuestBot = messageObject.messageOwner.guestchat_via_from != null;
         if (!hasPsaHint && (needAuthorName || viaBot || viaGuestBot)) {
             drawNameLayout = true;
-            drawNameAvatar = !messageObject.isOutOwner() && (isForum || isMonoForum) && isSideMenuEnabled && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0) && !(messageObject.type == MessageObject.TYPE_ROUND_VIDEO || messageObject.type == MessageObject.TYPE_STICKER || messageObject.type == MessageObject.TYPE_ANIMATED_STICKER);
+            drawNameAvatar = !messageObject.isOutOwner() && ((isForum || isMonoForum) && isSideMenuEnabled || messageObject.isWideChannelPost()) && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0) && !(messageObject.type == MessageObject.TYPE_ROUND_VIDEO || messageObject.type == MessageObject.TYPE_STICKER || messageObject.type == MessageObject.TYPE_ANIMATED_STICKER);
             nameWidth = getMaxNameWidth();
             if (nameWidth < 0) {
                 nameWidth = dp(100);
