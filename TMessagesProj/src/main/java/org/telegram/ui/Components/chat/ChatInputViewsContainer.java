@@ -17,8 +17,6 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 
-import app.exteraless.appearance.AppearanceConfig;
-
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
@@ -78,38 +76,6 @@ public class ChatInputViewsContainer extends FrameLayout {
     public boolean drawInputBackground = true;
     public BlurredBackgroundDrawable blurredBackgroundDrawable;
     private BlurredBackgroundDrawable underKeyboardBackgroundDrawable;
-    public static final int SEND_ISLAND_SIZE = 44;
-    public static final int SEND_ISLAND_GAP = 6;
-
-    private BlurredBackgroundDrawable sendIslandDrawable;
-    private View sendIslandAnchor;
-
-    public void setSendIslandDrawable(BlurredBackgroundDrawable drawable) {
-        sendIslandDrawable = drawable;
-        sendIslandDrawable.setRadius(dp(SEND_ISLAND_SIZE / 2f));
-    }
-
-    public void setSendIslandAnchor(View anchor) {
-        sendIslandAnchor = anchor;
-        invalidate();
-    }
-
-    private boolean sendIslandActive() {
-        return sendIslandDrawable != null
-            && sendIslandAnchor != null
-            && sendIslandAnchor.isShown()
-            && AppearanceConfig.iosInputPanel();
-    }
-
-    private void measureSendIsland(Rect out, Rect bubble) {
-        tmpDescendantRect.set(0, 0, sendIslandAnchor.getWidth(), sendIslandAnchor.getHeight());
-        offsetDescendantRectToMyCoords(sendIslandAnchor, tmpDescendantRect);
-        final int size = dp(SEND_ISLAND_SIZE);
-        final int right = tmpDescendantRect.right + Math.round(sendIslandAnchor.getTranslationX());
-        final int bottom = bubble.bottom - dp(7);
-        out.set(right - size, bottom - size, right, bottom);
-    }
-
     public void setInputIslandBubbleDrawable(BlurredBackgroundDrawable drawable) {
         blurredBackgroundDrawable = drawable;
         blurredBackgroundDrawable.setPadding(dp(7));
@@ -127,9 +93,6 @@ public class ChatInputViewsContainer extends FrameLayout {
     public void updateColors() {
         blurredBackgroundDrawable.updateColors();
         underKeyboardBackgroundDrawable.updateColors();
-        if (sendIslandDrawable != null) {
-            sendIslandDrawable.updateColors();
-        }
         invalidate();
     }
 
@@ -283,8 +246,6 @@ public class ChatInputViewsContainer extends FrameLayout {
     /* Render */
 
     private final Rect tmpRect = new Rect();
-    private final Rect tmpSendIslandRect = new Rect();
-    private final Rect tmpDescendantRect = new Rect();
     private final RectF tmpRectF = new RectF();
 
     @Override
@@ -298,8 +259,6 @@ public class ChatInputViewsContainer extends FrameLayout {
 
         final int blurTop = getMeasuredHeight() - currentBlurredHeight;
 
-        final boolean sendIsland = sendIslandActive();
-
         tmpRect.set(
             Math.round(inputBubbleOffsetLeft),
             0,
@@ -308,20 +267,10 @@ public class ChatInputViewsContainer extends FrameLayout {
         );
         tmpRect.inset(0, -dp(7));
         tmpRect.offset(0, blurTop + (int) bubbleInputTranlationY);
-        if (sendIsland) {
-            measureSendIsland(tmpSendIslandRect, tmpRect);
-            tmpRect.right = Math.min(tmpRect.right, tmpSendIslandRect.left - dp(SEND_ISLAND_GAP));
-        }
 
         blurredBackgroundDrawable.setBounds(tmpRect);
         if (drawInputBackground)
             blurredBackgroundDrawable.draw(canvas);
-
-        if (sendIsland && drawInputBackground) {
-            sendIslandDrawable.setBounds(tmpSendIslandRect);
-            sendIslandDrawable.setAlpha(blurredBackgroundDrawable.getAlpha());
-            sendIslandDrawable.draw(canvas);
-        }
 
         if (needDrawInAppKeyboard) {
             underKeyboardBackgroundDrawable.draw(canvas);
