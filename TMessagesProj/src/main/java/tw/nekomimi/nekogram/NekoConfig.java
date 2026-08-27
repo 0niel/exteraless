@@ -228,6 +228,7 @@ public class NekoConfig {
             if (ApplicationLoader.applicationContext == null) {
                 return;
             }
+            app.exteraless.config.LegacyDefaults.pin(getPreferences());
             for (int i = 0; i < configs.size(); i++) {
                 ConfigItem o = configs.get(i);
 
