@@ -354,7 +354,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (messageObject == null) {
             return;
         }
-        if (isAvatarVisible) {
+        if (isAvatarVisible || messageObject.isWideChannelPost() && !messageObject.isOutOwner()) {
             if (messageObject.customAvatarDrawable != null) {
                 avatarImage.setImageBitmap(messageObject.customAvatarDrawable);
             } else if (currentUser != null) {
@@ -6355,7 +6355,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         updateCurrentUserAndChat();
         TLRPC.FileLocation newPhoto = null;
 
-        if (isAvatarVisible) {
+        if (isAvatarVisible || currentMessageObject.isWideChannelPost() && !currentMessageObject.isOutOwner()) {
             if (currentUser != null && currentUser.photo != null) {
                 newPhoto = currentUser.photo.photo_small;
             } else if (currentChat != null && currentChat.photo != null) {

@@ -10093,7 +10093,8 @@ public class MessageObject {
                 || sendPreview
                 || previewForward
                 || isRepostPreview
-                || isSponsored()) {
+                || isSponsored()
+                || shouldDrawWithoutBackground()) {
             return false;
         }
         TLRPC.Chat chat = getChat(null, null, messageOwner.peer_id.channel_id);
