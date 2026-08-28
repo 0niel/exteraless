@@ -136,14 +136,14 @@ public class FilterTabsView extends FrameLayout {
 
         public Tab(int i, CharSequence title, String emoticon, boolean noanimate) {
             this.id = i;
-            this.title = NekoConfig.tabsTitleType.Int() == NekoXConfig.TITLE_TYPE_ICON ? "" : title;
+            this.title = titleType() == NekoXConfig.TITLE_TYPE_ICON ? "" : title;
             this.realTitle = title;
             this.noanimate = noanimate;
             this.emoticon = (i != Integer.MAX_VALUE) ? (emoticon != null ? emoticon : "") : "\uD83D\uDCAC";
         }
 
         public int getWidth(boolean store) {
-            iconWidth = FolderIconHelper.getTotalIconWidth();
+            iconWidth = forceTextTitles ? 0 : FolderIconHelper.getTotalIconWidth();
             int width = titleWidth = (int) Math.ceil(HintView2.measureCorrectly(title, textPaint));
             width += iconWidth;
             int c;
@@ -164,9 +164,9 @@ public class FilterTabsView extends FrameLayout {
                 String counterText = String.format("%d", c);
                 int counterWidth = (int) Math.ceil(textCounterPaint.measureText(counterText));
                 int countWidth = Math.max(dp(TAB_COUNTER_HEIGHT - 10), counterWidth) + dp(10);
-                counterResultWidth = countWidth + (NekoConfig.tabsTitleType.Int() != NekoXConfig.TITLE_TYPE_ICON ? dp(6) : 0);
+                counterResultWidth = countWidth + (titleType() != NekoXConfig.TITLE_TYPE_ICON ? dp(6) : 0);
             } else {
-                counterResultWidth = !isDefault && isEditing ? dp(TAB_COUNTER_HEIGHT - 5) + (NekoConfig.tabsTitleType.Int() != NekoXConfig.TITLE_TYPE_ICON ? dp(6) : 0) : 0;
+                counterResultWidth = !isDefault && isEditing ? dp(TAB_COUNTER_HEIGHT - 5) + (titleType() != NekoXConfig.TITLE_TYPE_ICON ? dp(6) : 0) : 0;
             }
             width += counterResultWidth;
 
@@ -174,7 +174,7 @@ public class FilterTabsView extends FrameLayout {
         }
 
         public boolean setTitle(String newTitle, ArrayList<TLRPC.MessageEntity> newEntities, boolean noanimate) {
-            newTitle = NekoConfig.tabsTitleType.Int() != NekoXConfig.TITLE_TYPE_ICON ? newTitle : "";
+            newTitle = titleType() != NekoXConfig.TITLE_TYPE_ICON ? newTitle : "";
             if (TextUtils.equals(title, newTitle)) {
                 return false;
             }
@@ -412,7 +412,7 @@ public class FilterTabsView extends FrameLayout {
             }
 
             tabCounterVisible = (countWidth != 0 && !animateCounterRemove) ? (counterText != null ? 1.0f : editingStartAnimationProgress) : 0;
-            int tabType = NekoConfig.tabsTitleType.Int();
+            int tabType = titleType();
             if (tabType == NekoXConfig.TITLE_TYPE_TEXT) {
                 tabWidth = currentTab.titleWidth + ((countWidth != 0 && !animateCounterRemove) ? countWidth + dp(6 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
             } else if (tabType == NekoXConfig.TITLE_TYPE_ICON) {
@@ -735,7 +735,7 @@ public class FilterTabsView extends FrameLayout {
                 countWidth = 0;
             }
             int tabWidth;
-            int tabType = NekoConfig.tabsTitleType.Int();
+            int tabType = titleType();
             if (tabType == NekoXConfig.TITLE_TYPE_TEXT) {
                 tabWidth = currentTab.titleWidth + (countWidth != 0 ? countWidth + dp(6 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
             } else if (tabType == NekoXConfig.TITLE_TYPE_ICON) {
@@ -898,6 +898,16 @@ public class FilterTabsView extends FrameLayout {
     private ColorFilter emojiColorFilter = new PorterDuffColorFilter(0, PorterDuff.Mode.SRC_IN);
 
     private final ArrayList<Tab> tabs = new ArrayList<>();
+
+    private boolean forceTextTitles;
+
+    public void setForceTextTitles() {
+        forceTextTitles = true;
+    }
+
+    int titleType() {
+        return forceTextTitles ? NekoXConfig.TITLE_TYPE_TEXT : NekoConfig.tabsTitleType.Int();
+    }
 
     private boolean isEditing;
     private long lastEditingAnimationTime;
