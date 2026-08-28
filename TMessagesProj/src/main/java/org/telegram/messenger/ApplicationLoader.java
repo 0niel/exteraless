@@ -293,6 +293,13 @@ public class ApplicationLoader extends Application implements CameraXConfig.Prov
         app.exteraless.utils.UtilsConfig.init();
         app.exteraless.glyph.GlyphConfig.init();
         app.exteraless.glyph.GlyphController.getInstance().init();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Суффикс набора Monet запекается в ThemeInfo.assetName при первой загрузке
+            // класса Theme. Если она случилась до загрузки конфигов (процесс поднялся
+            // ради ресивера/провайдера), палитра молча откатывалась бы на набор по
+            // умолчанию — патчим assetName после инициализации конфигов.
+            org.telegram.ui.ActionBar.Theme.reloadMonetThemes();
+        }
         app.exteraless.plugins.PluginsController.getInstance().init(applicationContext);
         SharedPrefsHelper.init(applicationContext);
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(AndroidUtil.shouldEnableCrashlytics());
