@@ -49,6 +49,22 @@ public final class CatalogIdentityStore {
         preferences.edit().remove(key(sourceUrl, catalogSlug)).apply();
     }
 
+    /** Uninstall hook: a removed plugin id must not keep matching catalog slugs. */
+    public void clearIdentitiesForLocalId(String pluginId) {
+        if (pluginId == null || pluginId.isEmpty()) {
+            return;
+        }
+        SharedPreferences.Editor editor = null;
+        for (Map.Entry<String, ?> entry : preferences.getAll().entrySet()) {
+            if (entry.getKey().startsWith(KEY_PREFIX)
+                    && pluginId.equals(entry.getValue())) {
+                if (editor == null) editor = preferences.edit();
+                editor.remove(entry.getKey());
+            }
+        }
+        if (editor != null) editor.apply();
+    }
+
     public CatalogUpdateMatch matchUpdate(String sourceUrl, CatalogPlugin catalogPlugin,
                                           Map<String, String> installedVersionsByPluginId) {
         String pluginId = getLocalPluginId(sourceUrl, catalogPlugin.slug);

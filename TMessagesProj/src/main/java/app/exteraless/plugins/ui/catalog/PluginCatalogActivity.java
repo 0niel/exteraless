@@ -61,9 +61,6 @@ public class PluginCatalogActivity extends BaseFragment {
     static final String PREF_AUTO_UPDATE_CHECK = "catalog_auto_update_check";
 
     private static final int MENU_SEARCH = 1;
-    private static final int MENU_SETTINGS = 2;
-    private static final int MENU_SORT = 4;
-    private static final int MENU_COMPATIBLE = 5;
     private static final int MENU_OTHER = 6;
     private static final int ID_RETRY_MORE = 101;
     private static final int ID_RETRY = 102;
@@ -94,7 +91,6 @@ public class PluginCatalogActivity extends BaseFragment {
     private long categoriesGeneration;
     private boolean firstResume = true;
     private String lastSource;
-    private boolean lastCompatibleOnly;
     private org.telegram.ui.ActionBar.ActionBarMenuItem searchItem;
     private org.telegram.ui.ActionBar.ActionBarMenuItem otherItem;
     private FilterTabsView categoryTabs;
@@ -108,15 +104,14 @@ public class PluginCatalogActivity extends BaseFragment {
     private boolean searchExpanded;
     private boolean lastSystemEmoji;
     private String lastLocale;
-    private boolean categoryBarVisible = true;
     private int bottomInset;
+    private final java.util.HashMap<String, CharSequence> categoryLabels = new java.util.HashMap<>();
 
     @Override
     public View createView(Context context) {
         repository = new CatalogRepository(context);
         query = repository.getDefaultQuery();
         lastSource = repository.getConfig().getBaseUrl();
-        lastCompatibleOnly = repository.getConfig().isCompatibleOnly();
         lastSystemEmoji = NekoConfig.useSystemEmoji.Bool();
         lastLocale = CatalogRepository.appLocale();
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
@@ -127,12 +122,6 @@ public class PluginCatalogActivity extends BaseFragment {
             public void onItemClick(int id) {
                 if (id == -1) {
                     finishFragment();
-                } else if (id == MENU_SETTINGS) {
-                    presentFragment(new PluginCatalogSettingsActivity());
-                } else if (id == MENU_SORT) {
-                    onSortClicked();
-                } else if (id == MENU_COMPATIBLE) {
-                    onCompatibleOnlyChanged(!Boolean.TRUE.equals(query.exteralessOnly));
                 }
             }
         });
@@ -302,13 +291,13 @@ public class PluginCatalogActivity extends BaseFragment {
         String currentSource = repository.getConfig().getBaseUrl();
         boolean currentCompatibleOnly = repository.getConfig().isCompatibleOnly();
         boolean sourceChanged = !TextUtils.equals(lastSource, currentSource);
-        boolean compatibilityChanged = lastCompatibleOnly != currentCompatibleOnly;
+        boolean compatibilityChanged =
+                Boolean.TRUE.equals(query.exteralessOnly) != currentCompatibleOnly;
         boolean systemEmojiChanged = lastSystemEmoji != NekoConfig.useSystemEmoji.Bool();
         boolean localeChanged = !TextUtils.equals(lastLocale, CatalogRepository.appLocale());
         lastSystemEmoji = NekoConfig.useSystemEmoji.Bool();
         lastLocale = CatalogRepository.appLocale();
         lastSource = currentSource;
-        lastCompatibleOnly = currentCompatibleOnly;
         query = query.withExteralessOnly(currentCompatibleOnly ? Boolean.TRUE : null);
         if (sourceChanged || localeChanged) {
             if (sourceChanged) {
@@ -412,13 +401,14 @@ public class PluginCatalogActivity extends BaseFragment {
             return;
         }
         Map<String, String> installed = CatalogUi.installedVersions();
+        boolean showUpdates = autoUpdateCheckEnabled(getContext());
+        boolean developerMode = PluginsController.getInstance().isDeveloperMode();
+        boolean officialSource = app.exteraless.plugins.catalog.CatalogConfig
+                .DEFAULT_BASE_URL.equals(repository.getConfig().getBaseUrl());
         for (CatalogPlugin plugin : plugins) {
             CatalogUpdateMatch match = repository.matchInstalled(plugin, installed);
-            CatalogPluginCell.Model model = new CatalogPluginCell.Model(getContext(), plugin,
-                    match, autoUpdateCheckEnabled(getContext()),
-                    PluginsController.getInstance().isDeveloperMode(),
-                    app.exteraless.plugins.catalog.CatalogConfig.DEFAULT_BASE_URL.equals(
-                            repository.getConfig().getBaseUrl()),
+            CatalogPluginCell.Model model = new CatalogPluginCell.Model(plugin,
+                    match, showUpdates, developerMode, officialSource,
                     categoryName(plugin.category));
             items.add(CatalogPluginCell.Factory.asPlugin(model));
         }
@@ -483,12 +473,22 @@ public class PluginCatalogActivity extends BaseFragment {
 
     private CharSequence categoryName(String slug) {
         if (TextUtils.isEmpty(slug)) return "";
+        CharSequence cached = categoryLabels.get(slug);
+        if (cached != null) return cached;
+        CharSequence label = null;
         for (CatalogCategory category : categories) {
-            if (TextUtils.equals(slug, category.slug)) return categoryLabel(category);
+            if (TextUtils.equals(slug, category.slug)) {
+                label = categoryLabel(category);
+                break;
+            }
         }
-        String readable = CatalogUi.humanizeSlug(slug);
-        if (readable.isEmpty()) return "";
-        return CatalogUi.renderEmoji(CatalogUi.categoryEmoji(null, slug) + " " + readable);
+        if (label == null) {
+            String readable = CatalogUi.humanizeSlug(slug);
+            label = readable.isEmpty() ? ""
+                    : CatalogUi.renderEmoji(CatalogUi.categoryEmoji(null, slug) + " " + readable);
+        }
+        categoryLabels.put(slug, label);
+        return label;
     }
 
     private void rebuildCategoryTabs() {
@@ -497,6 +497,7 @@ public class PluginCatalogActivity extends BaseFragment {
 
     private void rebuildCategoryTabs(boolean animated) {
         if (categoryTabs == null) return;
+        categoryLabels.clear();
         categoryTabs.removeTabs();
         categoryTabs.resetTabId();
         categoryIds.clear();
@@ -591,8 +592,13 @@ public class PluginCatalogActivity extends BaseFragment {
                         initialLoading = false;
                         boolean wasAtTop = listView != null
                                 && !listView.canScrollVertically(-1);
+                        ArrayList<CatalogPlugin> previous = backgroundRefresh
+                                ? new ArrayList<>(plugins) : null;
                         plugins.clear();
                         appendUnique(data.value.plugins);
+                        if (previous != null) {
+                            appendUnique(previous);
+                        }
                         displayedQuery = requested;
                         hasNextPage = data.value.hasNextPage();
                         totalCount = data.value.totalCount;
@@ -823,7 +829,6 @@ public class PluginCatalogActivity extends BaseFragment {
 
     private void setCategoryBarVisible(boolean visible, boolean animated) {
         if (tabsContainer == null || listView == null) return;
-        categoryBarVisible = visible;
         tabsContainer.animate().cancel();
         boolean wasAtTop = !listView.canScrollVertically(-1);
         applyListPadding();
@@ -857,7 +862,7 @@ public class PluginCatalogActivity extends BaseFragment {
 
     private void applyListPadding() {
         if (listView == null) return;
-        listView.setPadding(0, AndroidUtilities.dp(categoryBarVisible ? 50 : 0),
+        listView.setPadding(0, AndroidUtilities.dp(searchExpanded ? 0 : 50),
                 0, bottomInset);
         if (toTopButton != null
                 && toTopButton.getLayoutParams() instanceof FrameLayout.LayoutParams) {
@@ -926,7 +931,6 @@ public class PluginCatalogActivity extends BaseFragment {
 
     public void onCompatibleOnlyChanged(boolean value) {
         repository.getConfig().setCompatibleOnly(value);
-        lastCompatibleOnly = value;
         query = query.withExteralessOnly(value ? Boolean.TRUE : null);
         loadFirstPage(false);
     }
@@ -941,7 +945,6 @@ public class PluginCatalogActivity extends BaseFragment {
         }
         query = repository.getDefaultQuery().withExteralessOnly(null);
         repository.getConfig().setCompatibleOnly(false);
-        lastCompatibleOnly = false;
         rebuildCategoryTabs();
         if (searchExpanded) actionBar.closeSearchField();
         loadFirstPage(false);

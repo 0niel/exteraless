@@ -78,7 +78,7 @@ public final class CatalogRepository {
                               CatalogCall.Callback<CatalogData<CatalogPage>> callback) {
         JSONObject input = queryJson(query);
         String source = config.getBaseUrl();
-        String fingerprint = appLocale() + ":" + input;
+        String fingerprint = pageFingerprint(input);
         return client.query(source, "plugins.getAll", input, CatalogClient.MAX_JSON_BYTES,
                 new CatalogClient.RawCallback() {
                     @Override
@@ -218,7 +218,11 @@ public final class CatalogRepository {
     /** Reads only the cache entry matching this exact query and current source. */
     public CatalogData<CatalogPage> getCachedPage(CatalogQuery query, boolean allowStale) {
         JSONObject input = queryJson(query);
-        return cachedPage(config.getBaseUrl(), input.toString(), query, allowStale);
+        return cachedPage(config.getBaseUrl(), pageFingerprint(input), query, allowStale);
+    }
+
+    private static String pageFingerprint(JSONObject input) {
+        return appLocale() + ":" + input;
     }
 
     public CatalogData<List<CatalogCategory>> getCachedCategories(boolean allowStale) {
@@ -484,7 +488,7 @@ public final class CatalogRepository {
     }
 
     private static String requireSlug(String slug) {
-        if (slug == null || slug.trim().isEmpty() || slug.length() > 200) {
+        if (slug == null || slug.trim().isEmpty() || slug.length() > 512) {
             throw new IllegalArgumentException("Invalid catalog slug");
         }
         return slug.trim();

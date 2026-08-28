@@ -181,22 +181,8 @@ final class CatalogChecksCell extends FrameLayout implements Theme.Colorable {
                 chipsLayout.getChildCount() == 0 ? 0 : 5, 0, 0, 0));
     }
 
-    private static int overallTone(CatalogPlugin plugin) {
-        String summary = plugin.checkSummary == null ? ""
-                : plugin.checkSummary.trim().toLowerCase(java.util.Locale.ROOT);
-        if ("ok".equals(summary)) return 1;
-        if ("critical".equals(summary)) return -1;
-        if ("issues".equals(summary)) return 0;
-        int security = CatalogUi.checkTone(plugin.securityCheck);
-        int performance = plugin.performanceCheck == null ? 1
-                : CatalogUi.checkTone(plugin.performanceCheck);
-        return Math.min(security, performance);
-    }
-
     private int toneColor(int tone) {
-        return Theme.getColor(tone > 0 ? Theme.key_windowBackgroundWhiteGreenText
-                : tone < 0 ? Theme.key_text_RedRegular
-                : Theme.key_statisticChartLine_orange, resourcesProvider);
+        return CatalogUi.toneColor(tone, resourcesProvider);
     }
 
     @Override

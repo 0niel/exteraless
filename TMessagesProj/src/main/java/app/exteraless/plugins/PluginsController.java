@@ -968,6 +968,8 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         PluginCapabilityScan.clear(id);
         setPluginPinned(id, false);
         PythonPluginsEngine.getInstance().forgetAudit(id);
+        new app.exteraless.plugins.catalog.CatalogIdentityStore(appContext)
+                .clearIdentitiesForLocalId(id);
         File f = new File(p.path);
         // SharedPreferences plugin_settings_<id> — отдельный файл, удаляем напрямую.
         File prefsFile = new File(appContext.getFilesDir().getParentFile(),

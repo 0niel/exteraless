@@ -65,7 +65,6 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
 
     private enum Compatibility { COMPATIBLE, UNSUPPORTED, UNKNOWN }
 
-    private static final int ID_INSTALL = 1;
     private static final int ID_AUTHOR = 2;
     private static final int ID_SOURCE = 3;
     private static final int ID_GITHUB = 4;
@@ -93,6 +92,7 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
     private boolean busy;
     private boolean loading;
     private long loadGeneration;
+    private long supplementalGeneration;
     private int supplementalPending;
     private boolean destroyed;
     private ActionBarMenuItem shareItem;
@@ -100,6 +100,7 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
     private RectF heroCoverFrom;
     private RectF heroNameFrom;
     private android.graphics.Bitmap heroCoverBitmap;
+    private Runnable heroSwap;
     private String authorImage;
 
     public PluginCatalogDetailsActivity(String slug) {
@@ -186,14 +187,6 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
         overlay.addView(heroName, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT));
-        overlay.setAlpha(0f);
-        root.addView(overlay, LayoutHelper.createFrame(
-                LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
-        root.setBackground(null);
-        if (listView != null) listView.setAlpha(0f);
-        if (actionBar != null) actionBar.setAlpha(0f);
-
         final RectF coverStart = new RectF();
         final RectF coverTo = new RectF();
         final RectF nameStart = new RectF();
@@ -242,33 +235,49 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
             heroName.setScaleX(nameScale);
             heroName.setScaleY(nameScale);
         });
+        final boolean[] preStateApplied = { false };
+        final Runnable restore = () -> {
+            if (!preStateApplied[0]) return;
+            preStateApplied[0] = false;
+            root.setBackground(originalBackground);
+            if (listView != null) {
+                listView.setAlpha(1f);
+                listView.setTranslationY(0f);
+            }
+            if (actionBar != null) actionBar.setAlpha(1f);
+        };
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
+            public void onAnimationCancel(Animator animation) {
+                restore.run();
+            }
+
+            @Override
             public void onAnimationEnd(Animator animation) {
-                root.setBackground(originalBackground);
-                if (listView != null) {
-                    listView.setAlpha(1f);
-                    listView.setTranslationY(0f);
-                }
-                if (actionBar != null) actionBar.setAlpha(1f);
-                Runnable[] swap = new Runnable[1];
-                swap[0] = () -> {
-                    if (swap[0] == null) return;
-                    swap[0] = null;
+                restore.run();
+                Runnable[] timeout = new Runnable[1];
+                heroSwap = () -> {
+                    if (heroSwap == null) return;
+                    heroSwap = null;
+                    AndroidUtilities.cancelRunOnUIThread(timeout[0]);
+                    heroCoverBitmap = null;
                     for (View target : realTargets) {
                         if (target != null) target.setAlpha(1f);
                     }
                     root.removeView(overlay);
                 };
+                timeout[0] = () -> {
+                    if (heroSwap != null) heroSwap.run();
+                };
                 CatalogDetailsHeaderCell header = findHeaderCell();
-                if (header != null) {
-                    header.runWhenCoverShown(swap[0]);
+                if (header != null && !destroyed) {
+                    header.runWhenCoverShown(() -> {
+                        if (heroSwap != null) heroSwap.run();
+                    });
+                    AndroidUtilities.runOnUIThread(timeout[0], 700);
                 } else {
-                    swap[0].run();
+                    heroSwap.run();
                 }
-                AndroidUtilities.runOnUIThread(() -> {
-                    if (swap[0] != null) swap[0].run();
-                }, 700);
                 callback.run();
             }
         });
@@ -282,7 +291,7 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
                 new android.view.ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
-                if (set.isStarted()) {
+                if (set.isStarted() || destroyed) {
                     root.getViewTreeObserver().removeOnPreDrawListener(this);
                     return true;
                 }
@@ -317,7 +326,12 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
                 heroCover.setTranslationY(coverStart.top);
                 heroName.setTranslationX(nameStart.left);
                 heroName.setTranslationY(nameStart.top);
-                overlay.setAlpha(1f);
+                preStateApplied[0] = true;
+                root.setBackground(null);
+                if (listView != null) listView.setAlpha(0f);
+                if (actionBar != null) actionBar.setAlpha(0f);
+                root.addView(overlay, LayoutHelper.createFrame(
+                        LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
                 set.start();
                 return true;
             }
@@ -419,10 +433,8 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
         CatalogUpdateMatch match = repository.matchInstalled(plugin,
                 CatalogUi.installedVersions());
         boolean showUpdates = PluginCatalogActivity.autoUpdateCheckEnabled(getContext());
-        boolean installed = match.state == CatalogUpdateMatch.State.UP_TO_DATE
-                || match.state == CatalogUpdateMatch.State.LOCAL_NEWER
-                || (!showUpdates && match.state == CatalogUpdateMatch.State.UPDATE_AVAILABLE);
-        boolean update = showUpdates && match.state == CatalogUpdateMatch.State.UPDATE_AVAILABLE;
+        boolean installed = CatalogUi.isInstalled(match, showUpdates);
+        boolean update = CatalogUi.isUpdate(match, showUpdates);
         String action = busy ? getString(R.string.PluginCatalogInstalling)
                 : installed ? getString(R.string.PluginCatalogInstalled)
                 : update ? getString(R.string.PluginCatalogUpdate)
@@ -444,7 +456,8 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
         CatalogDetailsHeaderCell.Model header = new CatalogDetailsHeaderCell.Model(
                 plugin, isOfficialSource(), author, description, status,
                 ratingText(plugin), downloadsText(plugin.downloadCount),
-                TextUtils.isEmpty(categoryName) ? humanizeCategory(plugin.category) : categoryName,
+                TextUtils.isEmpty(categoryName)
+                        ? CatalogUi.humanizeSlug(plugin.category) : categoryName,
                 action, actionEnabled, busy, installed,
                 compatibility == Compatibility.UNSUPPORTED
                         && !PluginsController.getInstance().isDeveloperMode());
@@ -602,9 +615,6 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
             return;
         }
         switch (item.id) {
-            case ID_INSTALL:
-                if (plugin != null) installer.install(plugin);
-                break;
             case ID_AUTHOR:
                 openAuthor(plugin);
                 break;
@@ -690,6 +700,10 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
                     loadError = error;
                     if (shareItem != null) shareItem.setVisibility(View.GONE);
                     updateRows(false);
+                } else if (error.kind != CatalogException.Kind.CANCELLED
+                        && getContext() != null) {
+                    BulletinFactory.of(PluginCatalogDetailsActivity.this)
+                            .createSimpleBulletin(R.raw.error, errorText(error)).show();
                 }
             }
         });
@@ -698,21 +712,30 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
     private void loadSupplementalData(CatalogPlugin loadedPlugin, long generation) {
         if (versionsCall != null) versionsCall.cancel();
         if (planCall != null) planCall.cancel();
+        final long supplemental = ++supplementalGeneration;
         versionsError = null;
         planError = null;
         supplementalPending = 2;
         versionsCall = repository.getVersions(loadedPlugin.slug,
                 new CatalogCall.Callback<List<CatalogVersion>>() {
                     @Override public void onSuccess(List<CatalogVersion> value) {
-                        if (destroyed || generation != loadGeneration) return;
+                        if (destroyed || generation != loadGeneration
+                                || supplemental != supplementalGeneration) {
+                            return;
+                        }
                         versionsCall = null;
+                        versionsError = null;
                         if (plugin != null && TextUtils.equals(plugin.slug, loadedPlugin.slug)) {
                             versions = value == null ? Collections.emptyList() : value;
                         }
                         supplementalFinished(generation);
                     }
                     @Override public void onError(CatalogException error) {
-                        if (destroyed || generation != loadGeneration) return;
+                        if (destroyed || generation != loadGeneration
+                                || supplemental != supplementalGeneration
+                                || error.kind == CatalogException.Kind.CANCELLED) {
+                            return;
+                        }
                         versionsCall = null;
                         versionsError = error;
                         supplementalFinished(generation);
@@ -721,15 +744,23 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
         planCall = repository.getInstallPlan(loadedPlugin.id,
                 new CatalogCall.Callback<List<CatalogInstallPlanItem>>() {
                     @Override public void onSuccess(List<CatalogInstallPlanItem> value) {
-                        if (destroyed || generation != loadGeneration) return;
+                        if (destroyed || generation != loadGeneration
+                                || supplemental != supplementalGeneration) {
+                            return;
+                        }
                         planCall = null;
+                        planError = null;
                         if (plugin != null && plugin.id == loadedPlugin.id) {
                             installPlan = value == null ? Collections.emptyList() : value;
                         }
                         supplementalFinished(generation);
                     }
                     @Override public void onError(CatalogException error) {
-                        if (destroyed || generation != loadGeneration) return;
+                        if (destroyed || generation != loadGeneration
+                                || supplemental != supplementalGeneration
+                                || error.kind == CatalogException.Kind.CANCELLED) {
+                            return;
+                        }
                         planCall = null;
                         planError = error;
                         supplementalFinished(generation);
@@ -830,10 +861,6 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
                 repository.getConfig().getBaseUrl());
     }
 
-    private CharSequence humanizeCategory(String value) {
-        return CatalogUi.humanizeSlug(value);
-    }
-
     private void openLink(String url) {
         if (isAllowedWebUrl(url)) Browser.openUrl(getParentActivity(), url);
     }
@@ -896,6 +923,8 @@ public class PluginCatalogDetailsActivity extends BasePreferencesActivity
     @Override
     public void onFragmentDestroy() {
         destroyed = true;
+        heroSwap = null;
+        heroCoverBitmap = null;
         loadGeneration++;
         cancelLoadCalls();
         if (installer != null) installer.cancel();

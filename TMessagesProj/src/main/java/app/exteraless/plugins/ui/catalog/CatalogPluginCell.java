@@ -1,5 +1,7 @@
 package app.exteraless.plugins.ui.catalog;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.PorterDuff;
@@ -57,32 +59,32 @@ final class CatalogPluginCell extends FrameLayout implements Theme.Colorable {
         final boolean installed;
         final boolean unsupported;
 
-        Model(Context context, CatalogPlugin plugin, CatalogUpdateMatch match,
+        Model(CatalogPlugin plugin, CatalogUpdateMatch match,
               boolean showUpdates, boolean developerMode,
               boolean allowRemoteMedia, CharSequence categoryName) {
             this.plugin = plugin;
-            cover = allowRemoteMedia ? firstTrustedScreenshot(plugin) : null;
+            cover = allowRemoteMedia ? CatalogUi.firstTrustedScreenshot(plugin) : null;
             authorAvatar = allowRemoteMedia
                     && CatalogConfig.isTrustedOfficialMediaUrl(plugin.authorImage)
                     ? plugin.authorImage : null;
             author = TextUtils.isEmpty(plugin.author)
-                    ? context.getString(R.string.PluginCatalogAuthorUnknown) : plugin.author;
+                    ? getString(R.string.PluginCatalogAuthorUnknown) : plugin.author;
             version = TextUtils.isEmpty(plugin.version) ? "" : "v" + plugin.version;
             description = plainSummary(TextUtils.isEmpty(plugin.shortDescription)
                     ? plugin.description : plugin.shortDescription, 180);
 
             StringBuilder statusBuilder = new StringBuilder();
             if (plugin.verified) append(statusBuilder,
-                    context.getString(R.string.PluginCatalogVerifiedShort));
+                    getString(R.string.PluginCatalogVerifiedShort));
             if (plugin.featured) append(statusBuilder,
-                    context.getString(R.string.PluginCatalogFeatured));
+                    getString(R.string.PluginCatalogFeatured));
             if (Boolean.TRUE.equals(plugin.exteralessCompatible)) {
-                append(statusBuilder, context.getString(R.string.PluginCatalogCompatible));
+                append(statusBuilder, getString(R.string.PluginCatalogCompatible));
             } else if (Boolean.FALSE.equals(plugin.exteralessCompatible)) {
-                append(statusBuilder, context.getString(R.string.PluginCatalogUnsupported));
+                append(statusBuilder, getString(R.string.PluginCatalogUnsupported));
             } else {
                 append(statusBuilder,
-                        context.getString(R.string.PluginCatalogCompatibilityUnknown));
+                        getString(R.string.PluginCatalogCompatibilityUnknown));
             }
             status = statusBuilder;
 
@@ -90,27 +92,17 @@ final class CatalogPluginCell extends FrameLayout implements Theme.Colorable {
                     ? LocaleController.formatString(R.string.PluginCatalogRating,
                     String.format(LocaleController.getInstance().getCurrentLocale(),
                             "%.1f", plugin.rating), plugin.ratingCount)
-                    : context.getString(R.string.PluginCatalogNoRatings);
+                    : getString(R.string.PluginCatalogNoRatings);
             downloads = LocaleController.formatShortNumber(
                     (int) Math.min(Integer.MAX_VALUE, plugin.downloadCount), null);
             category = categoryName;
 
-            boolean update = showUpdates
-                    && match.state == CatalogUpdateMatch.State.UPDATE_AVAILABLE;
-            installed = match.state == CatalogUpdateMatch.State.UP_TO_DATE
-                    || match.state == CatalogUpdateMatch.State.LOCAL_NEWER
-                    || (!showUpdates && match.state == CatalogUpdateMatch.State.UPDATE_AVAILABLE);
+            boolean update = CatalogUi.isUpdate(match, showUpdates);
+            installed = CatalogUi.isInstalled(match, showUpdates);
             unsupported = Boolean.FALSE.equals(plugin.exteralessCompatible) && !developerMode;
-            state = unsupported ? context.getString(R.string.PluginCatalogUnsupported)
-                    : update ? context.getString(R.string.PluginCatalogUpdate)
-                    : installed ? context.getString(R.string.PluginCatalogInstalled) : "";
-        }
-
-        private static String firstTrustedScreenshot(CatalogPlugin plugin) {
-            for (String screenshot : plugin.screenshots) {
-                if (CatalogConfig.isTrustedOfficialMediaUrl(screenshot)) return screenshot;
-            }
-            return null;
+            state = unsupported ? getString(R.string.PluginCatalogUnsupported)
+                    : update ? getString(R.string.PluginCatalogUpdate)
+                    : installed ? getString(R.string.PluginCatalogInstalled) : "";
         }
 
         private static void append(StringBuilder builder, CharSequence value) {
@@ -191,6 +183,7 @@ final class CatalogPluginCell extends FrameLayout implements Theme.Colorable {
     private final TextView stateView;
     private Model model;
     private boolean needDivider;
+    private android.graphics.drawable.Drawable verifiedBadge;
 
     private CatalogPluginCell(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -339,8 +332,11 @@ final class CatalogPluginCell extends FrameLayout implements Theme.Colorable {
         }
 
         nameView.setText(model.plugin.name);
-        nameView.setCompoundDrawablesRelative(null, null, model.plugin.verified
-                ? CatalogUi.verifiedBadge(getContext(), resourcesProvider) : null, null);
+        if (model.plugin.verified && verifiedBadge == null) {
+            verifiedBadge = CatalogUi.verifiedBadge(getContext(), resourcesProvider);
+        }
+        nameView.setCompoundDrawablesRelative(null, null,
+                model.plugin.verified ? verifiedBadge : null, null);
         stateView.setText(model.state);
         stateView.setVisibility(TextUtils.isEmpty(model.state) ? GONE : VISIBLE);
         stateView.setTextColor(Theme.getColor(model.unsupported
@@ -399,6 +395,7 @@ final class CatalogPluginCell extends FrameLayout implements Theme.Colorable {
 
     @Override
     public void updateColors() {
+        verifiedBadge = null;
         nameView.setTextColor(Theme.getColor(
                 Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         int secondary = Theme.getColor(

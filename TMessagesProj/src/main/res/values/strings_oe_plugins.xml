@@ -179,7 +179,6 @@ Source:
     <string name="PluginCatalogSettingsTitle">Catalog settings</string>
     <string name="PluginCatalogSearchHint">Search plugins</string>
     <string name="PluginCatalogLoading">Loading catalog…</string>
-    <string name="PluginCatalogLoadingMore">Loading more…</string>
     <string name="PluginCatalogLoadError">Could not load the catalog</string>
     <string name="PluginCatalogNetworkError">Check your connection and try again.</string>
     <string name="PluginCatalogConfigurationError">The catalog source is not configured correctly.</string>
@@ -297,8 +296,6 @@ Source:
     <string name="PluginCatalogInstallPlanHint">The catalog shows the selected version and declared dependencies in the recommended order. Exteraless installs only the selected file; review dependencies separately.</string>
     <string name="PluginCatalogStableVersion">Stable</string>
     <string name="PluginCatalogRequestedPlugin">Selected</string>
-    <string name="PluginCatalogCategories">Categories</string>
-    <string name="PluginCatalogFilters">Filters</string>
     <string name="PluginCatalogFeatured">Featured</string>
     <string name="PluginCatalogVerifiedShort">Verified</string>
     <string name="PluginsUnpin">Unpin</string>

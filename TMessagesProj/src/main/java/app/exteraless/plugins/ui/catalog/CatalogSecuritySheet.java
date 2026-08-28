@@ -179,8 +179,6 @@ final class CatalogSecuritySheet extends BottomSheet {
     }
 
     private int toneColor(int tone) {
-        return Theme.getColor(tone > 0 ? Theme.key_windowBackgroundWhiteGreenText
-                : tone < 0 ? Theme.key_text_RedRegular
-                : Theme.key_statisticChartLine_orange, sheetResourcesProvider);
+        return CatalogUi.toneColor(tone, sheetResourcesProvider);
     }
 }

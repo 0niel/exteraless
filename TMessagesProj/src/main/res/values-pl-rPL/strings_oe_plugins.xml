@@ -171,7 +171,6 @@ Wtyczka: %1$s
     <string name="PluginCatalogSettingsTitle">Ustawienia katalogu</string>
     <string name="PluginCatalogSearchHint">Szukaj wtyczek</string>
     <string name="PluginCatalogLoading">Wczytywanie katalogu…</string>
-    <string name="PluginCatalogLoadingMore">Wczytywanie kolejnych…</string>
     <string name="PluginCatalogLoadError">Nie udało się wczytać katalogu</string>
     <string name="PluginCatalogNetworkError">Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="PluginCatalogConfigurationError">Źródło katalogu jest nieprawidłowo skonfigurowane.</string>
@@ -289,8 +288,6 @@ Wtyczka: %1$s
     <string name="PluginCatalogInstallPlanHint">Katalog pokazuje wybraną wersję i zadeklarowane zależności w zalecanej kolejności. Exteraless instaluje tylko wybrany plik; zależności należy sprawdzić osobno.</string>
     <string name="PluginCatalogStableVersion">Stabilna</string>
     <string name="PluginCatalogRequestedPlugin">Wybrany</string>
-    <string name="PluginCatalogCategories">Kategorie</string>
-    <string name="PluginCatalogFilters">Filtry</string>
     <string name="PluginCatalogFeatured">Polecany</string>
     <string name="PluginCatalogVerifiedShort">Zweryfikowany</string>
     <string name="PluginsUnpin">Odepnij</string>

@@ -71,16 +71,7 @@ final class CatalogDetailsHeaderCell extends FrameLayout implements Theme.Colora
             this.busy = busy;
             this.installed = installed;
             this.unsupported = unsupported;
-            String screenshot = null;
-            if (allowRemoteMedia) {
-                for (String value : plugin.screenshots) {
-                    if (CatalogConfig.isTrustedOfficialMediaUrl(value)) {
-                        screenshot = value;
-                        break;
-                    }
-                }
-            }
-            cover = screenshot;
+            cover = allowRemoteMedia ? CatalogUi.firstTrustedScreenshot(plugin) : null;
         }
 
         boolean sameContent(Model other) {
@@ -164,6 +155,7 @@ final class CatalogDetailsHeaderCell extends FrameLayout implements Theme.Colora
     private Model model;
     private Delegate delegate;
     private String boundCover;
+    private android.graphics.drawable.Drawable verifiedBadge;
 
     private CatalogDetailsHeaderCell(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -354,8 +346,11 @@ final class CatalogDetailsHeaderCell extends FrameLayout implements Theme.Colora
         }
 
         nameView.setText(model.plugin.name);
-        nameView.setCompoundDrawablesRelative(null, null, model.plugin.verified
-                ? CatalogUi.verifiedBadge(getContext(), resourcesProvider) : null, null);
+        if (model.plugin.verified && verifiedBadge == null) {
+            verifiedBadge = CatalogUi.verifiedBadge(getContext(), resourcesProvider);
+        }
+        nameView.setCompoundDrawablesRelative(null, null,
+                model.plugin.verified ? verifiedBadge : null, null);
         descriptionView.setText(model.description);
         descriptionView.setVisibility(TextUtils.isEmpty(model.description) ? GONE : VISIBLE);
         statusView.setText(model.status);
@@ -407,6 +402,7 @@ final class CatalogDetailsHeaderCell extends FrameLayout implements Theme.Colora
 
     @Override
     public void updateColors() {
+        verifiedBadge = null;
         nameView.setTextColor(Theme.getColor(
                 Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
         descriptionView.setTextColor(Theme.getColor(

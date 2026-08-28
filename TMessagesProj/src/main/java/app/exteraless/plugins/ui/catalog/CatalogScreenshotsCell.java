@@ -99,6 +99,7 @@ final class CatalogScreenshotsCell extends HorizontalScrollView implements Theme
     private final ArrayList<BackupImageView> imageViews = new ArrayList<>();
     private Model model;
     private Delegate delegate;
+    private final ArrayList<Runnable> pendingTimeouts = new ArrayList<>();
 
     private CatalogScreenshotsCell(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -114,6 +115,10 @@ final class CatalogScreenshotsCell extends HorizontalScrollView implements Theme
     private void setModel(Model model, Delegate delegate) {
         this.model = model;
         this.delegate = delegate;
+        for (Runnable pending : pendingTimeouts) {
+            removeCallbacks(pending);
+        }
+        pendingTimeouts.clear();
         content.removeAllViews();
         imageViews.clear();
         int radius = Math.min(12, AppearanceConfig.sectionRadius());
@@ -199,12 +204,14 @@ final class CatalogScreenshotsCell extends HorizontalScrollView implements Theme
                 load[0].run();
             });
             load[0].run();
-            frame.postDelayed(() -> {
+            Runnable timeout = () -> {
                 if (!loaded[0] && frame.getParent() != null) {
                     if (loading != null) loading.disappear();
                     retry.setVisibility(VISIBLE);
                 }
-            }, 12_000);
+            };
+            pendingTimeouts.add(timeout);
+            postDelayed(timeout, 12_000);
             LinearLayout.LayoutParams params = LayoutHelper.createLinear(144, 216,
                     Gravity.CENTER_VERTICAL, i == 0 ? 16 : 8, 10,
                     i == total - 1 ? 16 : 0, 10);

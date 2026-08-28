@@ -22,8 +22,10 @@ import java.util.Map;
 import app.exteraless.plugins.Plugin;
 import app.exteraless.plugins.PluginsController;
 import app.exteraless.plugins.catalog.CatalogCategory;
+import app.exteraless.plugins.catalog.CatalogConfig;
 import app.exteraless.plugins.catalog.CatalogException;
 import app.exteraless.plugins.catalog.CatalogPlugin;
+import app.exteraless.plugins.catalog.CatalogUpdateMatch;
 
 final class CatalogUi {
 
@@ -98,10 +100,38 @@ final class CatalogUi {
         return Character.toUpperCase(readable.charAt(0)) + readable.substring(1);
     }
 
+    private static android.graphics.Paint.FontMetricsInt emojiFontMetrics;
+
     static CharSequence renderEmoji(String value) {
-        TextPaint paint = new TextPaint();
-        paint.setTextSize(AndroidUtilities.dp(14));
-        return Emoji.replaceEmoji(value, paint.getFontMetricsInt(), false);
+        if (emojiFontMetrics == null) {
+            TextPaint paint = new TextPaint();
+            paint.setTextSize(AndroidUtilities.dp(14));
+            emojiFontMetrics = paint.getFontMetricsInt();
+        }
+        return Emoji.replaceEmoji(value, emojiFontMetrics, false);
+    }
+
+    static String firstTrustedScreenshot(CatalogPlugin plugin) {
+        for (String screenshot : plugin.screenshots) {
+            if (CatalogConfig.isTrustedOfficialMediaUrl(screenshot)) {
+                return screenshot;
+            }
+        }
+        return null;
+    }
+
+    static boolean isInstalled(CatalogUpdateMatch match,
+                               boolean showUpdates) {
+        return match.state == CatalogUpdateMatch.State.UP_TO_DATE
+                || match.state == CatalogUpdateMatch.State.LOCAL_NEWER
+                || (!showUpdates && match.state
+                        == CatalogUpdateMatch.State.UPDATE_AVAILABLE);
+    }
+
+    static boolean isUpdate(CatalogUpdateMatch match,
+                            boolean showUpdates) {
+        return showUpdates && match.state
+                == CatalogUpdateMatch.State.UPDATE_AVAILABLE;
     }
 
     static CharSequence errorText(CatalogException failure) {
@@ -173,11 +203,20 @@ final class CatalogUi {
         int tone = checkTone(plugin.securityCheck);
         if (plugin.performanceCheck != null) {
             tone = Math.min(tone, checkTone(plugin.performanceCheck));
-            String summary = normalizedSummary(plugin);
-            if ("critical".equals(summary)) tone = Math.min(tone, -1);
-            else if ("issues".equals(summary)) tone = Math.min(tone, 0);
+        }
+        String summary = normalizedSummary(plugin);
+        if ("critical".equals(summary)) {
+            tone = -1;
+        } else if ("issues".equals(summary) && plugin.performanceCheck != null) {
+            tone = Math.min(tone, 0);
         }
         return tone;
+    }
+
+    static int toneColor(int tone, Theme.ResourcesProvider resourcesProvider) {
+        return Theme.getColor(tone > 0 ? Theme.key_windowBackgroundWhiteGreenText
+                : tone < 0 ? Theme.key_text_RedRegular
+                : Theme.key_statisticChartLine_orange, resourcesProvider);
     }
 
     static CharSequence overallLabel(CatalogPlugin plugin) {

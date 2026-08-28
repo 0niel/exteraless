@@ -174,7 +174,6 @@
     <string name="PluginCatalogSettingsTitle">Настройки каталога</string>
     <string name="PluginCatalogSearchHint">Поиск плагинов</string>
     <string name="PluginCatalogLoading">Загружаем каталог…</string>
-    <string name="PluginCatalogLoadingMore">Загружаем ещё…</string>
     <string name="PluginCatalogLoadError">Не удалось загрузить каталог</string>
     <string name="PluginCatalogNetworkError">Проверьте подключение и попробуйте снова.</string>
     <string name="PluginCatalogConfigurationError">Источник каталога настроен неверно.</string>
@@ -292,8 +291,6 @@
     <string name="PluginCatalogInstallPlanHint">Каталог показывает выбранную версию и заявленные зависимости в рекомендуемом порядке. Exteraless устанавливает только выбранный файл — зависимости необходимо проверить отдельно.</string>
     <string name="PluginCatalogStableVersion">Стабильная</string>
     <string name="PluginCatalogRequestedPlugin">Выбран</string>
-    <string name="PluginCatalogCategories">Категории</string>
-    <string name="PluginCatalogFilters">Фильтры</string>
     <string name="PluginCatalogFeatured">В подборке</string>
     <string name="PluginCatalogVerifiedShort">Проверен</string>
     <string name="PluginsUnpin">Открепить</string>

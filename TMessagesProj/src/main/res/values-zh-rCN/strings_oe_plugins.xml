@@ -171,7 +171,6 @@
     <string name="PluginCatalogSettingsTitle">目录设置</string>
     <string name="PluginCatalogSearchHint">搜索插件</string>
     <string name="PluginCatalogLoading">正在加载目录…</string>
-    <string name="PluginCatalogLoadingMore">正在加载更多内容…</string>
     <string name="PluginCatalogLoadError">无法加载目录</string>
     <string name="PluginCatalogNetworkError">请检查网络连接后重试。</string>
     <string name="PluginCatalogConfigurationError">目录来源配置不正确。</string>
@@ -289,8 +288,6 @@
     <string name="PluginCatalogInstallPlanHint">目录会按建议顺序显示所选版本及其声明的依赖项。Exteraless 只安装所选文件；请单独检查依赖项。</string>
     <string name="PluginCatalogStableVersion">稳定版</string>
     <string name="PluginCatalogRequestedPlugin">已选择</string>
-    <string name="PluginCatalogCategories">类别</string>
-    <string name="PluginCatalogFilters">筛选</string>
     <string name="PluginCatalogFeatured">精选</string>
     <string name="PluginCatalogVerifiedShort">已验证</string>
     <string name="PluginsUnpin">取消置顶</string>

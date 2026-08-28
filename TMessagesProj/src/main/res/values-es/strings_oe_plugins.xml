@@ -171,7 +171,6 @@ Código:
     <string name="PluginCatalogSettingsTitle">Ajustes del catálogo</string>
     <string name="PluginCatalogSearchHint">Buscar plugins</string>
     <string name="PluginCatalogLoading">Cargando el catálogo…</string>
-    <string name="PluginCatalogLoadingMore">Cargando más…</string>
     <string name="PluginCatalogLoadError">No se pudo cargar el catálogo</string>
     <string name="PluginCatalogNetworkError">Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="PluginCatalogConfigurationError">La fuente del catálogo no está configurada correctamente.</string>
@@ -289,8 +288,6 @@ Código:
     <string name="PluginCatalogInstallPlanHint">El catálogo muestra la versión seleccionada y las dependencias declaradas en el orden recomendado. Exteraless instala únicamente el archivo seleccionado; revisa las dependencias por separado.</string>
     <string name="PluginCatalogStableVersion">Estable</string>
     <string name="PluginCatalogRequestedPlugin">Seleccionado</string>
-    <string name="PluginCatalogCategories">Categorías</string>
-    <string name="PluginCatalogFilters">Filtros</string>
     <string name="PluginCatalogFeatured">Destacado</string>
     <string name="PluginCatalogVerifiedShort">Verificado</string>
     <string name="PluginsUnpin">Desfijar</string>

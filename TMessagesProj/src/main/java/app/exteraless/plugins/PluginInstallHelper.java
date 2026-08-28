@@ -273,16 +273,28 @@ public final class PluginInstallHelper {
         if (!controller.isEngineEnabled()) {
             // Не отказываем молча: движок выключен по умолчанию, и пользователю
             // иначе неоткуда узнать, где его включить.
-            new AlertDialog.Builder(activity)
+            java.util.concurrent.atomic.AtomicBoolean proceeding =
+                    new java.util.concurrent.atomic.AtomicBoolean(false);
+            AlertDialog dialog = new AlertDialog.Builder(activity)
                     .setTitle(LocaleController.getString(R.string.PluginsInstallTitle))
                     .setMessage(LocaleController.getString(R.string.PluginsEngineDisabledHint))
                     .setPositiveButton(LocaleController.getString(R.string.PluginsEngineEnableAndInstall),
-                             (dialog, which) -> {
+                             (d, which) -> {
+                                 proceeding.set(true);
                                  controller.setEngineEnabled(true);
                                  confirmAndInstall(activity, file, completion);
                              })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                    .show();
+                    .create();
+            dialog.setOnDismissListener(d -> {
+                if (!proceeding.get()) {
+                    cleanupManagedStaging(file);
+                    if (completion != null) {
+                        completion.onResult(false, "engine disabled, cancelled by user", null);
+                    }
+                }
+            });
+            dialog.show();
             return;
         }
         File snapshot = immutableInstallSnapshot(activity, file);
@@ -463,9 +475,11 @@ public final class PluginInstallHelper {
                         }
                         return;
                     }
-                    PluginCapabilityScan.store(plugin.id, capabilities);
-                    if (enableAfterInstall && plugin != null && plugin.id != null) {
-                        PluginsController.getInstance().setPluginEnabled(plugin.id, true);
+                    if (plugin != null && plugin.id != null) {
+                        PluginCapabilityScan.store(plugin.id, capabilities);
+                        if (enableAfterInstall) {
+                            PluginsController.getInstance().setPluginEnabled(plugin.id, true);
+                        }
                     }
                     cleanupManagedStaging(file);
                     if (completion != null) {
