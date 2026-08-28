@@ -478,10 +478,10 @@ def _info_for(cls):
     return info
 
 
-def _current_plugin_id():
+def _owner_plugin_id():
     try:
-        from extera_utils import plugin_loader
-        return plugin_loader.current_plugin_id()
+        from extera_utils.plugin_loader import caller_plugin_id
+        return caller_plugin_id()
     except Exception:
         return None
 
@@ -495,7 +495,7 @@ def _ensure_java_class(info):
         if info.class_key is not None:
             return info.class_key
         spec_json = json.dumps(info.build_spec())
-        key = PluginServices.generateProxyClass(_current_plugin_id(), spec_json)
+        key = PluginServices.generateProxyClass(_owner_plugin_id(), spec_json)
         if key is None:
             try:
                 reason = PluginServices.getProxyError()
@@ -561,7 +561,7 @@ class Base:
         class_key = _ensure_java_class(info)
         peer = cls.__new__(cls)
         proxy = PluginServices.newProxyInstance(
-            _current_plugin_id(), class_key, ctor_sig or "",
+            _owner_plugin_id(), class_key, ctor_sig or "",
             _object_array(java_ctor_args), peer)
         if proxy is None:
             raise RuntimeError(f"newProxyInstance failed for {cls.__name__}; see logcat")

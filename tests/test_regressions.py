@@ -45,12 +45,12 @@ class FakeExteraConfig:
     calls = 0
 
     @classmethod
-    def pluginsSafeMode(cls):
+    def getPluginsSafeMode(cls):
         cls.calls += 1
         return False
 
     @classmethod
-    def iconPack(cls):
+    def getIconPack(cls):
         return "solar"
 
     @classmethod
@@ -134,7 +134,7 @@ def test_field_shaped_attributes_point_at_a_real_java_method(aliases):
     assert aliases._FIELD_SHAPED
     for source, fields in aliases._FIELD_SHAPED.items():
         target = aliases.resolve(source)
-        jtype = javaapi.type_of(target)
+        jtype = javaapi.any_type_of(target)
         assert jtype is not None, f"{source} resolves to a missing class {target}"
         assert fields
         for attr, shape in fields.items():
@@ -152,7 +152,7 @@ def test_field_shaped_attributes_point_at_a_real_java_method(aliases):
 def test_alias_targets_declare_what_plugins_call(aliases):
     for source, member in PLUGIN_ENTRY_POINTS:
         target = aliases.resolve(source)
-        jtype = javaapi.type_of(target)
+        jtype = javaapi.any_type_of(target)
         assert jtype is not None, f"{source} resolves to a missing class {target}"
         assert jtype.method_arities(member), \
             f"{source} resolves to {target}, which has no {member}()"

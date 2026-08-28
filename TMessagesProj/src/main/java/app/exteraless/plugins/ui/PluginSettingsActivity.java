@@ -7,6 +7,7 @@ import android.content.Context;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -91,6 +92,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
 
     /** Строки экрана в исходном виде — как их отдал Python-SDK. */
     private final ArrayList<JSONObject> rows = new ArrayList<>();
+    private final SparseArray<JSONObject> rowsById = new SparseArray<>();
 
     public PluginSettingsActivity() {
     }
@@ -377,6 +379,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     private void reloadRows() {
         ArrayList<JSONObject> previous = new ArrayList<>(rows);
         rows.clear();
+        rowsById.clear();
         String json;
         if (subPageIndex != null) {
             String resolved = resolveSubPageJson();
@@ -530,7 +533,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
         final UItem item;
         switch (type) {
             case "header":
-                item = UItem.asHeader(row.optString("text"));
+                item = UItem.asHeader(id, row.optString("text"));
                 break;
             case "divider":
                 item = UItem.asShadow(id, optNonEmpty(row, "text"));
@@ -550,7 +553,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
                 item = textRow(row, id, type);
                 break;
         }
-        item.object = row;
+        rowsById.put(item.id, row);
         return item;
     }
 
@@ -585,7 +588,7 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     private UItem customRow(JSONObject row, int id) {
         UItem item = UItem.ofFactory(PluginCustomRowFactory.class);
         item.id = id;
-        item.object = row;
+        rowsById.put(id, row);
         String viewId = optNonEmpty(row, "view_id");
         if (viewId != null) {
             item.view = PluginsController.getInstance()
@@ -697,8 +700,8 @@ public class PluginSettingsActivity extends BasePreferencesActivity {
     // ---------- нажатия ----------
 
     /** JSON-строка, стоящая за элементом списка, или null, если элемент чужой. */
-    private static JSONObject rowOf(UItem item) {
-        return item != null && item.object instanceof JSONObject ? (JSONObject) item.object : null;
+    private JSONObject rowOf(UItem item) {
+        return item == null ? null : rowsById.get(item.id);
     }
 
     @Override

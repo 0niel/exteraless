@@ -10018,6 +10018,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     }
 
     @UiThread
+    public static void prepareSendingDocuments(AccountInstance accountInstance, ArrayList<String> paths, ArrayList<String> originalPaths, ArrayList<Uri> uris, String caption, ArrayList<TLRPC.MessageEntity> captionEntities, String mime, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, MessageObject editingMessageObject, boolean notify, int scheduleDate, int scheduleRepeatPeriod, InputContentInfoCompat inputContent, String quickReplyShortcut, int quickReplyShortcutId, long effectId, boolean invertMedia, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
+        SendMessageChatArguments.Builder arguments = new SendMessageChatArguments.Builder();
+        arguments.setQuickReplyShortcut(quickReplyShortcut, quickReplyShortcutId);
+        prepareSendingDocuments(accountInstance, paths, originalPaths, uris, caption, captionEntities, mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, editingMessageObject, notify, scheduleDate, scheduleRepeatPeriod, inputContent, arguments.build(), effectId, invertMedia, payStars, monoForumPeerId, suggestionParams);
+    }
+
     public static void prepareSendingDocuments(AccountInstance accountInstance, ArrayList<String> paths, ArrayList<String> originalPaths, ArrayList<Uri> uris, String caption, ArrayList<TLRPC.MessageEntity> captionEntities, String mime, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, MessageObject editingMessageObject, boolean notify, int scheduleDate, int scheduleRepeatPeriod, InputContentInfoCompat inputContent, SendMessageChatArguments sendMessageChatArguments, long effectId, boolean invertMedia, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams) {
         prepareSendingDocuments(accountInstance, paths, originalPaths, uris, caption, captionEntities, mime, dialogId, replyToMsg, replyToTopMsg, storyItem, quote, editingMessageObject, notify, scheduleDate, scheduleRepeatPeriod, inputContent, sendMessageChatArguments, effectId, invertMedia, payStars, monoForumPeerId, suggestionParams, null, null, null, false);
     }

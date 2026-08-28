@@ -8,8 +8,12 @@ import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
+import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.LaunchActivity;
 
@@ -25,6 +29,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -243,6 +248,34 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
             preferences.edit().putBoolean("plugin_pinned_" + id, true).apply();
         } else {
             preferences.edit().remove("plugin_pinned_" + id).apply();
+        }
+    }
+
+    private static boolean hasPluginExtension(String name) {
+        if (name == null) {
+            return false;
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(PluginsConstants.PLUGIN_EXT)
+                || lower.endsWith(PluginsConstants.PLUGIN_EXT_PY)
+                || lower.endsWith(PluginsConstants.PLUGIN_EXT_ELYX)
+                || lower.endsWith(PluginsConstants.PLUGIN_EXT_EAF);
+    }
+
+    public static boolean isPlugin(File file, MessageObject message) {
+        return file != null && file.exists() && file.length() > 0
+                && hasPluginExtension(file.getName());
+    }
+
+    public static boolean isPlugin(MessageObject message) {
+        if (message == null || !hasPluginExtension(message.getDocumentName())) {
+            return false;
+        }
+        try {
+            return isPlugin(FileLoader.getInstance(UserConfig.selectedAccount)
+                    .getPathToMessage(message.messageOwner), message);
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -622,6 +655,13 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
         return true;
     }
 
+    public void setPluginEnabled(String id, boolean enabled, Utilities.Callback<String> callback) {
+        boolean ok = setPluginEnabled(id, enabled);
+        if (callback != null) {
+            AndroidUtilities.runOnUIThread(() -> callback.run(ok ? null : id));
+        }
+    }
+
     public void reloadPlugin(String id) {
         Plugin p = getPlugin(id);
         if (p == null || !PythonPluginsEngine.getInstance().isStarted()) {
@@ -990,6 +1030,250 @@ public class PluginsController extends com.exteragram.messenger.plugins.PluginsC
     /** @return JSON-список элементов ui.settings с текущими значениями или null. */
     public String getPluginSettingsJson(String pluginId) {
         return PythonPluginsEngine.getInstance().getSettingsJson(pluginId);
+    }
+
+    // ---------- имена API exteraGram ----------
+
+    public void init() {
+        init(isSafeMode(), null);
+    }
+
+    public void init(Runnable onDone) {
+        init(isSafeMode(), onDone);
+    }
+
+    public void init(boolean startWithSafeMode) {
+        init(startWithSafeMode, null);
+    }
+
+    public void init(boolean startWithSafeMode, Runnable onDone) {
+        setSafeMode(startWithSafeMode);
+        if (appContext == null && ApplicationLoader.applicationContext != null) {
+            init(ApplicationLoader.applicationContext);
+        }
+        if (onDone != null) {
+            AndroidUtilities.runOnUIThread(onDone);
+        }
+    }
+
+    public boolean getInitialized() {
+        return initialized;
+    }
+
+    public void restart() {
+        restart(isSafeMode());
+    }
+
+    public void restart(boolean startWithSafeMode) {
+        setSafeMode(startWithSafeMode);
+        unloadAll();
+        if (!isEngineEnabled() || startWithSafeMode) {
+            return;
+        }
+        PythonPluginsEngine.getInstance().ensureStarted(appContext, ok -> {
+            if (ok) {
+                rescanAndLoadEnabled();
+            }
+        });
+    }
+
+    public void shutdown() {
+        shutdown(null);
+    }
+
+    public void shutdown(Runnable onDone) {
+        unloadAll();
+        if (onDone != null) {
+            AndroidUtilities.runOnUIThread(onDone);
+        }
+    }
+
+    public void runOnPluginsQueue(Runnable runnable) {
+        if (runnable != null) {
+            fileExecutor.execute(runnable);
+        }
+    }
+
+    public String getPluginPath(String id) {
+        Plugin plugin = getPlugin(id);
+        return plugin == null ? null : plugin.path;
+    }
+
+    public PythonPluginsEngine getPluginEngine(String pluginId) {
+        return PythonPluginsEngine.getInstance();
+    }
+
+    public PythonPluginsEngine getPluginEngine(File file) {
+        return PythonPluginsEngine.getInstance();
+    }
+
+    public boolean isPluginEngineAvailable() {
+        return PythonPluginsEngine.getInstance().isStarted();
+    }
+
+    public boolean isPluginEngineSupported() {
+        return true;
+    }
+
+    public void notifyPluginsChanged() {
+        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance()
+                .postNotificationName(NotificationCenter.pluginsUpdated));
+    }
+
+    public void deletePlugin(String pluginId, Utilities.Callback<String> callback) {
+        boolean removed = uninstallPlugin(pluginId);
+        if (callback != null) {
+            AndroidUtilities.runOnUIThread(() -> callback.run(removed ? null : pluginId));
+        }
+    }
+
+    public void loadPluginSettings() {
+        for (Plugin plugin : getPluginsSnapshot()) {
+            loadPluginSettings(plugin.id);
+        }
+    }
+
+    public void invalidatePluginSettings(String pluginId) {
+        reloadSettingsScreen(pluginId);
+    }
+
+    public boolean hasPluginSettings(String pluginId) {
+        String json = getPluginSettingsJson(pluginId);
+        return json != null && !json.isEmpty() && !"[]".equals(json.trim());
+    }
+
+    public Map<String, ?> getPluginSettingsPreferences(String pluginId) {
+        if (appContext == null || pluginId == null) {
+            return Collections.emptyMap();
+        }
+        return pluginPrefs(pluginId).getAll();
+    }
+
+    public void clearPluginSettingsPreferences(String pluginId, boolean reloadSettings) {
+        if (appContext == null || pluginId == null) {
+            return;
+        }
+        pluginPrefs(pluginId).edit().clear().apply();
+        if (reloadSettings) {
+            reloadSettingsScreen(pluginId);
+        }
+    }
+
+    public List<Object> getPluginSettingsList(String pluginId) {
+        List<Object> items = new ArrayList<>();
+        String json = getPluginSettingsJson(pluginId);
+        if (json == null || json.isEmpty()) {
+            return items;
+        }
+        try {
+            JSONArray array = new JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                items.add(fromJson(array.opt(i)));
+            }
+        } catch (Exception e) {
+            FileLog.e("PluginsController: settings list failed for " + pluginId, e);
+        }
+        return items;
+    }
+
+    public Map<String, List<Object>> getSettings() {
+        Map<String, List<Object>> all = new ConcurrentHashMap<>();
+        for (Plugin plugin : getPluginsSnapshot()) {
+            all.put(plugin.id, getPluginSettingsList(plugin.id));
+        }
+        return all;
+    }
+
+    public boolean getPluginSettingBoolean(String pluginId, String key, boolean defaultValue) {
+        Object value = readSetting(pluginId, key);
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue() != 0;
+        }
+        return defaultValue;
+    }
+
+    public int getPluginSettingInt(String pluginId, String key, int defaultValue) {
+        Object value = readSetting(pluginId, key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof Boolean) {
+            return ((Boolean) value) ? 1 : 0;
+        }
+        return defaultValue;
+    }
+
+    public String getPluginSettingString(String pluginId, String key, String defaultValue) {
+        Object value = readSetting(pluginId, key);
+        return value == null ? defaultValue : String.valueOf(value);
+    }
+
+    public void setPluginSetting(String pluginId, String key, Object value) {
+        setPluginSettingJson(pluginId, key, toJson(value), true);
+    }
+
+    public void setPluginSettingAndTriggerOnChange(String pluginId, String key, Object value,
+                                                   com.chaquo.python.PyObject onChangeCallback) {
+        String json = toJson(value);
+        setPluginSettingJson(pluginId, key, json, true);
+        notifySettingChanged(pluginId, key, json);
+        if (onChangeCallback != null) {
+            try {
+                onChangeCallback.call(value);
+            } catch (Throwable t) {
+                FileLog.e("PluginsController: on_change failed for " + pluginId + "/" + key, t);
+            }
+        }
+    }
+
+    private Object readSetting(String pluginId, String key) {
+        String raw = getPluginSettingJson(pluginId, key);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return fromJson(new JSONArray("[" + raw + "]").opt(0));
+        } catch (Exception e) {
+            return raw;
+        }
+    }
+
+    private static String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Boolean || value instanceof Number) {
+            return String.valueOf(value);
+        }
+        return JSONObject.quote(String.valueOf(value));
+    }
+
+    private static Object fromJson(Object value) {
+        if (value == JSONObject.NULL) {
+            return null;
+        }
+        if (value instanceof JSONObject) {
+            JSONObject object = (JSONObject) value;
+            Map<String, Object> map = new HashMap<>();
+            Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                map.put(key, fromJson(object.opt(key)));
+            }
+            return map;
+        }
+        if (value instanceof JSONArray) {
+            JSONArray array = (JSONArray) value;
+            List<Object> list = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                list.add(fromJson(array.opt(i)));
+            }
+            return list;
+        }
+        return value;
     }
 
     public android.view.View getPluginSettingsCustomView(String pluginId, String viewId,

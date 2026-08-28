@@ -175,6 +175,10 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
         return result;
     }
 
+    private static float[] buildRulerStops(float min, float max) {
+        return buildRulerStops(min, max, 1f);
+    }
+
     /** {@code unit} — реальная кратность, которая подписывается как «1×». */
     private static float[] buildRulerStops(float min, float max, float unit) {
         final float[] stops = boundStops(new float[]{min, unit, 2f * unit, 5f * unit, 10f * unit, 30f * unit}, min, max, false);
@@ -184,6 +188,10 @@ public class InstantCameraZoomSlider extends CameraZoomSliderView {
             return boundStops(stops, min, max, true);
         }
         return stops;
+    }
+
+    private static float[] buildToggleStops(boolean frontFace, float min, float max) {
+        return buildToggleStops(frontFace, min, max, 1f);
     }
 
     private static float[] buildToggleStops(boolean frontFace, float min, float max, float unit) {

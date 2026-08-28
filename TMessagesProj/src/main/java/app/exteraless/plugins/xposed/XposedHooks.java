@@ -96,13 +96,12 @@ public final class XposedHooks {
                     // Не фатально: для методов самого приложения restrictions не мешают.
                     FileLog.e("XposedHooks: disableHiddenApiRestrictions() returned false");
                 }
-                // Режим совместимости: ART Profile Saver со временем
-                // перекомпилирует методы и сбивает уже поставленные хуки.
-                // exteraGram гасит его при инициализации движка, за флагом.
-                if (PluginsController.getInstance().isCompatibilityMode()) {
-                    boolean ok = XposedBridge.disableProfileSaver();
-                    FileLog.d("XposedHooks: disableProfileSaver() -> " + ok);
-                }
+                // ART Profile Saver со временем перекомпилирует методы и сбивает
+                // уже поставленные хуки. Гасим всегда: сюда попадают только те
+                // запуски, где плагин действительно загружается, а хук, который
+                // отваливается через несколько минут, неотличим от сломанного.
+                boolean profileSaverOff = XposedBridge.disableProfileSaver();
+                FileLog.d("XposedHooks: disableProfileSaver() -> " + profileSaverOff);
                 initOk = true;
             } catch (Throwable t) {
                 initOk = false;

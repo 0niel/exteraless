@@ -255,6 +255,8 @@
 # Всё ниже достижимо только из Python через рефлексию Chaquopy, для статического
 # анализатора это мёртвый код. minifyEnabled в релизе вырезал бы его целиком.
 -keep class app.exteraless.plugins.** { *; }
+-keep class app.exteraless.settings.utils.** { *; }
+-keep class app.exteraless.utils.text.** { *; }
 -keep class com.exteragram.messenger.** { *; }
 -keep class de.robv.android.xposed.** { *; }
 -keep class kotlin.** { *; }

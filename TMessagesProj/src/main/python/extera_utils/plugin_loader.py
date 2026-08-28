@@ -868,6 +868,30 @@ def _sandboxed_import_module(name, package=None):
 _sandboxed_import_module._exteraless_sandbox = True
 
 
+def _log_neighbour_import_failure(name, exc) -> None:
+    """Плагин не смог импортировать соседа: настоящая причина — в лог.
+
+    Плагины каталога ловят такой сбой сами и показывают своё «библиотека не
+    установлена», подменяя причину. Без этой записи в логах не остаётся
+    ничего: ни имени модуля, ни исключения.
+    """
+    try:
+        pid = _direct_plugin_caller()
+        if pid is None:
+            return
+        root = name.partition(".")[0]
+        if root == pid:
+            return
+        plugins_dir = _plugins_dir_path()
+        if not plugins_dir or not os.path.isfile(os.path.join(plugins_dir, root + ".py")):
+            return
+        _log_once(f"{pid}|neighbour|{root}|{type(exc).__name__}",
+                  f"plugin {pid!r}: import {root!r} failed: "
+                  f"{type(exc).__name__}: {exc}")
+    except Exception:
+        pass
+
+
 def _sandboxed_import(name, globals=None, locals=None, fromlist=(), level=0):
     """Обёртка builtins.__import__.
 
@@ -884,7 +908,11 @@ def _sandboxed_import(name, globals=None, locals=None, fromlist=(), level=0):
             pass
     if level != 0 or type(name) is not str \
             or name.partition(".")[0] not in _JAVA_ROOTS:
-        return _original_import(name, globals, locals, fromlist, level)
+        try:
+            return _original_import(name, globals, locals, fromlist, level)
+        except Exception as exc:
+            _log_neighbour_import_failure(name, exc)
+            raise
     try:
         return _original_import(name, globals, locals, fromlist, level)
     except ModuleNotFoundError as exc:

@@ -113,6 +113,10 @@ class AlertDialogBuilder:
             self._builder = _run_sync(
                 lambda: Builder(context, int(alert_type), resources_provider))
 
+    @property
+    def _java_builder(self):
+        return self._builder
+
     # ---- content ----
 
     def set_title(self, text):

@@ -81,10 +81,15 @@ public final class PluginServices {
 
     /** Сгенерировать Java-класс по JSON-спецификации. @return classKey или null. */
     public static String generateProxyClass(String pluginId, String specJson) {
-        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "generateProxyClass")) {
-            ClassProxyFactory.setLastError(pluginId == null
-                    ? "no current plugin: called outside plugin context"
-                    : "permission 'hooks' not granted to " + pluginId);
+        if (pluginId == null) {
+            ClassProxyFactory.setLastError("no current plugin: called outside plugin context");
+            return null;
+        }
+        String permission = ClassProxyFactory.needsHooks(specJson)
+                ? PluginPermissions.HOOKS : PluginPermissions.UI;
+        if (!PluginPermissions.check(pluginId, permission, "generateProxyClass")) {
+            ClassProxyFactory.setLastError(
+                    "permission '" + permission + "' not granted to " + pluginId);
             return null;
         }
         return ClassProxyFactory.generateProxyClass(pluginId, specJson);
@@ -98,7 +103,12 @@ public final class PluginServices {
     /** Создать инстанс сгенерированного класса; python-сторона получает peer. */
     public static Object newProxyInstance(String pluginId, String classKey, String ctorSig,
                                           Object[] args, PyObject peer) {
-        if (!PluginPermissions.check(pluginId, PluginPermissions.HOOKS, "newProxyInstance")) {
+        if (pluginId == null) {
+            return null;
+        }
+        String permission = ClassProxyFactory.classNeedsHooks(classKey)
+                ? PluginPermissions.HOOKS : PluginPermissions.UI;
+        if (!PluginPermissions.check(pluginId, permission, "newProxyInstance")) {
             return null;
         }
         return ClassProxyFactory.newProxyInstance(pluginId, classKey, ctorSig, args, peer);
