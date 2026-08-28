@@ -5,6 +5,7 @@ import org.telegram.messenger.ApplicationLoader
 import org.telegram.messenger.FileLog
 import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
+import xyz.nextalone.nagram.NaConfig
 
 /**
  * Настройки экрана «Chats», перенесённые из exteraGram.
@@ -312,6 +313,16 @@ object ChatsConfig {
                 }
             }
             configLoaded = true
+        }
+        migrateLegacyKeys()
+    }
+
+    private fun migrateLegacyKeys() {
+        val legacyHidden = getPreferences().getBoolean("DisableChannelMuteButton", false)
+        if (legacyHidden && bottomButton.Int() != BOTTOM_BUTTON_HIDE) {
+            bottomButton.setConfigInt(BOTTOM_BUTTON_HIDE)
+        } else if (!legacyHidden && bottomButton.Int() == BOTTOM_BUTTON_HIDE) {
+            NaConfig.disableChannelMuteButton.setConfigBool(true)
         }
     }
 

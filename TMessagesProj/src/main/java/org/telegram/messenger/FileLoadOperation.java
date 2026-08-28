@@ -290,13 +290,12 @@ public class FileLoadOperation {
     private void updateParams() {
         // Ускорение загрузки, три уровня — перенос FileLoadOperation.updateParams
         // exteraGram (12.9.0, строка 1758). Уровень 2 берёт куски по мегабайту и
-        // двенадцать параллельных запросов; уровень 1 совпадает с тем, что делает
-        // штатный enhancedFileLoader.
+        // двенадцать параллельных запросов.
         if (app.exteraless.general.GeneralConfig.INSTANCE.downloadSpeedBoost() == 2) {
             downloadChunkSizeBig = 1024 * 1024;
             maxDownloadRequests = 12;
             maxDownloadRequestsBig = 12;
-        } else if ((preloadPrefixSize > 0 || MessagesController.getInstance(currentAccount).getfileExperimentalParams || NekoConfig.enhancedFileLoader.Bool()
+        } else if ((preloadPrefixSize > 0 || MessagesController.getInstance(currentAccount).getfileExperimentalParams
                 || app.exteraless.general.GeneralConfig.INSTANCE.downloadSpeedBoost() == 1) && !forceSmallChunk) {
             downloadChunkSizeBig = 1024 * 512;
             maxDownloadRequests = 8;

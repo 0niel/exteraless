@@ -938,12 +938,14 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
     private static final int RECENT_STICKERS_MAX = 200;
 
     private static boolean isUnlimitedRecentStickers() {
-        return NekoConfig.maxRecentStickerCount.Int() > RECENT_STICKERS_DEFAULT;
+        return NekoConfig.maxRecentStickerCount.Int() > RECENT_STICKERS_DEFAULT
+                || NekoConfig.unlimitedFavedStickers.Bool();
     }
 
     private void toggleUnlimitedRecentStickers(View view) {
         boolean value = !isUnlimitedRecentStickers();
         NekoConfig.maxRecentStickerCount.setConfigInt(value ? RECENT_STICKERS_MAX : RECENT_STICKERS_DEFAULT);
+        NekoConfig.unlimitedFavedStickers.setConfigBool(value);
         if (view instanceof TextCheckCell) {
             ((TextCheckCell) view).setChecked(value);
         }

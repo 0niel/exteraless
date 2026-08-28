@@ -7,6 +7,7 @@ import org.telegram.messenger.FileLog
 import org.telegram.ui.Components.blur3.GlassOutlineStyle
 import tw.nekomimi.nekogram.NekoConfig
 import tw.nekomimi.nekogram.config.ConfigItem
+import xyz.nextalone.nagram.NaConfig
 
 /**
  * Настройки экрана «Appearance», перенесённые из exteraGram.
@@ -558,6 +559,16 @@ object AppearanceConfig {
                 }
             }
             configLoaded = true
+        }
+        migrateLegacyKeys()
+    }
+
+    private fun migrateLegacyKeys() {
+        val legacyHidden = getPreferences().getBoolean("HideDividers", false)
+        if (legacyHidden && dividerStyle.Int() != DIVIDER_HIDDEN) {
+            dividerStyle.setConfigInt(DIVIDER_HIDDEN)
+        } else if (!legacyHidden && dividerStyle.Int() == DIVIDER_HIDDEN) {
+            NaConfig.hideDividers.setConfigBool(true)
         }
     }
 
