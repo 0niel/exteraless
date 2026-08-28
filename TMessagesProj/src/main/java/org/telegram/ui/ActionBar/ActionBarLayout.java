@@ -2280,6 +2280,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 }
             });
             currentSpringAnimation.addEndListener((animation, canceled, value, velocity) -> {
+                if (animation != currentSpringAnimation) {
+                    return;
+                }
                 springRouteBackgroundDrawable = null;
                 containerView.setScaleX(1f);
                 containerView.setScaleY(1f);
@@ -3093,6 +3096,13 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         }
         if (delegate != null && !delegate.needCloseLastFragment(this) || checkTransitionAnimation() || fragmentsStack.isEmpty()) {
             return;
+        }
+        if (transitionAnimationPreviewMode && transitionAnimationInProgress) {
+            final boolean alreadyClosing = onCloseAnimationEndRunnable != null;
+            onAnimationEndCheck(true);
+            if (alreadyClosing) {
+                return;
+            }
         }
         if (parentActivity.getCurrentFocus() != null) {
             AndroidUtilities.hideKeyboard(parentActivity.getCurrentFocus());
