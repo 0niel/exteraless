@@ -133,7 +133,6 @@ public final class GlyphController {
         if (initialized || !supported || !GlyphConfig.enabled()) {
             return;
         }
-        initialized = true;
         Context context = ApplicationLoader.applicationContext;
         if (context == null) {
             return;
@@ -144,6 +143,7 @@ public final class GlyphController {
             } else {
                 initStrip(context);
             }
+            initialized = true;
         } catch (Throwable t) {
             FileLog.e(t);
         }
