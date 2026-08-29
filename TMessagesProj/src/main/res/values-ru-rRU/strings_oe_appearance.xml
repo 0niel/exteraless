@@ -76,6 +76,7 @@
     <string name="OEBackAnimationClassic">Классическая</string>
     <string name="OEBackAnimationSpring">Пружинная</string>
     <string name="OEBackAnimationPredictive">Предиктивная</string>
+    <string name="OEBackAnimationSlide">Скольжение</string>
     <string name="OEPredictiveBackIntensity">Интенсивность жеста</string>
     <string name="OEPredictiveBackOff">Выкл</string>
     <string name="OEPredictiveBackMax">Макс</string>

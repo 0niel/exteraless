@@ -77,6 +77,7 @@
     <string name="OEBackAnimationClassic">Klasyczna</string>
     <string name="OEBackAnimationSpring">Sprężysta</string>
     <string name="OEBackAnimationPredictive">Przewidywane cofanie</string>
+    <string name="OEBackAnimationSlide">Przesunięcie</string>
     <string name="OEBackAnimationInfo">Włącza płynniejsze animacje przy przełączaniu ekranów i otwieraniu menu bocznego.</string>
     <string name="OEPredictiveBackIntensity">Siła gestu</string>
     <string name="OEPredictiveBackOff">Wyłączona</string>

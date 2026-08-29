@@ -106,6 +106,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoXSettingsActivity 
                     getString(R.string.BackAnimationClassic),
                     getString(R.string.BackAnimationSpring),
                     getString(R.string.BackAnimationPredictive),
+                    getString(R.string.OEBackAnimationSlide),
             } : new String[]{
                     getString(R.string.BackAnimationClassic),
                     getString(R.string.BackAnimationSpring),

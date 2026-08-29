@@ -77,6 +77,7 @@
     <string name="OEBackAnimationClassic">Clásica</string>
     <string name="OEBackAnimationSpring">Elástica</string>
     <string name="OEBackAnimationPredictive">Retroceso predictivo</string>
+    <string name="OEBackAnimationSlide">Deslizar</string>
     <string name="OEBackAnimationInfo">Activa animaciones más suaves al cambiar de pantalla y al abrir el menú lateral.</string>
     <string name="OEPredictiveBackIntensity">Intensidad del gesto</string>
     <string name="OEPredictiveBackOff">Desactivada</string>

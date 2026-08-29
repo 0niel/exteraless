@@ -77,6 +77,7 @@
     <string name="OEBackAnimationClassic">经典</string>
     <string name="OEBackAnimationSpring">弹性</string>
     <string name="OEBackAnimationPredictive">预测性返回</string>
+    <string name="OEBackAnimationSlide">平移</string>
     <string name="OEBackAnimationInfo">在切换界面和打开侧边菜单时启用更流畅的动画。</string>
     <string name="OEPredictiveBackIntensity">手势幅度</string>
     <string name="OEPredictiveBackOff">关闭</string>
