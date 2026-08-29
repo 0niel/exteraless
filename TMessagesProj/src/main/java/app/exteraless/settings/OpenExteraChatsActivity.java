@@ -1819,6 +1819,7 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
 
         private void bindInfo(TextInfoPrivacyCell cell, int position) {
             boolean bottom = position == videosDividerRow;
+            cell.setFixedSize(0);
             if (position == doubleTapDividerRow) {
                 cell.setText(getString(R.string.OEChatsDoubleTapInfo));
             } else if (position == chatsDividerRow) {
@@ -1837,6 +1838,9 @@ public class OpenExteraChatsActivity extends BaseNekoSettingsActivity {
                 cell.setText(getString(R.string.OEChatsPauseOnMinimizeInfo));
             } else {
                 cell.setText(null);
+                // Без текста у TextInfoPrivacyCell остаются футерные отступы 10+17dp
+                // и пустая строка — между карточками зияет дыра. Фиксируем высоту.
+                cell.setFixedSize(12);
             }
             cell.setBackground(Theme.getThemedDrawable(mContext,
                     bottom ? R.drawable.greydivider_bottom : R.drawable.greydivider,
