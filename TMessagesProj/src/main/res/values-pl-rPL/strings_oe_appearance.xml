@@ -21,6 +21,7 @@
     <string name="OEAppearanceTitleTextName">Imię</string>
     <string name="OEAppearanceChatListInfo">Gdy dla folderów włączone jest „Tylko ikony”, główny tytuł pokazuje nazwę folderu.</string>
     <string name="OEAppearanceFolders">Foldery</string>
+    <string name="OEAppearanceInterface">Interfejs</string>
     <string name="OEAppearanceTabTitleStyle">Tytuł folderu</string>
     <string name="OEAppearanceTabTitleStyleTextOnly">Tylko nazwy</string>
     <string name="OEAppearanceTabTitleStyleIconsOnly">Tylko ikony</string>

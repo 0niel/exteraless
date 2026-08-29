@@ -21,6 +21,7 @@
     <string name="OEAppearanceTitleTextName">Nombre</string>
     <string name="OEAppearanceChatListInfo">Cuando las carpetas usan «Solo iconos», el título principal muestra el nombre de la carpeta.</string>
     <string name="OEAppearanceFolders">Carpetas</string>
+    <string name="OEAppearanceInterface">Interfaz</string>
     <string name="OEAppearanceTabTitleStyle">Título de la carpeta</string>
     <string name="OEAppearanceTabTitleStyleTextOnly">Solo nombres</string>
     <string name="OEAppearanceTabTitleStyleIconsOnly">Solo iconos</string>

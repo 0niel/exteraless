@@ -21,6 +21,7 @@
     <string name="OEAppearanceTitleTextName">名字</string>
     <string name="OEAppearanceChatListInfo">当文件夹启用「仅图标」时，主标题会显示文件夹名称。</string>
     <string name="OEAppearanceFolders">文件夹</string>
+    <string name="OEAppearanceInterface">界面</string>
     <string name="OEAppearanceTabTitleStyle">文件夹标题</string>
     <string name="OEAppearanceTabTitleStyleTextOnly">仅名称</string>
     <string name="OEAppearanceTabTitleStyleIconsOnly">仅图标</string>
